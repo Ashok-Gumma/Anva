@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
@@ -20,8 +20,6 @@ import NoFriendsFound from "../components/NoFriendsFound";
 
 const HomePage = () => {
   const queryClient = useQueryClient();
-
-  const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
   const [sendingToId, setSendingToId] = useState(null);
 
   /* ---------------- FRIENDS ---------------- */
@@ -42,6 +40,15 @@ const HomePage = () => {
     queryFn: getOutgoingFriendReqs,
   });
 
+  /* ---------------- DERIVED SET (SAFE) ---------------- */
+  const outgoingRequestsIds = useMemo(() => {
+    return new Set(
+      outgoingFriendReqs
+        ?.filter((req) => req?.recipient?._id)
+        .map((req) => req.recipient._id)
+    );
+  }, [outgoingFriendReqs]);
+
   /* ---------------- SEND FRIEND REQUEST ---------------- */
   const { mutate: sendRequestMutation } = useMutation({
     mutationFn: sendFriendRequest,
@@ -53,30 +60,26 @@ const HomePage = () => {
     onError: () => setSendingToId(null),
   });
 
-  /* ---------------- SAFE EFFECT ---------------- */
-  useEffect(() => {
-    const ids = new Set(
-      outgoingFriendReqs
-        ?.filter((req) => req?.recipient?._id)
-        .map((req) => req.recipient._id)
-    );
-
-    setOutgoingRequestsIds(ids);
-  }, [outgoingFriendReqs]);
-
   /* ---------------- UI ---------------- */
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="container mx-auto space-y-10">
-        {/* ---------------- FRIENDS SECTION ---------------- */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h2 className="text-2xl sm:text-3xl font-bold">Your Friends</h2>
-          <Link to="/notifications" className="btn btn-outline btn-sm">
-            <UsersIcon className="mr-2 size-4" />
-            Friend Requests
-          </Link>
+
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <h2 className="text-3xl font-bold">Your Friends</h2>
+          <div className="flex gap-2">
+            <Link to="/notifications" className="btn btn-outline btn-sm">
+              <UsersIcon className="mr-2 size-4" />
+              Friend Requests
+            </Link>
+            <Link to="/flashcards" className="btn btn-primary btn-sm">
+              📚 Flashcards
+            </Link>
+          </div>
         </div>
 
+        {/* FRIENDS */}
         {loadingFriends ? (
           <div className="flex justify-center py-12">
             <span className="loading loading-spinner loading-lg" />
@@ -84,112 +87,80 @@ const HomePage = () => {
         ) : friends.length === 0 ? (
           <NoFriendsFound />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {friends
-              ?.filter((friend) => friend?._id)
-              .map((friend) => (
-                <FriendCard key={friend._id} friend={friend} />
-              ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {friends.map((friend) => (
+              <FriendCard key={friend._id} friend={friend} />
+            ))}
           </div>
         )}
 
-        {/* ---------------- RECOMMENDED USERS ---------------- */}
+        {/* RECOMMENDED USERS */}
         <section>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2">
-            Meet New Learners
-          </h2>
-          <p className="opacity-70 mb-6">
-            Discover perfect language exchange partners based on your profile
-          </p>
+          <h2 className="text-3xl font-bold mb-4">Meet New Learners</h2>
 
           {loadingUsers ? (
             <div className="flex justify-center py-12">
               <span className="loading loading-spinner loading-lg" />
             </div>
-          ) : recommendedUsers.length === 0 ? (
-            <div className="card bg-base-200 p-6 text-center">
-              <h3 className="font-semibold text-lg">
-                No recommendations available
-              </h3>
-              <p className="opacity-70">Check back later!</p>
-            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendedUsers
-                ?.filter((user) => user?._id)
-                .map((user) => {
-                  const hasRequestBeenSent = outgoingRequestsIds.has(user._id);
-                  const isSending = sendingToId === user._id;
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recommendedUsers.map((user) => {
+                const hasSent = outgoingRequestsIds.has(user._id);
+                const isSending = sendingToId === user._id;
 
-                  return (
-                    <div
-                      key={user._id}
-                      className="card bg-base-200 hover:shadow-lg"
-                    >
-                      <div className="card-body p-4 space-y-3">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={user.profilePic || "/default-avatar.png"}
-                            alt={user.fullName || "User"}
-                            className="size-16 rounded-full"
-                          />
-                          <div>
-                            <h3 className="font-semibold">
-                              {user.fullName || "Unknown User"}
-                            </h3>
-                            {user.location && (
-                              <div className="flex items-center text-xs opacity-70">
-                                <MapPinIcon className="size-3 mr-1" />
-                                {user.location}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <span className="badge badge-secondary">
-                            {getLanguageFlag(user.nativeLanguage)}
-                            Native:{" "}
-                            {capitalize(user.nativeLanguage || "N/A")}
-                          </span>
-                          <span className="badge badge-outline">
-                            {getLanguageFlag(user.learningLanguage)}
-                            Learning:{" "}
-                            {capitalize(user.learningLanguage || "N/A")}
-                          </span>
-                        </div>
-
-                        {user.bio && (
-                          <p className="text-sm opacity-70">{user.bio}</p>
-                        )}
-
-                        <button
-                          className={`btn w-full ${
-                            hasRequestBeenSent
-                              ? "btn-disabled"
-                              : "btn-primary"
-                          }`}
-                          onClick={() => sendRequestMutation(user._id)}
-                          disabled={hasRequestBeenSent || isSending}
-                        >
-                          {hasRequestBeenSent ? (
-                            <>
-                              <CheckCircleIcon className="size-4 mr-2" />
-                              Request Sent
-                            </>
-                          ) : (
-                            <>
-                              <UserPlusIcon className="size-4 mr-2" />
-                              {isSending
-                                ? "Sending..."
-                                : "Send Friend Request"}
-                            </>
+                return (
+                  <div key={user._id} className="card bg-base-200">
+                    <div className="card-body space-y-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={user.profilePic || "/default-avatar.png"}
+                          className="size-16 rounded-full"
+                        />
+                        <div>
+                          <h3 className="font-semibold">{user.fullName}</h3>
+                          {user.location && (
+                            <div className="flex text-xs opacity-70">
+                              <MapPinIcon className="size-3 mr-1" />
+                              {user.location}
+                            </div>
                           )}
-                        </button>
+                        </div>
                       </div>
+
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="badge badge-secondary">
+                          {getLanguageFlag(user.nativeLanguage)} Native:{" "}
+                          {capitalize(user.nativeLanguage)}
+                        </span>
+                        <span className="badge badge-outline">
+                          {getLanguageFlag(user.learningLanguage)} Learning:{" "}
+                          {capitalize(user.learningLanguage)}
+                        </span>
+                      </div>
+
+                      <button
+                        className={`btn w-full ${
+                          hasSent ? "btn-disabled" : "btn-primary"
+                        }`}
+                        disabled={hasSent || isSending}
+                        onClick={() => sendRequestMutation(user._id)}
+                      >
+                        {hasSent ? (
+                          <>
+                            <CheckCircleIcon className="size-4 mr-2" />
+                            Request Sent
+                          </>
+                        ) : (
+                          <>
+                            <UserPlusIcon className="size-4 mr-2" />
+                            {isSending ? "Sending..." : "Send Friend Request"}
+                          </>
+                        )}
+                      </button>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router";
 
 import HomePage from "./pages/HomePage.jsx";
 import FriendsPage from "./pages/Friends.jsx";
+import FlashcardsPage from "./pages/FlashcardsPage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
@@ -32,7 +33,7 @@ const App = () => {
           path="/"
           element={
             isAuthenticated && isOnboarded ? (
-              <Layout showSidebar={true}>
+              <Layout showSidebar>
                 <HomePage />
               </Layout>
             ) : (
@@ -40,11 +41,12 @@ const App = () => {
             )
           }
         />
+
         <Route
           path="/friends"
           element={
             isAuthenticated && isOnboarded ? (
-              <Layout showSidebar={true}>
+              <Layout showSidebar>
                 <FriendsPage />
               </Layout>
             ) : (
@@ -52,23 +54,48 @@ const App = () => {
             )
           }
         />
+
+        {/* ✅ FLASHCARDS */}
+        <Route
+          path="/flashcards"
+          element={
+            isAuthenticated && isOnboarded ? (
+              <Layout showSidebar>
+                <FlashcardsPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
         <Route
           path="/signup"
           element={
-            !isAuthenticated ? <SignUpPage /> : <Navigate to={isOnboarded ? "/" : "/onboarding"} />
+            !isAuthenticated ? (
+              <SignUpPage />
+            ) : (
+              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
+            )
           }
         />
+
         <Route
           path="/login"
           element={
-            !isAuthenticated ? <LoginPage /> : <Navigate to={isOnboarded ? "/" : "/onboarding"} />
+            !isAuthenticated ? (
+              <LoginPage />
+            ) : (
+              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
+            )
           }
         />
+
         <Route
           path="/notifications"
           element={
             isAuthenticated && isOnboarded ? (
-              <Layout showSidebar={true}>
+              <Layout showSidebar>
                 <NotificationsPage />
               </Layout>
             ) : (
@@ -76,6 +103,7 @@ const App = () => {
             )
           }
         />
+
         <Route
           path="/call/:id"
           element={
@@ -120,4 +148,5 @@ const App = () => {
     </div>
   );
 };
+
 export default App;
