@@ -108,7 +108,7 @@ export const flashcardsData = [
     id: "git",
     name: "Git",
     description: "Version control system",
-    pdf: "/pdfs/git.pdf",
+    pdf: "/pdfs/Git.pdf",
     logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg",
   },
   {
