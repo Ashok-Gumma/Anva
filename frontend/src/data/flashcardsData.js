@@ -3,7 +3,7 @@ export const flashcardsData = [
     id: "c",
     name: "C Language",
     description: "Procedural programming fundamentals and memory management",
-    pdf: "https://beingpro33.com/C_Notes.html",
+    pdf: "/pdfs/c.pdf",
     logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg",
   },
   {
@@ -17,7 +17,7 @@ export const flashcardsData = [
     id: "java",
     name: "Java",
     description: "Platform-independent OOP language",
-    pdf: "https://beingpro33.com/javaNotes.html",
+    pdf: "/pdfs/java.pdf",
     logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg",
   },
   {
