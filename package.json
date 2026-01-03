@@ -1,15 +1,20 @@
-{  
+{
   "name": "anva",
   "version": "1.0.0",
-  "description": "<h1 align=\"center\">✨ Fullstack Chat & Video Calling App ✨</h1>",
+  "description": "Fullstack Chat & Video Calling App",
   "homepage": "https://github.com/Ashok-Gumma/Anva#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ashok-Gumma/Anva.git"
+    "url": "https://github.com/Ashok-Gumma/Anva.git"
   },
   "bugs": {
     "url": "https://github.com/Ashok-Gumma/Anva/issues"
   },
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "scripts": {
+    "start": "npm start --prefix backend",
+    "dev": "npm run dev --prefix backend",
+    "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend"
+  }
 }
