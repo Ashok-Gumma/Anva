@@ -14,7 +14,6 @@
   "type": "commonjs",
   "scripts": {
     "start": "npm start --prefix backend",
-    "dev": "npm run dev --prefix backend",
     "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend"
   }
 }
