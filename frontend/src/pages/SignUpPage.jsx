@@ -59,7 +59,7 @@ const SignUpPage = () => {
                 <div>
                   <h2 className="text-xl font-semibold">Create an Account</h2>
                   <p className="text-sm opacity-70">
-                    Join Hasho-V and start learning adventure!
+                    Join Anva and start learning adventure!
                   </p>
                 </div>
 
