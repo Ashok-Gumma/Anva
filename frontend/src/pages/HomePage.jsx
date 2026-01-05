@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
@@ -13,6 +13,7 @@ import {
   UserPlusIcon,
   UsersIcon,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 import { capitalize } from "../lib/utils";
 import FriendCard, { getLanguageIcon } from "../components/FriendCard";
@@ -20,7 +21,6 @@ import NoFriendsFound from "../components/NoFriendsFound";
 
 const HomePage = () => {
   const queryClient = useQueryClient();
-  const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
 
   /* ================= FRIENDS ================= */
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
@@ -40,37 +40,64 @@ const HomePage = () => {
     queryFn: getOutgoingFriendReqs,
   });
 
-  const { mutate: sendRequestMutation, isPending } = useMutation({
-    mutationFn: sendFriendRequest,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] }),
-  });
-
-  /* ================= SAFE OUTGOING IDS ================= */
-  useEffect(() => {
-    const outgoingIds = new Set();
-
+  /* ================= DERIVED STATE (NO LOOP) ================= */
+  const outgoingRequestsIds = useMemo(() => {
+    const ids = new Set();
     outgoingFriendReqs.forEach((req) => {
       if (req?.recipient?._id) {
-        outgoingIds.add(req.recipient._id);
+        ids.add(req.recipient._id);
       }
     });
-
-    setOutgoingRequestsIds(outgoingIds);
+    return ids;
   }, [outgoingFriendReqs]);
+
+  /* ================= FRIEND REQUEST MUTATION (OPTIMISTIC) ================= */
+  const { mutate: sendRequestMutation, isPending } = useMutation({
+    mutationFn: sendFriendRequest,
+
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ["outgoingFriendReqs"] });
+
+      // ✅ Optimistic cache update
+      queryClient.setQueryData(["outgoingFriendReqs"], (old = []) => [
+        ...old,
+        { recipient: { _id: userId } },
+      ]);
+    },
+
+    onError: () => {
+      toast.error("Failed to send friend request");
+    },
+
+    onSuccess: () => {
+      toast.success("Friend request sent 🚀");
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+    },
+  });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="container mx-auto space-y-10">
-        {/* ================= FRIENDS ================= */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+
+        {/* ================= FRIENDS HEADER ================= */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Your Friends
           </h2>
-          <Link to="/notifications" className="btn btn-outline btn-sm">
-            <UsersIcon className="mr-2 size-4" />
-            Friend Requests
-          </Link>
+
+          <div className="flex gap-3 flex-wrap">
+            <Link to="/notifications" className="btn btn-outline btn-sm">
+              <UsersIcon className="mr-2 size-4" />
+              Friend Requests
+            </Link>
+
+            <Link to="/flashcards" className="btn btn-primary btn-sm">
+              📚 Flashcards
+            </Link>
+          </div>
         </div>
 
         {loadingFriends ? (
@@ -122,16 +149,26 @@ const HomePage = () => {
                     className="card bg-base-200 hover:shadow-lg transition-all"
                   >
                     <div className="card-body p-5 space-y-4">
+
                       {/* USER INFO */}
                       <div className="flex items-center gap-3">
-                        <div className="avatar size-16 rounded-full">
-                          <img
-                            src={user.profilePic || "/default-avatar.png"}
-                            alt={user.fullName}
-                            onError={(e) =>
-                              (e.target.src = "/default-avatar.png")
-                            }
-                          />
+                        {/* Avatar with letter fallback */}
+                        <div className="relative size-16 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-xl overflow-hidden">
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            {user.fullName?.charAt(0).toUpperCase()}
+                          </span>
+
+                          {user.profilePic && (
+                            <img
+                              src={user.profilePic}
+                              alt={user.fullName}
+                              loading="lazy"
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          )}
                         </div>
 
                         <div>
@@ -186,6 +223,7 @@ const HomePage = () => {
                           </>
                         )}
                       </button>
+
                     </div>
                   </div>
                 );
