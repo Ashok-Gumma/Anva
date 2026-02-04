@@ -1,8 +1,6 @@
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export const chatWithAssistant = async (req, res) => {
   try {
@@ -14,25 +12,24 @@ export const chatWithAssistant = async (req, res) => {
 
     console.log("Assistant received:", message);
 
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are a helpful programming and study assistant." },
-        { role: "user", content: message },
-      ],
-    });
+    // Use Gemini model
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const reply = completion.choices[0].message.content;
+    const prompt = `You are a helpful programming and study assistant.\n\nUser: ${message}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const reply = response.text();
 
     res.status(200).json({ reply });
   } catch (error) {
     console.error("🔥 Assistant backend error:", error);
 
     // Handle quota / rate limit nicely
-    if (error?.code === "insufficient_quota" || error?.status === 429) {
+    if (error?.status === 429) {
       return res.status(200).json({
         reply:
-          "⚠️ I'm currently out of AI credits. Please try again later or contact the admin to enable billing.",
+          "⚠️ I'm currently out of AI credits or rate-limited. Please try again later or contact the admin.",
         isFallback: true,
       });
     }
