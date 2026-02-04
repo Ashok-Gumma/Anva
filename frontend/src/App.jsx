@@ -9,6 +9,7 @@ import NotificationsPage from "./pages/NotificationsPage.jsx";
 import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import OnboardingPage from "./pages/OnboardingPage.jsx";
+import AssistantPage from "./pages/AssistantPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 
@@ -55,13 +56,26 @@ const App = () => {
           }
         />
 
-        {/* ✅ FLASHCARDS */}
         <Route
           path="/flashcards"
           element={
             isAuthenticated && isOnboarded ? (
               <Layout showSidebar>
                 <FlashcardsPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
+        {/* ✅ ASSISTANT ROUTE */}
+        <Route
+          path="/assistant"
+          element={
+            isAuthenticated && isOnboarded ? (
+              <Layout showSidebar>
+                <AssistantPage />
               </Layout>
             ) : (
               <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />

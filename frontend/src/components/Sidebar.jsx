@@ -57,6 +57,17 @@ const Sidebar = () => {
           Flashcards
         </Link>
 
+        {/* ASSISTANT */}
+        <Link
+          to="/assistant"
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            pathname === "/assistant" ? "btn-active" : ""
+          }`}
+        >
+          <BrainCircuit className="size-5 opacity-70" />
+          Assistant
+        </Link>
+
         <Link
           to="/notifications"
           className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
@@ -93,9 +104,7 @@ const Sidebar = () => {
           </div>
 
           <div className="flex-1">
-            <p className="font-semibold text-sm">
-              {authUser?.fullName}
-            </p>
+            <p className="font-semibold text-sm">{authUser?.fullName}</p>
             <p className="text-xs text-success flex items-center gap-1">
               <span className="size-2 rounded-full bg-success" />
               Online
