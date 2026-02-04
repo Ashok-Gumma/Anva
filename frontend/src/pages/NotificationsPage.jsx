@@ -60,57 +60,69 @@ const NotificationsPage = () => {
                 </h2>
 
                 <div className="space-y-3">
-                  {incomingRequests.map((request) => (
-                    <div
-                      key={request._id}
-                      className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="card-body p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="avatar w-14 h-14 rounded-full bg-base-300">
-                              <img
-                                src={
-                                  request.sender?.profilePic ||
-                                  "/default-avatar.png"
-                                }
-                                alt={
-                                  request.sender?.fullName || "Unknown User"
-                                }
-                              />
-                            </div>
+                  {incomingRequests.map((request) => {
+                    const name =
+                      request.sender?.fullName || "Unknown User";
 
-                            <div>
-                              <h3 className="font-semibold">
-                                {request.sender?.fullName || "Unknown User"}
-                              </h3>
+                    return (
+                      <div
+                        key={request._id}
+                        className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <div className="card-body p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              {/* Avatar with letter fallback */}
+                              <div className="relative w-14 h-14 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-lg overflow-hidden">
+                                {/* Letter fallback */}
+                                <span className="absolute inset-0 flex items-center justify-center">
+                                  {name.charAt(0).toUpperCase()}
+                                </span>
 
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                <span className="badge badge-secondary badge-sm">
-                                  Native:{" "}
-                                  {request.sender?.nativeLanguage || "N/A"}
-                                </span>
-                                <span className="badge badge-outline badge-sm">
-                                  Learning:{" "}
-                                  {request.sender?.learningLanguage || "N/A"}
-                                </span>
+                                {/* Profile image */}
+                                {request.sender?.profilePic && (
+                                  <img
+                                    src={request.sender.profilePic}
+                                    alt={name}
+                                    loading="lazy"
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                  />
+                                )}
+                              </div>
+
+                              <div>
+                                <h3 className="font-semibold">{name}</h3>
+
+                                <div className="flex flex-wrap gap-1.5 mt-1">
+                                  <span className="badge badge-secondary badge-sm">
+                                    Native:{" "}
+                                    {request.sender?.nativeLanguage || "N/A"}
+                                  </span>
+                                  <span className="badge badge-outline badge-sm">
+                                    Learning:{" "}
+                                    {request.sender?.learningLanguage || "N/A"}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() =>
-                              acceptRequestMutation(request._id)
-                            }
-                            disabled={isPending}
-                          >
-                            Accept
-                          </button>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() =>
+                                acceptRequestMutation(request._id)
+                              }
+                              disabled={isPending}
+                            >
+                              Accept
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -124,52 +136,60 @@ const NotificationsPage = () => {
                 </h2>
 
                 <div className="space-y-3">
-                  {acceptedRequests.map((notification) => (
-                    <div
-                      key={notification._id}
-                      className="card bg-base-200 shadow-sm"
-                    >
-                      <div className="card-body p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="avatar mt-1 size-10 rounded-full">
-                            <img
-                              src={
-                                notification.recipient?.profilePic ||
-                                "/default-avatar.png"
-                              }
-                              alt={
-                                notification.recipient?.fullName ||
-                                "Unknown User"
-                              }
-                            />
-                          </div>
+                  {acceptedRequests.map((notification) => {
+                    const name =
+                      notification.recipient?.fullName || "Unknown User";
 
-                          <div className="flex-1">
-                            <h3 className="font-semibold">
-                              {notification.recipient?.fullName ||
-                                "Unknown User"}
-                            </h3>
+                    return (
+                      <div
+                        key={notification._id}
+                        className="card bg-base-200 shadow-sm"
+                      >
+                        <div className="card-body p-4">
+                          <div className="flex items-start gap-3">
+                            {/* Avatar with letter fallback */}
+                            <div className="relative mt-1 w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden">
+                              {/* Letter fallback */}
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                {name.charAt(0).toUpperCase()}
+                              </span>
 
-                            <p className="text-sm my-1">
-                              {notification.recipient?.fullName ||
-                                "Someone"}{" "}
-                              accepted your friend request
-                            </p>
+                              {/* Profile image */}
+                              {notification.recipient?.profilePic && (
+                                <img
+                                  src={notification.recipient.profilePic}
+                                  alt={name}
+                                  loading="lazy"
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              )}
+                            </div>
 
-                            <p className="text-xs flex items-center opacity-70">
-                              <ClockIcon className="h-3 w-3 mr-1" />
-                              Recently
-                            </p>
-                          </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold">{name}</h3>
 
-                          <div className="badge badge-success">
-                            <MessageSquareIcon className="h-3 w-3 mr-1" />
-                            New Friend
+                              <p className="text-sm my-1">
+                                {name} accepted your friend request
+                              </p>
+
+                              <p className="text-xs flex items-center opacity-70">
+                                <ClockIcon className="h-3 w-3 mr-1" />
+                                Recently
+                              </p>
+                            </div>
+
+                            <div className="badge badge-success">
+                              <MessageSquareIcon className="h-3 w-3 mr-1" />
+                              New Friend
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}

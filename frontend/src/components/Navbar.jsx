@@ -9,12 +9,6 @@ const Navbar = () => {
   const location = useLocation();
   const isChatPage = location.pathname?.startsWith("/chat");
 
-  // const queryClient = useQueryClient();
-  // const { mutate: logoutMutation } = useMutation({
-  //   mutationFn: logout,
-  //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
-  // });
-
   const { logoutMutation } = useLogout();
 
   return (
@@ -26,7 +20,7 @@ const Navbar = () => {
             <div className="pl-5">
               <Link to="/" className="flex items-center gap-2.5">
                 <BrainCircuit className="size-9 text-primary" />
-                <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary  tracking-wider">
+                <span className="text-3xl font-bold font-mono bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary tracking-wider">
                   ANVA
                 </span>
               </Link>
@@ -41,13 +35,27 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* TODO */}
           <ThemeSelector />
 
-          <div className="avatar">
-            <div className="w-9 rounded-full">
-              <img src={authUser?.profilePic} alt="User Avatar" rel="noreferrer" />
-            </div>
+          {/* Avatar with letter fallback */}
+          <div className="relative w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden mx-2">
+            {/* Letter fallback */}
+            <span className="absolute inset-0 flex items-center justify-center">
+              {authUser?.fullName?.charAt(0)?.toUpperCase()}
+            </span>
+
+            {/* Profile image */}
+            {authUser?.profilePic && (
+              <img
+                src={authUser.profilePic}
+                alt="User Avatar"
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
           </div>
 
           {/* Logout button */}
@@ -59,4 +67,5 @@ const Navbar = () => {
     </nav>
   );
 };
+
 export default Navbar;

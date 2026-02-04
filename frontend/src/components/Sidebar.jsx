@@ -46,7 +46,7 @@ const Sidebar = () => {
           Friends
         </Link>
 
-        {/* ✅ FLASHCARDS */}
+        {/* FLASHCARDS */}
         <Link
           to="/flashcards"
           className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
@@ -71,17 +71,27 @@ const Sidebar = () => {
       {/* USER PROFILE */}
       <div className="p-4 border-t border-base-300 mt-auto">
         <div className="flex items-center gap-3">
-          <div className="avatar">
-            <div className="w-10 rounded-full">
+          {/* Avatar with letter fallback */}
+          <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden">
+            {/* Letter fallback */}
+            <span className="absolute inset-0 flex items-center justify-center">
+              {authUser?.fullName?.charAt(0)?.toUpperCase()}
+            </span>
+
+            {/* Profile image */}
+            {authUser?.profilePic && (
               <img
-                src={authUser?.profilePic || "/default-avatar.png"}
+                src={authUser.profilePic}
                 alt={authUser?.fullName || "User Avatar"}
-                onError={(e) =>
-                  (e.currentTarget.src = "/default-avatar.png")
-                }
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
               />
-            </div>
+            )}
           </div>
+
           <div className="flex-1">
             <p className="font-semibold text-sm">
               {authUser?.fullName}
