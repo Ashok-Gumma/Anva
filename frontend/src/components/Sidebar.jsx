@@ -6,6 +6,8 @@ import {
   UsersIcon,
   BookOpenIcon,
   BrainCircuit,
+  CodeIcon,
+  UserIcon,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -68,6 +70,17 @@ const Sidebar = () => {
           Assistant
         </Link>
 
+        {/* COMPILER */}
+        <Link
+          to="/compiler"
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            pathname === "/compiler" ? "btn-active" : ""
+          }`}
+        >
+          <CodeIcon className="size-5 opacity-70" />
+          Compiler
+        </Link>
+
         <Link
           to="/notifications"
           className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
@@ -81,9 +94,12 @@ const Sidebar = () => {
 
       {/* USER PROFILE */}
       <div className="p-4 border-t border-base-300 mt-auto">
-        <div className="flex items-center gap-3">
+        <Link
+          to="/profile"
+          className="flex items-center gap-3 hover:bg-base-300 p-2 rounded-lg transition-colors"
+        >
           {/* Avatar with letter fallback */}
-          <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden">
+          <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
             {/* Letter fallback */}
             <span className="absolute inset-0 flex items-center justify-center">
               {authUser?.fullName?.charAt(0)?.toUpperCase()}
@@ -103,14 +119,14 @@ const Sidebar = () => {
             )}
           </div>
 
-          <div className="flex-1">
-            <p className="font-semibold text-sm">{authUser?.fullName}</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm truncate">{authUser?.fullName}</p>
             <p className="text-xs text-success flex items-center gap-1">
-              <span className="size-2 rounded-full bg-success" />
+              <span className="size-2 rounded-full bg-success flex-shrink-0" />
               Online
             </p>
           </div>
-        </div>
+        </Link>
       </div>
     </aside>
   );

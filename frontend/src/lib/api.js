@@ -63,3 +63,17 @@ export async function getStreamToken() {
   const response = await axiosInstance.get("/chat/token");
   return response.data;
 }
+
+export async function updateUserProfile(userData) {
+  const response = await axiosInstance.put("/users/profile", userData);
+  return response.data;
+}
+
+export async function getUserProfile(userId) {
+  if (userId) {
+    const response = await axiosInstance.get(`/users/profile/${userId}`);
+    return response.data;
+  }
+  const response = await axiosInstance.get("/users/profile");
+  return response.data;
+}

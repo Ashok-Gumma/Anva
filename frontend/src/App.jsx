@@ -10,6 +10,8 @@ import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import OnboardingPage from "./pages/OnboardingPage.jsx";
 import AssistantPage from "./pages/AssistantPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import CompilerPage from "./pages/CompilerPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 
@@ -76,6 +78,34 @@ const App = () => {
             isAuthenticated && isOnboarded ? (
               <Layout showSidebar>
                 <AssistantPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
+        {/* ✅ PROFILE ROUTE */}
+        <Route
+          path="/profile"
+          element={
+            isAuthenticated && isOnboarded ? (
+              <Layout showSidebar>
+                <ProfilePage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
+        {/* ✅ COMPILER ROUTE */}
+        <Route
+          path="/compiler"
+          element={
+            isAuthenticated && isOnboarded ? (
+              <Layout showSidebar>
+                <CompilerPage />
               </Layout>
             ) : (
               <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
