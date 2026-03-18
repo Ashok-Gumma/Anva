@@ -4,16 +4,22 @@ import { upsertStreamUser } from "../lib/stream.js";
 
 export async function updateProfile(req, res) {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, githubUrl, linkedinUrl } = req.body;
     const userId = req.user.id;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile pic is required" });
+    // Build update object dynamically
+    const updateData = {};
+    if (profilePic !== undefined) updateData.profilePic = profilePic;
+    if (githubUrl !== undefined) updateData.githubUrl = githubUrl;
+    if (linkedinUrl !== undefined) updateData.linkedinUrl = linkedinUrl;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic },
+      updateData,
       { new: true }
     );
 
@@ -36,6 +42,34 @@ export async function updateProfile(req, res) {
     res.status(200).json(updatedUser);
   } catch (error) {
     console.error("Error in updateProfile controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function updatePassword(req, res) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Both current and new passwords are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isPasswordCorrect = await user.matchPassword(currentPassword);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ message: "Incorrect current password" });
+    }
+
+    user.password = newPassword;
+    await user.save(); 
+
+    res.status(200).json({ success: true, message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Error in updatePassword controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
@@ -186,6 +220,18 @@ export async function getOutgoingFriendReqs(req, res) {
     res.status(200).json(outgoingRequests);
   } catch (error) {
     console.log("Error in getOutgoingFriendReqs controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function getUserProfile(req, res) {
+  try {
+    const user = await User.findById(req.params.id).select("-password -friends");
+    if (!user) return res.status(404).json({ message: "User not found" });
+    
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error in getUserProfile controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }

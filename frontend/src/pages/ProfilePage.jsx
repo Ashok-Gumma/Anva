@@ -1,7 +1,7 @@
 import { useState } from "react";
 import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateProfile } from "../lib/api";
+import { updateProfile, updatePassword } from "../lib/api";
 import toast from "react-hot-toast";
 import imageCompression from "browser-image-compression";
 import { CameraIcon, SaveIcon } from "lucide-react";
@@ -12,6 +12,13 @@ const ProfilePage = () => {
 
   const [previewImage, setPreviewImage] = useState(authUser?.profilePic || "");
   const [base64Image, setBase64Image] = useState(null);
+
+  const [githubUrl, setGithubUrl] = useState(authUser?.githubUrl || "");
+  const [linkedinUrl, setLinkedinUrl] = useState(authUser?.linkedinUrl || "");
+
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   // Mutation for updating profile
   const { mutate: updateProfileMutation, isPending } = useMutation({
@@ -26,6 +33,25 @@ const ProfilePage = () => {
       toast.error("Failed to update profile");
     },
   });
+
+  // Mutation for updating password
+  const { mutate: changePasswordMutation, isPending: isPasswordPending } = useMutation({
+    mutationFn: updatePassword,
+    onSuccess: () => {
+      toast.success("Password changed successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setIsEditingPassword(false);
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to change password");
+    },
+  });
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    changePasswordMutation({ currentPassword, newPassword });
+  };
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -59,8 +85,13 @@ const ProfilePage = () => {
   };
 
   const handeSave = () => {
-    if (!base64Image) return toast.error("Please select a new image first.");
-    updateProfileMutation({ profilePic: base64Image });
+    const payload = {};
+    if (base64Image) payload.profilePic = base64Image;
+    if (githubUrl !== authUser?.githubUrl) payload.githubUrl = githubUrl;
+    if (linkedinUrl !== authUser?.linkedinUrl) payload.linkedinUrl = linkedinUrl;
+
+    if (Object.keys(payload).length === 0) return toast.info("No changes made.");
+    updateProfileMutation(payload);
   };
 
   return (
@@ -133,9 +164,82 @@ const ProfilePage = () => {
           </div>
         </div>
 
+        {/* Social Links Form */}
+        <div className="space-y-4">
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">GitHub Profile URL</span>
+            </label>
+            <input
+              type="url"
+              placeholder="https://github.com/username"
+              className="input input-bordered"
+              value={githubUrl}
+              onChange={(e) => setGithubUrl(e.target.value)}
+            />
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">LinkedIn Profile URL</span>
+            </label>
+            <input
+              type="url"
+              placeholder="https://linkedin.com/in/username"
+              className="input input-bordered"
+              value={linkedinUrl}
+              onChange={(e) => setLinkedinUrl(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Change Password Section */}
+        <div className="pt-2 border-t border-base-content/10">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold opacity-80">Security</h3>
+            <button 
+              onClick={() => setIsEditingPassword(!isEditingPassword)}
+              className="btn btn-sm btn-ghost text-xs"
+            >
+              {isEditingPassword ? "Cancel" : "Change Password"}
+            </button>
+          </div>
+
+          {isEditingPassword && (
+            <form onSubmit={handlePasswordSubmit} className="mt-4 space-y-4 bg-base-200/50 p-4 rounded-xl border border-base-content/10">
+              <div className="form-control">
+                <label className="label"><span className="label-text text-sm">Current Password</span></label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="input input-sm input-bordered"
+                />
+              </div>
+              <div className="form-control">
+                <label className="label"><span className="label-text text-sm">New Password</span></label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="input input-sm input-bordered"
+                />
+              </div>
+              <button 
+                type="submit" 
+                className="btn btn-primary btn-sm w-full"
+                disabled={isPasswordPending}
+              >
+                {isPasswordPending ? <span className="loading loading-spinner loading-xs"></span> : "Update Password"}
+              </button>
+            </form>
+          )}
+        </div>
+
         <button
           onClick={handeSave}
-          disabled={!base64Image || isPending}
+          disabled={isPending}
           className="btn btn-primary w-full shadow-lg h-12 text-lg disabled:opacity-50"
         >
           {isPending ? (

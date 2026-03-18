@@ -29,8 +29,27 @@ export const updateProfile = async (data) => {
   return response.data;
 };
 
+export const sendPing = async () => {
+  await axiosInstance.post("/auth/ping");
+};
+
+export const checkGrammar = async (text) => {
+  const response = await axiosInstance.post("/assistant/grammar", { text });
+  return response.data;
+};
+
+export const googleLogin = async (token) => {
+  const response = await axiosInstance.post("/auth/google", { token });
+  return response.data;
+};
+
 export const completeOnboarding = async (userData) => {
   const response = await axiosInstance.post("/auth/onboarding", userData);
+  return response.data;
+};
+
+export const updatePassword = async (data) => {
+  const response = await axiosInstance.put("/users/password", data);
   return response.data;
 };
 
@@ -66,5 +85,10 @@ export async function acceptFriendRequest(requestId) {
 
 export async function getStreamToken() {
   const response = await axiosInstance.get("/chat/token");
+  return response.data;
+}
+
+export async function getUserProfile(userId) {
+  const response = await axiosInstance.get(`/users/${userId}`);
   return response.data;
 }

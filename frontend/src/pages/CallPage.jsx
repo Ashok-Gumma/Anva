@@ -48,7 +48,7 @@ const CallPage = () => {
         const user = {
           id: authUser._id,
           name: authUser.fullName,
-          image: authUser.profilePic,
+          // We omit the image here because base64 strings break the WebSocket URL limits!
         };
 
         videoClient = new StreamVideoClient({

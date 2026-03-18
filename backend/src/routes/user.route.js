@@ -8,6 +8,8 @@ import {
   getRecommendedUsers,
   sendFriendRequest,
   updateProfile,
+  updatePassword,
+  getUserProfile
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
@@ -18,12 +20,15 @@ router.use(protectRoute);
 router.get("/", getRecommendedUsers);
 router.get("/friends", getMyFriends);
 
-router.put("/profile", updateProfile); // ✅ ADD THIS
+router.put("/profile", updateProfile);
+router.put("/password", updatePassword);
 
 router.post("/friend-request/:id", sendFriendRequest);
 router.put("/friend-request/:id/accept", acceptFriendRequest);
 
 router.get("/friend-requests", getFriendRequests);
 router.get("/outgoing-friend-requests", getOutgoingFriendReqs);
+
+router.get("/:id", getUserProfile);
 
 export default router;

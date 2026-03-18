@@ -6,6 +6,7 @@ import {
   UsersIcon,
   BookOpenIcon,
   BrainCircuit,
+  Code,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -55,6 +56,17 @@ const Sidebar = () => {
         >
           <BookOpenIcon className="size-5 opacity-70" />
           Flashcards
+        </Link>
+
+        {/* COMPILER */}
+        <Link
+          to="/compiler"
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            pathname === "/compiler" ? "btn-active" : ""
+          }`}
+        >
+          <Code className="size-5 opacity-70" />
+          Compiler
         </Link>
 
         {/* ASSISTANT */}

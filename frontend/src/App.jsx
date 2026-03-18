@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
 
 import HomePage from "./pages/HomePage.jsx";
@@ -11,6 +12,8 @@ import ChatPage from "./pages/ChatPage.jsx";
 import OnboardingPage from "./pages/OnboardingPage.jsx";
 import AssistantPage from "./pages/AssistantPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import CompilerPage from "./pages/CompilerPage.jsx";
+import FriendProfilePage from "./pages/FriendProfilePage.jsx";
 
 import { Toaster } from "react-hot-toast";
 
@@ -25,6 +28,14 @@ const App = () => {
 
   const isAuthenticated = Boolean(authUser);
   const isOnboarded = authUser?.isOnboarded;
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      import("./lib/api").then(({ sendPing }) => sendPing().catch(console.error));
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   if (isLoading) return <PageLoader />;
 
@@ -164,6 +175,34 @@ const App = () => {
             isAuthenticated && isOnboarded ? (
               <Layout showSidebar>
                 <ProfilePage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
+        {/* COMPILER ROUTE */}
+        <Route
+          path="/compiler"
+          element={
+            isAuthenticated && isOnboarded ? (
+              <Layout showSidebar>
+                <CompilerPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
+        {/* FRIEND PROFILE ROUTE */}
+        <Route
+          path="/user/:id"
+          element={
+            isAuthenticated && isOnboarded ? (
+              <Layout showSidebar>
+                <FriendProfilePage />
               </Layout>
             ) : (
               <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />

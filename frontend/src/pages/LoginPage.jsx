@@ -2,6 +2,9 @@ import { useState } from "react";
 import { BrainCircuit } from "lucide-react";
 import { Link } from "react-router";
 import useLogin from "../hooks/useLogin";
+import { GoogleLogin } from "@react-oauth/google";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { googleLogin } from "../lib/api";
 
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({
@@ -22,6 +25,17 @@ const LoginPage = () => {
 
   // This is how we did it using our custom hook - optimized version
   const { isPending, error, loginMutation } = useLogin();
+  const queryClient = useQueryClient();
+
+  const { mutate: handleGoogleSuccess, isPending: isGooglePending } = useMutation({
+    mutationFn: googleLogin,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+    },
+    onError: (err) => {
+      console.error("Google Auth backend error", err);
+    }
+  });
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -90,7 +104,7 @@ const LoginPage = () => {
                     />
                   </div>
 
-                  <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
+                  <button type="submit" className="btn btn-primary w-full" disabled={isPending || isGooglePending}>
                     {isPending ? (
                       <>
                         <span className="loading loading-spinner loading-xs"></span>
@@ -100,6 +114,26 @@ const LoginPage = () => {
                       "Sign In"
                     )}
                   </button>
+
+                  <div className="divider text-xs opacity-50">OR</div>
+
+                  <div className="flex justify-center w-full">
+                    {isGooglePending ? (
+                      <span className="loading loading-spinner text-primary"></span>
+                    ) : (
+                      <GoogleLogin
+                        onSuccess={(credentialResponse) => {
+                          handleGoogleSuccess(credentialResponse.credential);
+                        }}
+                        onError={() => {
+                          console.log("Google Login Failed");
+                        }}
+                        theme="filled_black"
+                        size="large"
+                        width="100%"
+                      />
+                    )}
+                  </div>
 
                   <div className="text-center mt-4">
                     <p className="text-sm">

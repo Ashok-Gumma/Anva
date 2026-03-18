@@ -45,3 +45,26 @@ export const chatWithAssistant = async (req, res) => {
     });
   }
 };
+
+export const checkGrammar = async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: "Text is required" });
+    }
+
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a professional language teacher. Review the user's text for spelling and grammar errors. If there are errors, provide the corrected text clearly and explain the corrections briefly. If it is already correct, just say 'The grammar is perfect!'." },
+        { role: "user", content: text },
+      ],
+    });
+
+    const reply = completion.choices[0].message.content;
+    res.status(200).json({ reply });
+  } catch (error) {
+    console.error("Assistant grammar error:", error);
+    res.status(500).json({ reply: "Cannot check grammar right now.", isFallback: true });
+  }
+};

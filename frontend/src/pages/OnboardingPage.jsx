@@ -3,7 +3,8 @@ import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { completeOnboarding } from "../lib/api";
-import { Handshake, LoaderIcon, MapPinIcon,  ShuffleIcon } from "lucide-react";
+import { Handshake, LoaderIcon, MapPinIcon, ShuffleIcon, CameraIcon } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import { LANGUAGES } from "../constants";
 
 const OnboardingPage = () => {
@@ -47,6 +48,35 @@ const OnboardingPage = () => {
     toast.success("Random profile picture generated!");
   };
 
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file.");
+      return;
+    }
+
+    try {
+      const options = {
+        maxSizeMB: 0.1, // compress to ~100kb
+        maxWidthOrHeight: 500,
+        useWebWorker: true,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+
+      const reader = new FileReader();
+      reader.readAsDataURL(compressedFile);
+      reader.onloadend = () => {
+        setFormState({ ...formState, profilePic: reader.result });
+      };
+    } catch (error) {
+      console.error("Image compression error:", error);
+      toast.error("Failed to process image.");
+    }
+  };
+
   return (
     <div 
     className="min-h-screen bg-base-100 flex items-center justify-center p-4"
@@ -59,26 +89,42 @@ const OnboardingPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* PROFILE PIC CONTAINER */}
             <div className="flex flex-col items-center justify-center space-y-4">
-              {/* IMAGE PREVIEW */}
-              <div className="size-32 rounded-full bg-base-300 overflow-hidden">
+              {/* IMAGE PREVIEW / UPLOAD UI */}
+              <div className="relative size-32 rounded-full border-4 border-base-content/20 bg-primary/10 overflow-hidden flex items-center justify-center shadow-lg group">
                 {formState.profilePic ? (
                   <img
                     src={formState.profilePic}
                     alt="Profile Preview"
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover z-10"
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <CameraIcon className="size-12 text-base-content opacity-40" />
-                  </div>
+                  <span className="absolute inset-0 flex items-center justify-center text-5xl font-bold opacity-30">
+                    {formState.fullName?.charAt(0)?.toUpperCase()}
+                  </span>
                 )}
+
+                {/* Hover Overlay */}
+                <label
+                  htmlFor="avatar-upload"
+                  className="absolute inset-0 z-20 bg-black/50 text-white flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm"
+                >
+                  <CameraIcon className="size-6 mb-1" />
+                  <span className="text-xs font-semibold">Upload</span>
+                </label>
+                <input
+                  type="file"
+                  id="avatar-upload"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
               </div>
 
               {/* Generate Random Avatar BTN */}
               <div className="flex items-center gap-2">
-                <button type="button" onClick={handleRandomAvatar} className="btn btn-accent">
-                  <ShuffleIcon className="size-4 mr-2" />
-                  Generate Random Avatar
+                <button type="button" onClick={handleRandomAvatar} className="btn btn-sm btn-accent shadow-sm">
+                  <ShuffleIcon className="size-4" />
+                  Or Generate Random
                 </button>
               </div>
             </div>
