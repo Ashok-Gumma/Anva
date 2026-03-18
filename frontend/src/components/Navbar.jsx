@@ -37,11 +37,8 @@ const Navbar = () => {
 
           <ThemeSelector />
 
-          {/* Avatar with link to profile */}
-          <Link
-            to="/profile"
-            className="relative w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden mx-2 hover:ring-2 hover:ring-primary"
-          >
+          {/* Avatar with letter fallback */}
+          <div className="relative w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden mx-2">
             {/* Letter fallback */}
             <span className="absolute inset-0 flex items-center justify-center">
               {authUser?.fullName?.charAt(0)?.toUpperCase()}
@@ -59,7 +56,7 @@ const Navbar = () => {
                 }}
               />
             )}
-          </Link>
+          </div>
 
           {/* Logout button */}
           <button className="btn btn-ghost btn-circle" onClick={logoutMutation}>

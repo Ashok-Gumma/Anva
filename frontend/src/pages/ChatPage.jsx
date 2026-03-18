@@ -19,8 +19,6 @@ import toast from "react-hot-toast";
 import ChatLoader from "../components/ChatLoader";
 import CallButton from "../components/CallButton";
 
-import "stream-chat-react/dist/css/v2/index.css";
-
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
 const ChatPage = () => {
@@ -39,56 +37,44 @@ const ChatPage = () => {
   });
 
   useEffect(() => {
-    if (!tokenData?.token || !authUser) return;
-
-    let isMounted = true;
-
     const initChat = async () => {
+      if (!tokenData?.token || !authUser) return;
+
       try {
-        console.log("🚀 Initializing Stream Chat...");
+        setLoading(true);
 
         const client = StreamChat.getInstance(STREAM_API_KEY);
 
-        // ✅ Prevent multiple connections
-        if (client.userID) {
-          console.log("⚠️ User already connected");
-          setChatClient(client);
-          return;
-        }
-
-        // ✅ Connect user (NO base64 image)
+        // ✅ connect user
         await client.connectUser(
           {
-            id: authUser._id,
+            id: authUser._id.toString(),
             name: authUser.fullName,
-            image: authUser.profilePic?.startsWith("http")
-              ? authUser.profilePic
-              : undefined, // avoid base64 crash
+            image: authUser.profilePic,
           },
-          tokenData.token,
-          {
-            presence: true, // 🟢 online/offline
-          }
+          tokenData.token
         );
 
-        // ✅ Unique channel
+        // ✅ create channel
         const channelId = [authUser._id, targetUserId]
+          .map(String)
           .sort()
           .join("-");
 
         const currChannel = client.channel("messaging", channelId, {
-          members: [authUser._id, targetUserId],
+          members: [
+            authUser._id.toString(),
+            targetUserId.toString(),
+          ],
         });
 
         await currChannel.watch();
 
-        if (isMounted) {
-          setChatClient(client);
-          setChannel(currChannel);
-        }
+        setChatClient(client);
+        setChannel(currChannel);
       } catch (error) {
-        console.error("❌ Chat init error:", error);
-        toast.error("Chat connection failed!");
+        console.error("Chat init error:", error);
+        toast.error("Failed to load chat");
       } finally {
         setLoading(false);
       }
@@ -97,56 +83,36 @@ const ChatPage = () => {
     initChat();
 
     return () => {
-      isMounted = false;
+      if (chatClient) chatClient.disconnectUser();
     };
-  }, [tokenData?.token, authUser?._id, targetUserId]);
-
-  // 📞 Video Call
-  const handleVideoCall = () => {
-    if (!channel) return;
-
-    const callUrl = `${window.location.origin}/call/${channel.id}`;
-
-    channel.sendMessage({
-      text: `📞 Join video call: ${callUrl}`,
-    });
-
-    toast.success("Call link sent!");
-  };
+  }, [tokenData, authUser, targetUserId]);
 
   if (loading || !chatClient || !channel) return <ChatLoader />;
 
   return (
-    <div className="h-[93vh] bg-black text-white">
-      <Chat client={chatClient} theme="messaging dark">
+    <div className="h-[93vh]">
+      <Chat client={chatClient}>
         <Channel channel={channel}>
-          <div className="w-full relative flex flex-col h-full">
+          <div className="w-full relative">
+            <CallButton
+              handleVideoCall={() => {
+                const callUrl = `${window.location.origin}/call/${channel.id}`;
 
-            {/* 🔥 Call Button */}
-            <CallButton handleVideoCall={handleVideoCall} />
+                channel.sendMessage({
+                  text: `Join video call: ${callUrl}`,
+                });
+
+                toast.success("Call link sent!");
+              }}
+            />
 
             <Window>
-              {/* 🟢 Header (online/offline auto) */}
               <ChannelHeader />
-
-              {/* 💬 Messages (typing + reactions + read receipts) */}
-              <MessageList
-                typingIndicator
-                messageActions={["react", "reply", "edit", "delete"]}
-              />
-
-              {/* ✍️ Input (files + images supported) */}
-              <MessageInput
-                focus
-                additionalTextareaProps={{
-                  placeholder: "Type a message...",
-                }}
-              />
+              <MessageList />
+              <MessageInput focus />
             </Window>
-
-            {/* 🧵 Threads */}
-            <Thread />
           </div>
+          <Thread />
         </Channel>
       </Chat>
     </div>

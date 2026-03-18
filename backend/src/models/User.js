@@ -47,33 +47,6 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    linkedin: {
-      type: String,
-      default: "",
-    },
-    github: {
-      type: String,
-      default: "",
-    },
-    education: {
-      school: {
-        type: String,
-        default: "",
-      },
-      degree: {
-        type: String,
-        default: "",
-      },
-      fieldOfStudy: {
-        type: String,
-        default: "",
-      },
-    },
-    skills: [
-      {
-        type: String,
-      },
-    ],
   },
   { timestamps: true }
 );
