@@ -1,0 +1,43 @@
+[33md48fb85[m[33m ([m[1;36mHEAD[m[33m)[m HEAD@{0}: commit: Updated navbar and chat page
+[33m6e0f8ea[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{1}: pull origin main --rebase (start): checkout 6e0f8ead57a9f98234587c7c6c78a2bb53f6e318
+[33m608604c[m[33m ([m[1;32mmain[m[33m)[m HEAD@{2}: rebase (abort): returning to refs/heads/main
+[33m6e0f8ea[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{3}: pull origin main --rebase (start): checkout 6e0f8ead57a9f98234587c7c6c78a2bb53f6e318
+[33m608604c[m[33m ([m[1;32mmain[m[33m)[m HEAD@{4}: commit: Updated profile + password feature
+[33m826b539[m HEAD@{5}: commit: Updated project
+[33m202eab4[m HEAD@{6}: commit: Your message
+[33m1596a47[m HEAD@{7}: reset: moving to HEAD~2
+[33m33698f9[m HEAD@{8}: reset: moving to HEAD~2
+[33mdc24d66[m HEAD@{9}: reset: moving to HEAD~2
+[33mf8da565[m HEAD@{10}: reset: moving to HEAD~2
+[33m6e0f8ea[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{11}: reset: moving to origin/main
+[33mf8da565[m HEAD@{12}: reset: moving to HEAD~2
+[33m6e0f8ea[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{13}: commit: update
+[33m45bdb48[m HEAD@{14}: commit: update
+[33mf8da565[m HEAD@{15}: commit: c
+[33m4936ccd[m HEAD@{16}: commit: c
+[33mdc24d66[m HEAD@{17}: Branch: renamed refs/heads/main to refs/heads/main
+[33mdc24d66[m HEAD@{19}: Branch: renamed refs/heads/main to refs/heads/main
+[33mdc24d66[m HEAD@{21}: commit: first commit
+[33m5fbb60c[m HEAD@{22}: commit: c
+[33m33698f9[m HEAD@{23}: checkout: moving from main to main
+[33m33698f9[m HEAD@{24}: pull --tags origin main: Merge made by the 'ort' strategy.
+[33m5467865[m HEAD@{25}: commit (amend): c
+[33m4a0e091[m HEAD@{26}: checkout: moving from 4a0e091bfc41d0511a52bdbe20dc11900b24ea9c to main
+[33m4a0e091[m HEAD@{27}: checkout: moving from main to 4a0e091bfc41d0511a52bdbe20dc11900b24ea9c
+[33m4a0e091[m HEAD@{28}: checkout: moving from main to main
+[33m4a0e091[m HEAD@{29}: commit: c
+[33m1596a47[m HEAD@{30}: commit: c
+[33m7eaaba1[m HEAD@{31}: commit: c
+[33m343f8d5[m HEAD@{32}: commit: c
+[33m07bb3b1[m HEAD@{33}: commit: c
+[33m0a36a9d[m HEAD@{34}: commit: c
+[33mb3c3ebd[m HEAD@{35}: commit: c
+[33m3c026dc[m HEAD@{36}: commit: c
+[33mb3d7898[m HEAD@{37}: commit: c
+[33m85561f9[m HEAD@{38}: commit: c
+[33m8a66c0d[m HEAD@{39}: commit: c
+[33m1ac7a74[m HEAD@{40}: commit: c
+[33m9a79e94[m HEAD@{41}: commit: c
+[33mfbc989e[m HEAD@{42}: commit: c
+[33m2d57f90[m HEAD@{43}: commit: c
+[33m5d25882[m HEAD@{44}: commit: c

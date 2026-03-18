@@ -23,9 +23,10 @@ const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
 const CallPage = () => {
   const { id: callId } = useParams();
+
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const { authUser, isLoading } = useAuthUser();
 
@@ -36,60 +37,73 @@ const CallPage = () => {
   });
 
   useEffect(() => {
+    if (!authUser || !tokenData?.streamToken || !callId) return;
+
+    let isMounted = true;
+
     const initCall = async () => {
-      if (!tokenData.token || !authUser || !callId) return;
-
       try {
-        console.log("Initializing Stream video client...");
+        console.log("📞 Initializing call...");
 
-        const user = {
-          id: authUser._id,
-          name: authUser.fullName,
-          image: authUser.profilePic,
-        };
-
+        // ✅ Create video client
         const videoClient = new StreamVideoClient({
           apiKey: STREAM_API_KEY,
-          user,
-          token: tokenData.token,
+          user: {
+            id: authUser._id,
+            name: authUser.fullName,
+            image: authUser.profilePic?.startsWith("http")
+              ? authUser.profilePic
+              : undefined, // ❌ avoid base64 crash
+          },
+          token: tokenData.streamToken,
         });
 
+        // ✅ Create / join call
         const callInstance = videoClient.call("default", callId);
 
         await callInstance.join({ create: true });
 
-        console.log("Joined call successfully");
-
-        setClient(videoClient);
-        setCall(callInstance);
+        if (isMounted) {
+          setClient(videoClient);
+          setCall(callInstance);
+          setLoading(false);
+        }
       } catch (error) {
-        console.error("Error joining call:", error);
-        toast.error("Could not join the call. Please try again.");
-      } finally {
-        setIsConnecting(false);
+        console.error("❌ Call error:", error);
+        toast.error("Failed to join call");
+        setLoading(false);
       }
     };
 
     initCall();
-  }, [tokenData, authUser, callId]);
 
-  if (isLoading || isConnecting) return <PageLoader />;
+    // ✅ Cleanup (VERY IMPORTANT)
+    return () => {
+      isMounted = false;
+
+      if (call) {
+        call.leave();
+      }
+
+      if (client) {
+        client.disconnectUser();
+      }
+    };
+  }, [tokenData?.streamToken, authUser?._id, callId]);
+
+  if (isLoading || loading) return <PageLoader />;
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center">
-      <div className="relative">
-        {client && call ? (
-          <StreamVideo client={client}>
-            <StreamCall call={call}>
-              <CallContent />
-            </StreamCall>
-          </StreamVideo>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p>Could not initialize call. Please refresh or try again later.</p>
-          </div>
-        )}
-      </div>
+    <div className="h-screen bg-black text-white flex items-center justify-center">
+      {client && call ? (
+        <StreamVideo client={client}>
+          <StreamCall call={call}>
+            <CallContent />
+          </StreamCall>
+        </StreamVideo>
+      ) : (
+        <p>Could not initialize call</p>
+      )}
     </div>
   );
 };
@@ -97,14 +111,21 @@ const CallPage = () => {
 const CallContent = () => {
   const { useCallCallingState } = useCallStateHooks();
   const callingState = useCallCallingState();
-
   const navigate = useNavigate();
 
-  if (callingState === CallingState.LEFT) return navigate("/");
+  // ✅ Auto redirect when leaving call
+  useEffect(() => {
+    if (callingState === CallingState.LEFT) {
+      navigate("/");
+    }
+  }, [callingState, navigate]);
 
   return (
     <StreamTheme>
+      {/* 🎥 Video Layout */}
       <SpeakerLayout />
+
+      {/* 🎛️ Controls (mute, leave, camera) */}
       <CallControls />
     </StreamTheme>
   );
