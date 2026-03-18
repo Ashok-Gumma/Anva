@@ -92,3 +92,8 @@ export async function getUserProfile(userId) {
   const response = await axiosInstance.get(`/users/${userId}`);
   return response.data;
 }
+
+export async function executeCompilerCode(data) {
+  const response = await axiosInstance.post("/compiler/execute", data);
+  return response.data;
+}

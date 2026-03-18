@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Editor from "@monaco-editor/react";
 import { Play } from "lucide-react";
+import { executeCompilerCode } from "../lib/api";
 
 // Using Piston v2 API format defaults
 const LANGUAGES = {
@@ -31,32 +32,26 @@ const CompilerPage = () => {
     setOutput("Running Engine...\n");
 
     try {
-      const response = await fetch("https://emacs.piston.rs/api/v2/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          language: language,
-          version: LANGUAGES[language].version,
-          files: [{ content: code }]
-        })
+      const data = await executeCompilerCode({
+        language: language,
+        version: LANGUAGES[language].version,
+        files: [{ content: code }]
       });
 
-      const result = await response.json();
-
-      if (result.run) {
-        if (result.run.stderr) {
+      if (data.run) {
+        if (data.run.stderr) {
           setIsError(true);
-          setOutput(result.run.stderr + "\n" + (result.run.stdout || ""));
+          setOutput(data.run.stderr + "\n" + (data.run.stdout || ""));
         } else {
-          setOutput(result.run.stdout || "Program exited with code 0 (no output).");
+          setOutput(data.run.stdout || "Program exited with code 0 (no output).");
         }
       } else {
         setIsError(true);
-        setOutput(result.message || "Execution engine failed instantly.");
+        setOutput(data.message || "Execution engine failed instantly.");
       }
     } catch (error) {
       setIsError(true);
-      setOutput("An error occurred while connecting to the Piston execution engine.");
+      setOutput(`An error occurred connecting to local execution proxy: ${error?.response?.data?.message || error.message}`);
     } finally {
       setIsRunning(false);
     }
