@@ -33,7 +33,7 @@ const ChatPage = () => {
   const { data: tokenData } = useQuery({
     queryKey: ["streamToken"],
     queryFn: getStreamToken,
-    enabled: !!authUser,
+    enabled: !!authUser, // this will run only when authUser is available
   });
 
   useEffect(() => {
@@ -41,31 +41,28 @@ const ChatPage = () => {
       if (!tokenData?.token || !authUser) return;
 
       try {
-        setLoading(true);
+        console.log("Initializing stream chat client...");
 
         const client = StreamChat.getInstance(STREAM_API_KEY);
 
-        // ✅ connect user
         await client.connectUser(
           {
-            id: authUser._id.toString(),
+            id: authUser._id,
             name: authUser.fullName,
             image: authUser.profilePic,
           },
           tokenData.token
         );
 
-        // ✅ create channel
-        const channelId = [authUser._id, targetUserId]
-          .map(String)
-          .sort()
-          .join("-");
+        //
+        const channelId = [authUser._id, targetUserId].sort().join("-");
+
+        // you and me
+        // if i start the chat => channelId: [myId, yourId]
+        // if you start the chat => channelId: [yourId, myId]  => [myId,yourId]
 
         const currChannel = client.channel("messaging", channelId, {
-          members: [
-            authUser._id.toString(),
-            targetUserId.toString(),
-          ],
+          members: [authUser._id, targetUserId],
         });
 
         await currChannel.watch();
@@ -73,19 +70,27 @@ const ChatPage = () => {
         setChatClient(client);
         setChannel(currChannel);
       } catch (error) {
-        console.error("Chat init error:", error);
-        toast.error("Failed to load chat");
+        console.error("Error initializing chat:", error);
+        toast.error("Could not connect to chat. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
     initChat();
-
-    return () => {
-      if (chatClient) chatClient.disconnectUser();
-    };
   }, [tokenData, authUser, targetUserId]);
+
+  const handleVideoCall = () => {
+    if (channel) {
+      const callUrl = `${window.location.origin}/call/${channel.id}`;
+
+      channel.sendMessage({
+        text: `I've started a video call. Join me here: ${callUrl}`,
+      });
+
+      toast.success("Video call link sent successfully!");
+    }
+  };
 
   if (loading || !chatClient || !channel) return <ChatLoader />;
 
@@ -94,18 +99,7 @@ const ChatPage = () => {
       <Chat client={chatClient}>
         <Channel channel={channel}>
           <div className="w-full relative">
-            <CallButton
-              handleVideoCall={() => {
-                const callUrl = `${window.location.origin}/call/${channel.id}`;
-
-                channel.sendMessage({
-                  text: `Join video call: ${callUrl}`,
-                });
-
-                toast.success("Call link sent!");
-              }}
-            />
-
+            <CallButton handleVideoCall={handleVideoCall} />
             <Window>
               <ChannelHeader />
               <MessageList />
@@ -118,5 +112,4 @@ const ChatPage = () => {
     </div>
   );
 };
-
 export default ChatPage;

@@ -3,7 +3,7 @@ import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { completeOnboarding } from "../lib/api";
-import { Handshake, LoaderIcon, MapPinIcon, ShuffleIcon, CameraIcon, Upload } from "lucide-react";
+import { Handshake, LoaderIcon, MapPinIcon,  ShuffleIcon } from "lucide-react";
 import { LANGUAGES } from "../constants";
 
 const OnboardingPage = () => {
@@ -47,28 +47,6 @@ const OnboardingPage = () => {
     toast.success("Random profile picture generated!");
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size must be less than 5MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormState({ ...formState, profilePic: reader.result });
-      toast.success("Image uploaded successfully!");
-    };
-    reader.readAsDataURL(file);
-  };
-
   return (
     <div 
     className="min-h-screen bg-base-100 flex items-center justify-center p-4"
@@ -96,21 +74,11 @@ const OnboardingPage = () => {
                 )}
               </div>
 
-              {/* Upload and Random Avatar Buttons */}
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                <label className="btn btn-outline btn-sm">
-                  <Upload className="size-4 mr-1" />
-                  Upload Image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                <button type="button" onClick={handleRandomAvatar} className="btn btn-accent btn-sm">
-                  <ShuffleIcon className="size-4 mr-1" />
-                  Random Avatar
+              {/* Generate Random Avatar BTN */}
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleRandomAvatar} className="btn btn-accent">
+                  <ShuffleIcon className="size-4 mr-2" />
+                  Generate Random Avatar
                 </button>
               </div>
             </div>
