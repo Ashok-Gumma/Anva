@@ -68,6 +68,7 @@ export async function updateUserProfile(userData) {
   const response = await axiosInstance.put("/users/profile", userData);
   return response.data;
 }
+<<<<<<< HEAD
 
 export async function getUserProfile(userId) {
   if (userId) {
@@ -77,3 +78,5 @@ export async function getUserProfile(userId) {
   const response = await axiosInstance.get("/users/profile");
   return response.data;
 }
+=======
+>>>>>>> 202eab4 (Your message)
