@@ -37,26 +37,28 @@ const Navbar = () => {
 
           <ThemeSelector />
 
-          {/* Avatar with letter fallback */}
-          <div className="relative w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden mx-2">
-            {/* Letter fallback */}
-            <span className="absolute inset-0 flex items-center justify-center">
-              {authUser?.fullName?.charAt(0)?.toUpperCase()}
-            </span>
+          {/* Avatar Link to Profile */}
+          <Link to="/profile" className="mx-2 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-base-100 rounded-full">
+            <div className="relative w-9 h-9 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden border border-primary-content/20 shadow-sm">
+              {/* Letter fallback */}
+              <span className="absolute inset-0 flex items-center justify-center">
+                {authUser?.fullName?.charAt(0)?.toUpperCase()}
+              </span>
 
-            {/* Profile image */}
-            {authUser?.profilePic && (
-              <img
-                src={authUser.profilePic}
-                alt="User Avatar"
-                loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            )}
-          </div>
+              {/* Profile image */}
+              {authUser?.profilePic && (
+                <img
+                  src={authUser.profilePic}
+                  alt="User Avatar"
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+            </div>
+          </Link>
 
           {/* Logout button */}
           <button className="btn btn-ghost btn-circle" onClick={logoutMutation}>

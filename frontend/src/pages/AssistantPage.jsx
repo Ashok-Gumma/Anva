@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import axios from "axios";
+import { axiosInstance } from "../lib/axios";
 
 const AssistantPage = () => {
   const [messages, setMessages] = useState([
@@ -55,11 +55,9 @@ const AssistantPage = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        "http://localhost:5001/api/assistant/chat",
-        { message: userMessage.content },
-        { withCredentials: true }
-      );
+      const res = await axiosInstance.post("/assistant/chat", {
+        message: userMessage.content,
+      });
 
       const reply = res.data.reply || "No reply from assistant.";
 

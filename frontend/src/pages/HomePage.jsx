@@ -146,7 +146,7 @@ const HomePage = () => {
                 return (
                   <div
                     key={user._id}
-                    className="card bg-base-200 hover:shadow-lg transition-all"
+                    className="card glass-panel"
                   >
                     <div className="card-body p-5 space-y-4">
 

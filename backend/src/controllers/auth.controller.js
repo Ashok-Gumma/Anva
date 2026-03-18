@@ -44,6 +44,8 @@ export async function signup(req, res) {
       console.log(`Stream user created for ${newUser.fullName}`);
     } catch (error) {
       console.log("Error creating Stream user:", error);
+      await User.findByIdAndDelete(newUser._id);
+      return res.status(500).json({ message: "Error creating messaging profile, please try again." });
     }
 
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET_KEY, {

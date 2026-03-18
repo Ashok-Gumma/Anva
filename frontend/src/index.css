@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  @apply antialiased selection:bg-primary selection:text-primary-content;
+}
+
+/* Glassmorphism panel for aesthetic depth */
+.glass-panel {
+  @apply bg-base-100/70 backdrop-blur-xl border border-base-content/10 shadow-xl;
+}
+
+/* Subtle micro-animations for standard cards */
+.card {
+  @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border border-base-content/5;
+}
+
+/* Smooth active bounds */
+.btn {
+  @apply transition-transform active:scale-[0.98];
+}
+
+/* Gradient background animation */
+.gradient-bg {
+  background: linear-gradient(-45deg, var(--fallback-p,oklch(var(--p)/1)), var(--fallback-s,oklch(var(--s)/1)), var(--fallback-a,oklch(var(--a)/1)));
+  background-size: 400% 400%;
+  animation: gradientFlow 15s ease infinite;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .str-chat__channel {
   display: flex;
   align-items: center;
