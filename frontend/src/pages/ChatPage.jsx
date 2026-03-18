@@ -33,7 +33,7 @@ const ChatPage = () => {
   const { data: tokenData } = useQuery({
     queryKey: ["streamToken"],
     queryFn: getStreamToken,
-    enabled: !!authUser,
+    enabled: !!authUser, // this will run only when authUser is available
   });
 
   useEffect(() => {
@@ -45,24 +45,21 @@ const ChatPage = () => {
 
         const client = StreamChat.getInstance(STREAM_API_KEY);
 
-        // ✅ FIX: remove base64 image (only allow URL)
-        const safeImage =
-          authUser.profilePic &&
-          !authUser.profilePic.startsWith("data:image")
-            ? authUser.profilePic
-            : undefined;
-
         await client.connectUser(
           {
             id: authUser._id,
             name: authUser.fullName,
-            ...(safeImage && { image: safeImage }), // only include if valid URL
+            image: authUser.profilePic,
           },
           tokenData.token
         );
 
-        // Create consistent channel ID
+        //
         const channelId = [authUser._id, targetUserId].sort().join("-");
+
+        // you and me
+        // if i start the chat => channelId: [myId, yourId]
+        // if you start the chat => channelId: [yourId, myId]  => [myId,yourId]
 
         const currChannel = client.channel("messaging", channelId, {
           members: [authUser._id, targetUserId],
@@ -81,13 +78,6 @@ const ChatPage = () => {
     };
 
     initChat();
-
-    // ✅ Cleanup (important)
-    return () => {
-      if (chatClient) {
-        chatClient.disconnectUser();
-      }
-    };
   }, [tokenData, authUser, targetUserId]);
 
   const handleVideoCall = () => {
@@ -122,5 +112,4 @@ const ChatPage = () => {
     </div>
   );
 };
-
 export default ChatPage;

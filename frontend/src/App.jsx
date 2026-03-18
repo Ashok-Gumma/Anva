@@ -10,8 +10,6 @@ import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import OnboardingPage from "./pages/OnboardingPage.jsx";
 import AssistantPage from "./pages/AssistantPage.jsx";
-import ProfilePage from "./pages/ProfilePage.jsx";
-import CompilerPage from "./pages/CompilerPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 
@@ -32,8 +30,6 @@ const App = () => {
   return (
     <div className="h-screen" data-theme={theme}>
       <Routes>
-
-        {/* HOME */}
         <Route
           path="/"
           element={
@@ -47,7 +43,6 @@ const App = () => {
           }
         />
 
-        {/* FRIENDS */}
         <Route
           path="/friends"
           element={
@@ -61,7 +56,6 @@ const App = () => {
           }
         />
 
-        {/* FLASHCARDS */}
         <Route
           path="/flashcards"
           element={
@@ -75,7 +69,7 @@ const App = () => {
           }
         />
 
-        {/* ASSISTANT */}
+        {/* ✅ ASSISTANT ROUTE */}
         <Route
           path="/assistant"
           element={
@@ -89,35 +83,6 @@ const App = () => {
           }
         />
 
-        {/* PROFILE (includes settings tab now) */}
-        <Route
-          path="/profile"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <ProfilePage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        {/* COMPILER */}
-        <Route
-          path="/compiler"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <CompilerPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        {/* AUTH */}
         <Route
           path="/signup"
           element={
@@ -140,7 +105,6 @@ const App = () => {
           }
         />
 
-        {/* NOTIFICATIONS */}
         <Route
           path="/notifications"
           element={
@@ -154,7 +118,6 @@ const App = () => {
           }
         />
 
-        {/* CALL */}
         <Route
           path="/call/:id"
           element={
@@ -166,7 +129,6 @@ const App = () => {
           }
         />
 
-        {/* CHAT */}
         <Route
           path="/chat/:id"
           element={
@@ -180,7 +142,6 @@ const App = () => {
           }
         />
 
-        {/* ONBOARDING */}
         <Route
           path="/onboarding"
           element={
@@ -195,7 +156,6 @@ const App = () => {
             )
           }
         />
-
       </Routes>
 
       <Toaster />

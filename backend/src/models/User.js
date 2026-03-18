@@ -37,33 +37,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    linkedin: {
-      type: String,
-      default: "",
-    },
-    github: {
-      type: String,
-      default: "",
-    },
-    education: {
-      school: {
-        type: String,
-        default: "",
-      },
-      degree: {
-        type: String,
-        default: "",
-      },
-      fieldOfStudy: {
-        type: String,
-        default: "",
-      },
-    },
-    skills: [
-      {
-        type: String,
-      },
-    ],
     isOnboarded: {
       type: Boolean,
       default: false,

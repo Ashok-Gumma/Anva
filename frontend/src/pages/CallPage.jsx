@@ -37,23 +37,15 @@ const CallPage = () => {
 
   useEffect(() => {
     const initCall = async () => {
-      // ✅ FIX 1: safe check
-      if (!tokenData?.token || !authUser || !callId) return;
+      if (!tokenData.token || !authUser || !callId) return;
 
       try {
         console.log("Initializing Stream video client...");
 
-        // ✅ FIX 2: remove base64 image
-        const safeImage =
-          authUser.profilePic &&
-          !authUser.profilePic.startsWith("data:image")
-            ? authUser.profilePic
-            : undefined;
-
         const user = {
           id: authUser._id,
           name: authUser.fullName,
-          ...(safeImage && { image: safeImage }),
+          image: authUser.profilePic,
         };
 
         const videoClient = new StreamVideoClient({
@@ -79,13 +71,6 @@ const CallPage = () => {
     };
 
     initCall();
-
-    // ✅ cleanup
-    return () => {
-      if (client) {
-        client.disconnectUser();
-      }
-    };
   }, [tokenData, authUser, callId]);
 
   if (isLoading || isConnecting) return <PageLoader />;
@@ -101,7 +86,7 @@ const CallPage = () => {
           </StreamVideo>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p>Could not initialize call. Please refresh.</p>
+            <p>Could not initialize call. Please refresh or try again later.</p>
           </div>
         )}
       </div>
@@ -112,6 +97,7 @@ const CallPage = () => {
 const CallContent = () => {
   const { useCallCallingState } = useCallStateHooks();
   const callingState = useCallCallingState();
+
   const navigate = useNavigate();
 
   if (callingState === CallingState.LEFT) return navigate("/");
