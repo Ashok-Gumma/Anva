@@ -76,7 +76,12 @@ const LoginPage = () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-base-content/80 ml-1">Password</label>
+                  <div className="flex justify-between items-center w-full">
+                    <label className="text-sm font-semibold text-base-content/80 ml-1">Password</label>
+                    <Link to="/forgot-password" className="text-sm font-semibold text-primary hover:underline pr-1">
+                      Forgot Password?
+                    </Link>
+                  </div>
                   <input
                     type="password"
                     placeholder="••••••••"

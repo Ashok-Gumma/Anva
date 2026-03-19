@@ -7,6 +7,8 @@ import FriendsPage from "./pages/Friends.jsx";
 import FlashcardsPage from "./pages/FlashcardsPage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
@@ -112,6 +114,28 @@ const App = () => {
           element={
             !isAuthenticated ? (
               <LoginPage />
+            ) : (
+              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
+            )
+          }
+        />
+
+        <Route
+          path="/forgot-password"
+          element={
+            !isAuthenticated ? (
+              <ForgotPasswordPage />
+            ) : (
+              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
+            )
+          }
+        />
+
+        <Route
+          path="/reset-password/:token"
+          element={
+            !isAuthenticated ? (
+              <ResetPasswordPage />
             ) : (
               <Navigate to={isOnboarded ? "/" : "/onboarding"} />
             )

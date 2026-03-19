@@ -20,6 +20,7 @@
     "google-auth-library": "^10.6.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
+    "nodemailer": "^8.0.3",
     "openai": "^6.17.0",
     "stream-chat": "^8.60.0"
   },

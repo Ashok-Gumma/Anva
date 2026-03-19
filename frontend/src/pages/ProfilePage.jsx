@@ -16,8 +16,6 @@ const ProfilePage = () => {
 
   const [githubUrl, setGithubUrl] = useState(authUser?.githubUrl || "");
   const [linkedinUrl, setLinkedinUrl] = useState(authUser?.linkedinUrl || "");
-  const [nativeLanguage, setNativeLanguage] = useState(authUser?.nativeLanguage || "");
-  const [learningLanguage, setLearningLanguage] = useState(authUser?.learningLanguage || "");
 
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -92,8 +90,6 @@ const ProfilePage = () => {
     if (base64Image) payload.profilePic = base64Image;
     if (githubUrl !== authUser?.githubUrl) payload.githubUrl = githubUrl;
     if (linkedinUrl !== authUser?.linkedinUrl) payload.linkedinUrl = linkedinUrl;
-    if (nativeLanguage !== authUser?.nativeLanguage) payload.nativeLanguage = nativeLanguage;
-    if (learningLanguage !== authUser?.learningLanguage) payload.learningLanguage = learningLanguage;
 
     if (Object.keys(payload).length === 0) return toast.info("No changes made.");
     updateProfileMutation(payload);
@@ -170,57 +166,6 @@ const ProfilePage = () => {
             <div className="flex gap-2 text-xs mt-1">
               <span className="px-3 py-1 bg-secondary/10 text-secondary font-bold rounded-lg border border-secondary/20">{authUser?.nativeLanguage || "Not Configured"}</span>
               <span className="px-3 py-1 bg-accent/10 text-accent font-bold rounded-lg border border-accent/20">Learning {authUser?.learningLanguage || "None"}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Languages Selection */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5 flex flex-col items-start w-full">
-              <label className="text-sm font-semibold text-base-content/80 ml-1">Native Language</label>
-              <select
-                className="w-full px-4 py-3.5 bg-base-200 text-base-content border border-base-content/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium appearance-auto cursor-pointer"
-                value={nativeLanguage}
-                onChange={(e) => setNativeLanguage(e.target.value)}
-              >
-                <option value="" disabled>Select your known language</option>
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Italian">Italian</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="Russian">Russian</option>
-                <option value="Chinese">Chinese</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Korean">Korean</option>
-                <option value="Arabic">Arabic</option>
-                <option value="Hindi">Hindi</option>
-              </select>
-            </div>
-            
-            <div className="space-y-1.5 flex flex-col items-start w-full">
-              <label className="text-sm font-semibold text-base-content/80 ml-1">Learning Language</label>
-              <select
-                className="w-full px-4 py-3.5 bg-base-200 text-base-content border border-base-content/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-medium appearance-auto cursor-pointer"
-                value={learningLanguage}
-                onChange={(e) => setLearningLanguage(e.target.value)}
-              >
-                <option value="" disabled>Select language to learn</option>
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Italian">Italian</option>
-                <option value="Portuguese">Portuguese</option>
-                <option value="Russian">Russian</option>
-                <option value="Chinese">Chinese</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Korean">Korean</option>
-                <option value="Arabic">Arabic</option>
-                <option value="Hindi">Hindi</option>
-              </select>
             </div>
           </div>
         </div>

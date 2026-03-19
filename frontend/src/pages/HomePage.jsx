@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   getUserFriends,
   sendFriendRequest,
+  getFriendRequests,
+  getStreamToken,
 } from "../lib/api";
+import { StreamChat } from "stream-chat";
+import useAuthUser from "../hooks/useAuthUser";
 import { Link } from "react-router";
 import {
   CheckCircleIcon,
@@ -36,6 +40,74 @@ const itemVariants = {
 
 const HomePage = () => {
   const queryClient = useQueryClient();
+  const { authUser } = useAuthUser();
+
+  /* ================= NOTIFICATIONS ================= */
+  const { data: friendRequests } = useQuery({
+    queryKey: ["friendRequests"],
+    queryFn: getFriendRequests,
+  });
+
+  const { data: tokenData } = useQuery({
+    queryKey: ["streamToken"],
+    queryFn: getStreamToken,
+    enabled: !!authUser,
+  });
+
+  useEffect(() => {
+    // Only run if we actually have authUser loaded
+    if (!authUser) return;
+    
+    // Check if we already showed popups this session
+    const hasShownPopups = sessionStorage.getItem("hasShownHomePagePopups");
+    if (hasShownPopups === "true") return;
+
+    // Both friend Requests and stream token need to be loaded (or failed/undefined) to proceed
+    if (friendRequests === undefined || tokenData === undefined) return;
+
+    const showPopups = async () => {
+      // 1. Friend Requests Popup
+      const incomingReqs = friendRequests?.incomingReqs?.filter((req) => req?.sender) || [];
+      if (incomingReqs.length > 0) {
+        toast(`You have ${incomingReqs.length} pending friend request${incomingReqs.length > 1 ? 's' : ''}!`, {
+          icon: '👋',
+          duration: 6000,
+        });
+      }
+
+      // 2. Unread Messages Popup
+      if (tokenData?.token) {
+        try {
+          const client = StreamChat.getInstance(import.meta.env.VITE_STREAM_API_KEY);
+          if (client.userID !== authUser._id) {
+            if (client.userID) await client.disconnectUser();
+            await client.connectUser(
+              { id: authUser._id, name: authUser.fullName },
+              tokenData.token
+            );
+          }
+          
+          const unreadCount = client.user?.total_unread_count || 0;
+          if (unreadCount > 0) {
+            // Need a slight timeout so they don't overlap completely perfectly in UI
+            setTimeout(() => {
+              toast(`You have ${unreadCount} unread message${unreadCount > 1 ? 's' : ''}!`, {
+                icon: '💬',
+                duration: 6000,
+              });
+            }, 800);
+          }
+        } catch (err) {
+          console.error("Failed to fetch unread stream messages for popups:", err);
+        }
+      }
+
+      sessionStorage.setItem("hasShownHomePagePopups", "true");
+    };
+
+    showPopups();
+
+  }, [friendRequests, tokenData, authUser]);
 
   /* ================= FRIENDS ================= */
   const { data: friends = [], isLoading: loadingFriends } = useQuery({

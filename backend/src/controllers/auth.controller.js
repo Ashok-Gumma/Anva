@@ -1,7 +1,9 @@
 import { upsertStreamUser } from "../lib/stream.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
+import { sendResetEmail } from "../lib/nodemailer.js";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -209,5 +211,73 @@ export async function googleAuth(req, res) {
   } catch (error) {
     console.error("Google Auth Error:", error);
     res.status(500).json({ message: "Google authentication failed" });
+  }
+}
+
+export async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "No account with that email address exists." });
+    }
+
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+    await user.save();
+
+    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    
+    // Attempt to send email
+    const emailSent = await sendResetEmail(email, resetUrl);
+
+    if (emailSent) {
+      res.status(200).json({ 
+        success: true, 
+        message: "Reset link sent to your email!", 
+        resetToken // keeping for frontend testing just in case
+      });
+    } else {
+      res.status(500).json({ 
+        message: "Failed to send email. Please check your EMAIL_USER and EMAIL_PASS environment variables.",
+        resetToken // fallback for dev
+      });
+    }
+  } catch (error) {
+    console.error("Error in forgotPassword:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export async function resetPassword(req, res) {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Password reset token is invalid or has expired." });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    res.status(200).json({ success: true, message: "Password has been reset successfully." });
+  } catch (error) {
+    console.error("Error in resetPassword:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 }
