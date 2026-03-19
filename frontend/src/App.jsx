@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
 
 import HomePage from "./pages/HomePage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import FriendsPage from "./pages/Friends.jsx";
 import FlashcardsPage from "./pages/FlashcardsPage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
@@ -40,7 +41,7 @@ const App = () => {
   if (isLoading) return <PageLoader />;
 
   return (
-    <div className="h-screen" data-theme={theme}>
+    <div className="min-h-screen bg-base-200 text-base-content font-sans tracking-tight" data-theme={theme}>
       <Routes>
         <Route
           path="/"
@@ -50,7 +51,7 @@ const App = () => {
                 <HomePage />
               </Layout>
             ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
+               <LandingPage />
             )
           }
         />

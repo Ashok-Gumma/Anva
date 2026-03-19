@@ -2,6 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { getUserFriends } from "../lib/api";
 import FriendCard from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
+import { motion } from "framer-motion";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const Friends = () => {
   const { data: friends = [], isLoading } = useQuery({
@@ -11,8 +27,9 @@ const Friends = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-12">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex flex-col justify-center items-center py-20 min-h-screen">
+        <span className="w-8 h-8 border-4 border-base-content/10 border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-base-content/70 font-medium tracking-tight">Loading social graph...</p>
       </div>
     );
   }
@@ -22,22 +39,31 @@ const Friends = () => {
   );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="container mx-auto">
-        <h1 className="text-3xl font-bold tracking-tight mb-8">
-          Your Friends
-        </h1>
+    <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
+      <motion.div 
+        className="container mx-auto"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.h1 variants={itemVariants} className="text-3xl font-bold tracking-tight mb-8 text-base-content">
+          Your Network
+        </motion.h1>
 
         {validFriends.length === 0 ? (
-          <NoFriendsFound />
+          <motion.div variants={itemVariants}>
+            <NoFriendsFound />
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" variants={containerVariants}>
             {validFriends.map((friend) => (
-              <FriendCard key={friend._id} friend={friend} />
+              <motion.div key={friend._id} variants={itemVariants}>
+                <FriendCard friend={friend} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -79,10 +79,19 @@ export async function getRecommendedUsers(req, res) {
     const currentUserId = req.user.id;
     const currentUser = req.user;
 
+    const existingRequests = await FriendRequest.find({
+      $or: [{ sender: currentUserId }, { recipient: currentUserId }],
+    });
+
+    const userIdsWithRequests = existingRequests.map((r) =>
+      r.sender.toString() === currentUserId ? r.recipient : r.sender
+    );
+
     const recommendedUsers = await User.find({
       $and: [
         { _id: { $ne: currentUserId } }, //exclude current user
         { _id: { $nin: currentUser.friends } }, // exclude current user's friends
+        { _id: { $nin: userIdsWithRequests } }, // exclude users with existing requests
         { isOnboarded: true },
       ],
     });
