@@ -57,7 +57,7 @@ const LandingPage = () => {
           </Link>
           
           <Link 
-            to="/login" 
+            to="/features" 
             className="flex items-center justify-center bg-slate-50 text-slate-900 border border-slate-200 hover:bg-slate-100 hover:scale-[1.02] active:scale-[0.98] transition-all px-6 py-3 rounded-full font-medium shadow-sm w-full sm:w-auto"
           >
             Explore features

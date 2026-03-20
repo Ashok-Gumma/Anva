@@ -17,6 +17,7 @@ import AssistantPage from "./pages/AssistantPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import CompilerPage from "./pages/CompilerPage.jsx";
 import FriendProfilePage from "./pages/FriendProfilePage.jsx";
+import FeaturesPage from "./pages/FeaturesPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 
@@ -53,8 +54,15 @@ const App = () => {
                 <HomePage />
               </Layout>
             ) : (
-               <LandingPage />
+                <LandingPage />
             )
+          }
+        />
+
+        <Route
+          path="/features"
+          element={
+            <FeaturesPage />
           }
         />
 
