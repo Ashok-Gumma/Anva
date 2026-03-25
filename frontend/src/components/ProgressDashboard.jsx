@@ -21,13 +21,6 @@ const ProgressDashboard = () => {
 
   const stats = [
     {
-      icon: <FlameIcon className="size-5 text-orange-500" />,
-      label: "Day Streak",
-      value: "🔥 Active",
-      bg: "bg-orange-500/10",
-      border: "border-orange-500/20",
-    },
-    {
       icon: <UsersIcon className="size-5 text-primary" />,
       label: "Friends",
       value: friends.length,
