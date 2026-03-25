@@ -3,7 +3,6 @@ import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
-import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -17,9 +16,7 @@ import { connectDB } from "./lib/db.js";
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// ✅ ES Module-safe __dirname — always resolves to backend/src/
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.resolve();
 
 const allowedOrigins = [
   process.env.FRONTEND_URL || "http://localhost:5173",
@@ -54,12 +51,9 @@ app.use("/api/assistant", assistantRoutes);
 app.use("/api/compiler", compilerRoutes);
 
 if (process.env.NODE_ENV === "production") {
-  // __dirname = backend/src/ → go up 2 levels to reach frontend/dist
-  const distPath = path.join(__dirname, "../../frontend/dist");
-  app.use(express.static(distPath));
-  // Only serve index.html for non-API routes (SPA fallback)
-  app.get(/^(?!\/api).*/, (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
   });
 }
 
