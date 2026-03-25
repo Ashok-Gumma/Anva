@@ -53,11 +53,17 @@ app.use("/api/assistant", assistantRoutes);
 app.use("/api/compiler", compilerRoutes);
 
 if (process.env.NODE_ENV === "production") {
-  // __dirname = backend/src/ → go up 2 levels to reach frontend/dist
-  const distPath = path.join(__dirname, "../../frontend/dist");
+  // __dirname = backend/src/ → ../dist = backend/dist/
+  const distPath = path.join(__dirname, "../dist");
+  console.log("📁 Serving frontend from:", distPath);
   app.use(express.static(distPath));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+    res.sendFile(path.join(distPath, "index.html"), (err) => {
+      if (err) {
+        console.error("sendFile error:", err.message, "| distPath:", distPath);
+        res.status(500).send("Frontend not found. Build may have failed.");
+      }
+    });
   });
 }
 
