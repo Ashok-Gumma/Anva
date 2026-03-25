@@ -129,7 +129,7 @@ const LandingPage = () => (
 
       <motion.h1
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
-        className="text-5xl sm:text-7xl md:text-[5.5rem] font-semibold tracking-tight text-slate-900 mb-6 leading-[1.05] max-w-[60rem] mx-auto"
+        className="text-4xl sm:text-7xl md:text-[5.5rem] font-semibold tracking-tight text-slate-900 mb-6 leading-[1.1] sm:leading-[1.05] max-w-[60rem] mx-auto"
       >
         Learn Languages with{" "}
         <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">

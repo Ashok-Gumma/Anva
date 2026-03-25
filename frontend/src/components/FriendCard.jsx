@@ -9,8 +9,8 @@ const FriendCard = ({ friend }) => {
   const isOnline = friend.lastActive && (new Date() - new Date(friend.lastActive)) <= 3 * 60 * 1000;
 
   return (
-    <div className="bg-base-100 rounded-[2rem] shadow-sm border border-base-content/10 hover:shadow-md transition-shadow overflow-hidden group">
-      <div className="p-6">
+    <div className="bg-base-100 rounded-2xl sm:rounded-[2rem] shadow-sm border border-base-content/10 hover:shadow-md transition-shadow overflow-hidden group">
+      <div className="p-4 sm:p-6">
         {/* USER INFO */}
         <div className="flex items-center gap-4 mb-3">
           {/* Avatar with letter fallback */}

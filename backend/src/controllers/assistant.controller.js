@@ -1,48 +1,98 @@
-import OpenAI from "openai";
+import axios from "axios";
+import ChatMessage from "../models/ChatMessage.js";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper for RapidAPI ChatGPT-42 request
+// ─────────────────────────────────────────────────────────────────────────────
+const callAiApi = async (messages) => {
+  const options = {
+    method: 'POST',
+    url: `https://chatgpt-42.p.rapidapi.com/gpt4`,
+    headers: {
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
+      'x-rapidapi-host': "chatgpt-42.p.rapidapi.com",
+      'Content-Type': 'application/json'
+    },
+    data: {
+      messages: messages,
+      web_access: false
+    }
+  };
+
+  const response = await axios.request(options);
+  return response.data.result;
+};
 
 export const chatWithAssistant = async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, image } = req.body;
+    const userId = req.user._id;
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({ message: "Message is required" });
+    if (!message && !image) {
+      return res.status(400).json({ message: "Message or image is required" });
     }
 
-    console.log("Assistant received:", message);
-
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini", // or "gpt-3.5-turbo" if you want cheaper
-      messages: [
-        { role: "system", content: "You are a helpful programming and study assistant." },
-        { role: "user", content: message },
-      ],
+    // 1. Save User Message to DB
+    const userMsg = await ChatMessage.create({
+      userId,
+      role: "user",
+      content: message || "Can you help me with this?",
+      image
     });
 
-    const reply = completion.choices[0].message.content;
+    // 2. Call AI
+    const reply = await callAiApi([
+      { role: "system", content: "You are a professional study assistant. Help students clarify doubts clearly." },
+      { role: "user", content: message || "Can you help me with this?" },
+    ]);
+
+    // 3. Save AI Reply to DB
+    await ChatMessage.create({
+      userId,
+      role: "assistant",
+      content: reply
+    });
 
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("🔥 Assistant backend error:", error);
+    console.error("🔥 Assistant backend error:", error.response?.data || error.message);
 
-    // Handle quota / rate limit nicely
-    if (error?.status === 429 || error?.code === "insufficient_quota") {
+    if (error?.response?.status === 429) {
       return res.status(200).json({
-        reply:
-          "⚠️ I'm currently out of AI credits or rate-limited. Please try again later or contact the admin.",
+        reply: "⚠️ AI service is currently rate-limited. Please try again later.",
         isFallback: true,
       });
     }
 
-    // Generic fallback
     return res.status(200).json({
-      reply:
-        "❌ Sorry, something went wrong on the server. Please try again in a few minutes.",
+      reply: "❌ Sorry, the AI assistant encountered an error while processing your request.",
       isFallback: true,
     });
+  }
+};
+
+export const getChatHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const history = await ChatMessage.find({ userId })
+      .sort({ createdAt: 1 })
+      .limit(50);
+    
+    res.status(200).json(history);
+  } catch (error) {
+    console.error("Fetch history error:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const clearChatHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    await ChatMessage.deleteMany({ userId });
+    res.status(200).json({ message: "Chat history cleared successfully" });
+  } catch (error) {
+    console.error("Clear history error:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -53,22 +103,18 @@ export const checkGrammar = async (req, res) => {
       return res.status(400).json({ message: "Text is required" });
     }
 
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are a professional language teacher. Review the user's text for spelling and grammar errors. If there are errors, provide the corrected text clearly and explain the corrections briefly. If it is already correct, just say 'The grammar is perfect!'." },
-        { role: "user", content: text },
-      ],
-    });
+    const reply = await callAiApi([
+      { role: "system", content: "You are a professional language teacher. Review the user's text for spelling and grammar errors. If there are errors, provide the corrected text clearly and explain the corrections briefly. If it is already correct, just say 'The grammar is perfect!'." },
+      { role: "user", content: text },
+    ], "gpt-4o-mini");
 
-    const reply = completion.choices[0].message.content;
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("Assistant grammar error:", error);
+    console.error("Assistant grammar error:", error.response?.data || error.message);
 
-    if (error?.status === 429 || error?.code === "insufficient_quota") {
+    if (error?.response?.status === 429) {
       return res.status(200).json({
-        reply: "⚠️ Grammar check is temporarily unavailable — the AI quota has been exceeded. Please add credits to your OpenAI account at platform.openai.com/settings/billing, or try again later.",
+        reply: "⚠️ Grammar check is temporarily unavailable due to rate limits. Please try again later.",
         isFallback: true,
       });
     }

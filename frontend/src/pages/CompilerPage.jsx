@@ -1,21 +1,28 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Editor from "@monaco-editor/react";
-import { Play, Info, CheckCircle2, AlertCircle } from "lucide-react";
+import { Play, CheckCircle2, AlertCircle } from "lucide-react";
 import { executeCompilerCode } from "../lib/api";
 
 const LANGUAGES = {
-  javascript: { version: "18.15.0", code: 'console.log("Hello from JavaScript!");', local: true },
-  python: { version: "3.10.0", code: 'print("Hello from Python (Local Pyodide)!")', local: true },
-  typescript: { version: "5.0.3", code: 'let message: string = "Hello TypeScript!";\nconsole.log(message);', local: false },
-  cpp: { version: "10.2.0", code: '#include <iostream>\n\nint main() {\n    std::cout << "Hello from C++!\\n";\n    return 0;\n}', local: false },
-  c: { version: "10.2.0", code: '#include <stdio.h>\n\nint main() {\n    printf("Hello from C!\\n");\n    return 0;\n}', local: false },
-  java: { version: "15.0.2", code: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java!");\n    }\n}', local: false },
-  go: { version: "1.16.2", code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello from Go!")\n}', local: false },
-  rust: { version: "1.68.2", code: 'fn main() {\n    println!("Hello from Rust!");\n}', local: false },
-  php: { version: "8.2.3", code: '<?php\necho "Hello from PHP!";\n?>', local: false },
-  ruby: { version: "3.2.1", code: 'puts "Hello from Ruby!"', local: false },
-  swift: { version: "5.3.3", code: 'print("Hello from Swift!")', local: false },
-  kotlin: { version: "1.8.20", code: 'fun main() {\n    println("Hello from Kotlin!")\n}', local: false }
+  javascript: { version: "18.15.0", code: 'console.log("Hello from JavaScript!");' },
+  python: { version: "3.10.0", code: 'print("Hello from Python!")' },
+  typescript: { version: "5.0.3", code: 'let message: string = "Hello TypeScript!";\nconsole.log(message);' },
+  cpp: { version: "10.2.0", code: '#include <iostream>\n\nint main() {\n    std::cout << "Hello from C++!\\n";\n    return 0;\n}' },
+  c: { version: "10.2.0", code: '#include <stdio.h>\n\nint main() {\n    printf("Hello from C!\\n");\n    return 0;\n}' },
+  java: { version: "15.0.2", code: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java!");\n    }\n}' },
+  go: { version: "1.16.2", code: 'package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("Hello from Go!")\n}' },
+  rust: { version: "1.68.2", code: 'fn main() {\n    println!("Hello from Rust!");\n}' },
+  php: { version: "8.2.3", code: '<?php\necho "Hello from PHP!";\n?>' },
+  ruby: { version: "3.2.1", code: 'puts "Hello from Ruby!"' },
+  swift: { version: "5.3.3", code: 'print("Hello from Swift!")' },
+  kotlin: { version: "1.8.20", code: 'fun main() {\n    println("Hello from Kotlin!")\n}' },
+  mysql: { version: "8.0", code: '-- Create a table\nCREATE TABLE Users (id INT PRIMARY KEY, name VARCHAR(50));\n\n-- Insert data\nINSERT INTO Users VALUES (1, "Alice"), (2, "Bob");\n\n-- Query data\nSELECT * FROM Users;' },
+  postgresql: { version: "13", code: '-- Create a table\nCREATE TABLE employee (id SERIAL PRIMARY KEY, name TEXT);\n\n-- Insert data\nINSERT INTO employee (name) VALUES (\'John Doe\'), (\'Jane Smith\');\n\n-- Query data\nSELECT * FROM employee;' },
+  mongodb: { version: "5.0", code: '// Create and insert a document\ndb.users.insertOne({ name: "Alice", age: 30 });\n\n// Find document\ndb.users.find({ name: "Alice" });' },
+  dart: { version: "2.12.0", code: 'void main() {\n  print("Hello from Dart (Flutter core)!");\n}' },
+  csharp: { version: "9.0", code: 'using System;\n\nclass Program {\n    static void Main() {\n        Console.WriteLine("Hello from C#!");\n    }\n}' },
+  html: { version: "5", code: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Hello</title>\n</head>\n<body>\n  <h1>Hello from HTML!</h1>\n</body>\n</html>' },
+  css: { version: "3", code: 'body {\n  background-color: #f0f0f0;\n  color: #333;\n  font-family: sans-serif;\n}\n\nh1 {\n  color: #007bff;\n}' }
 };
 
 const CompilerPage = () => {
@@ -24,34 +31,7 @@ const CompilerPage = () => {
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [pyodide, setPyodide] = useState(null);
-  const [isPyodideLoading, setIsPyodideLoading] = useState(false);
   
-  const pyodideLoaded = useRef(false);
-
-  // Initialize Pyodide for Python
-  useEffect(() => {
-    if (language === "python" && !pyodide && !pyodideLoaded.current) {
-      const initPyodide = async () => {
-        setIsPyodideLoading(true);
-        try {
-          if (window.loadPyodide) {
-            const py = await window.loadPyodide({
-              indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/"
-            });
-            setPyodide(py);
-            pyodideLoaded.current = true;
-          }
-        } catch (err) {
-          console.error("Failed to load Pyodide:", err);
-        } finally {
-          setIsPyodideLoading(false);
-        }
-      };
-      initPyodide();
-    }
-  }, [language, pyodide]);
-
   const handleLanguageChange = (lang) => {
     setLanguage(lang);
     setCode(LANGUAGES[lang].code);
@@ -64,45 +44,7 @@ const CompilerPage = () => {
     setIsError(false);
     setOutput("Executing Code...\n");
 
-    // Local Python Execution
-    if (language === "python") {
-      if (!pyodide) {
-        setOutput("Error: Python engine (Pyodide) is still loading or failed to load. Please wait or refresh.");
-        setIsError(true);
-        setIsRunning(false);
-        return;
-      }
-      
-      try {
-        // Redirect stdout to our terminal
-        pyodide.runPython(`
-          import sys
-          import io
-          sys.stdout = io.StringIO()
-          sys.stderr = io.StringIO()
-        `);
-        
-        await pyodide.runPythonAsync(code);
-        
-        const stdout = pyodide.runPython("sys.stdout.getvalue()");
-        const stderr = pyodide.runPython("sys.stderr.getvalue()");
-        
-        if (stderr) {
-          setIsError(true);
-          setOutput(stderr + "\n" + (stdout || ""));
-        } else {
-          setOutput(stdout || "Program exited with code 0 (no output).");
-        }
-      } catch (err) {
-        setIsError(true);
-        setOutput(err.toString());
-      } finally {
-        setIsRunning(false);
-      }
-      return;
-    }
-
-    // Cloud/Backend Execution (JavaScript and others)
+    // Cloud/Backend Execution 
     try {
       const data = await executeCompilerCode({
         language: language,
@@ -148,31 +90,16 @@ const CompilerPage = () => {
               </select>
               
               <div className="flex items-center gap-1.5 px-3 py-1 bg-base-200 rounded-lg border border-base-content/5 text-[10px] font-bold uppercase tracking-wider text-base-content/60">
-                {LANGUAGES[language].local ? (
-                  <>
-                    <CheckCircle2 className="size-3 text-green-500" />
-                    <span>Local Run</span>
-                  </>
-                ) : (
-                  <>
-                    <Info className="size-3 text-blue-500" />
-                    <span>Cloud Run</span>
-                  </>
-                )}
+                <CheckCircle2 className="size-3 text-green-500" />
+                <span>Cloud Run Enabled</span>
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            {isPyodideLoading && (
-                <div className="flex items-center gap-2 text-xs font-semibold text-primary animate-pulse">
-                    <span className="loading loading-spinner loading-xs"></span>
-                    Initializing Python...
-                </div>
-            )}
             <button
                 onClick={runCode}
-                disabled={isRunning || (language === "python" && !pyodide)}
+                disabled={isRunning}
                 className="btn btn-primary btn-sm w-32 shadow-md"
             >
                 {isRunning ? <span className="loading loading-spinner loading-xs"></span> : <Play className="size-4" />}
