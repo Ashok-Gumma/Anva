@@ -19,10 +19,10 @@ const PORT = process.env.PORT || 5001;
 const __dirname = path.resolve();
 
 const allowedOrigins = [
-  process.env.FRONTEND_URL || "http://localhost:5173",
+  process.env.FRONTEND_URL,        // set this in Render → your Vercel URL
   "http://localhost:5173",
   "http://localhost:3000",
-];
+].filter(Boolean);
 
 app.use(
   cors({
