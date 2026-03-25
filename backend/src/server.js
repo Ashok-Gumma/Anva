@@ -61,9 +61,8 @@ app.use("/api/compiler", compilerRoutes);
 
 // ✅ Serve frontend in production
 if (process.env.NODE_ENV === "production") {
-  // 🔥 IMPORTANT: adjust path based on your structure
-  // backend/src → go up twice → frontend/dist
-  const distPath = path.join(__dirname, "../../frontend/dist");
+  // backend/src/ → ../dist = backend/dist/ (committed to git, always exists on Render)
+  const distPath = path.join(__dirname, "../dist");
 
   console.log("📁 Serving frontend from:", distPath);
 
