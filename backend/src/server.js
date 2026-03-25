@@ -14,8 +14,13 @@ import clerkWebhookRoutes from "./routes/clerk.route.js";
 
 import { connectDB } from "./lib/db.js";
 
+import { globalLimiter, authLimiter } from "./middleware/rateLimiter.js";
+
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+// ✅ Proxy support (if behind Render, Heroku, etc.)
+app.set("trust proxy", 1);
 
 // ✅ Fix __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -51,6 +56,10 @@ app.use(
 // ✅ Middlewares
 app.use(express.json({ limit: "5mb" }));
 app.use(cookieParser());
+
+// 🔥 Rate Limiting
+app.use("/api/", globalLimiter);
+app.use("/api/auth", authLimiter);
 
 // ✅ API Routes
 app.use("/api/auth", authRoutes);

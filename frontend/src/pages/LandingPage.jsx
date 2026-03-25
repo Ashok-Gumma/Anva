@@ -9,8 +9,8 @@ import {
 
 /* ─── Data ──────────────────────────────────────────────────────── */
 const stats = [
-  { value: "12K+", label: "Learners" },
-  { value: "50+",  label: "Languages" },
+  { value: "1k+", label: "Learners" },
+  { value: "20+",  label: "Languages" },
   { value: "98%",  label: "Satisfaction" },
   { value: "24/7", label: "AI Support" },
 ];
@@ -88,126 +88,141 @@ const steps = [
 ];
 
 /* ─── Animation helpers ──────────────────────────────────────────── */
-const fade = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } };
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
+const fadeUp = {
+  hidden: { opacity: 0, y: 40, scale: 0.95 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { type: "spring", stiffness: 100, damping: 20 }
+  }
+};
+
+const stagger = { 
+  hidden: {}, 
+  show: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } } 
+};
 
 /* ─── Component ─────────────────────────────────────────────────── */
 const LandingPage = () => (
-  <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden font-sans" data-theme="light">
+  <div className="min-h-screen bg-white text-black overflow-x-hidden font-sans selection:bg-blue-100 selection:text-blue-900" data-theme="light">
     <ParticleBackground />
 
     {/* ── Navbar ── */}
-    <nav className="relative z-20 w-full px-6 py-4 flex items-center justify-between">
-      <Link to="/" className="flex items-center gap-2 group shrink-0">
-        <AnvaLogo className="h-9 w-9 rounded-lg drop-shadow-sm group-hover:scale-105 transition-transform text-primary" />
-        <span className="font-bold text-xl tracking-tight">Anva</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between glass-panel mx-4 my-4 rounded-3xl transition-all duration-300">
+      <Link to="/" className="flex items-center gap-3 group shrink-0">
+        <div className="bg-black p-1.5 rounded-xl group-hover:rotate-6 transition-transform">
+          <AnvaLogo className="h-7 w-7 text-white" />
+        </div>
+        <span className="font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-black to-slate-600">Anva</span>
       </Link>
 
-      <div className="hidden sm:flex items-center gap-6">
-        <a href="#features" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">Features</a>
-        <a href="#how"      className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">How it works</a>
-        <Link to="/login"   className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors">Log in</Link>
+      <div className="hidden sm:flex items-center gap-8">
+        <a href="#features" className="text-sm font-semibold text-slate-500 hover:text-black transition-colors">Features</a>
+        <a href="#how"      className="text-sm font-semibold text-slate-500 hover:text-black transition-colors">How it works</a>
+        <Link to="/login"   className="text-sm font-semibold text-slate-500 hover:text-black transition-colors border-l border-slate-200 pl-8">Log in</Link>
       </div>
 
       <Link
         to="/sign-up"
-        className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-700 transition-colors px-5 py-2 rounded-full text-sm font-semibold shadow-sm hover:scale-[1.03] active:scale-[0.97]"
+        className="flex items-center gap-2 bg-black text-white hover:bg-blue-600 transition-all px-6 py-2.5 rounded-2xl text-sm font-bold shadow-[0_4px_14px_0_rgba(0,0,0,0.1)] hover:scale-[1.03] active:scale-[0.97]"
       >
-        Get Started Free <ArrowRight className="w-4 h-4" />
+        Get Started <ArrowRight className="w-4 h-4" />
       </Link>
     </nav>
 
     {/* ── Hero ── */}
-    <section className="relative z-10 text-center px-4 max-w-5xl mx-auto pt-16 sm:pt-24 pb-20">
+    <section className="relative z-10 text-center px-4 max-w-6xl mx-auto pt-32 sm:pt-48 pb-32">
       <motion.div
-        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-        className="mb-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 backdrop-blur border border-slate-200 text-slate-600 text-sm shadow-sm font-medium"
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: "easeOut" }}
+        className="mb-8 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-blue-50/50 border border-blue-100 text-blue-600 text-sm shadow-sm font-bold animate-float"
       >
-        <Sparkles className="w-4 h-4 text-blue-500" />
+        <Sparkles className="w-4 h-4" />
         The modern language exchange platform
       </motion.div>
 
       <motion.h1
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
-        className="text-4xl sm:text-7xl md:text-[5.5rem] font-semibold tracking-tight text-slate-900 mb-6 leading-[1.1] sm:leading-[1.05] max-w-[60rem] mx-auto"
+        initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }}
+        className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-black mb-6 leading-tight max-w-[50rem] mx-auto italic"
       >
-        Learn Languages with{" "}
-        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
-          Real People
+        Master Languages with{" "}
+        <span className="relative inline-block not-italic">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600">
+            Real People
+          </span>
+          <div className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-violet-600 rounded-full opacity-20 blur-sm" />
         </span>
-        , Powered by AI
       </motion.h1>
 
       <motion.p
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
-        className="text-lg sm:text-xl text-slate-500 max-w-2xl mx-auto mb-10 font-medium leading-relaxed"
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
+        className="text-base sm:text-lg text-slate-400 max-w-xl mx-auto mb-10 font-bold uppercase tracking-wide leading-relaxed"
       >
-        Chat, video call, and practice with native speakers. AI flashcards, grammar correction, and more — all in one place. Free forever.
+        Connect with native speakers worldwide. AI-powered tools, real-time feedback, and immersive conversations.
       </motion.p>
 
       <motion.div
-        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
+        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.35 }}
         className="flex flex-col sm:flex-row items-center justify-center gap-4"
       >
-        <Link to="/sign-up" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-700 hover:scale-[1.02] active:scale-[0.98] transition-all px-8 py-3.5 rounded-full font-semibold shadow-lg text-base">
-          Start for Free <ArrowRight className="w-4 h-4" />
+        <Link to="/sign-up" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black text-white hover:bg-blue-600 hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:scale-[1.05] active:scale-[0.98] transition-all px-8 py-4 rounded-2xl font-black shadow-2xl text-base group uppercase tracking-widest">
+          Join Anva <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </Link>
-        <a href="#features" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98] transition-all px-8 py-3.5 rounded-full font-semibold shadow-sm text-base">
-          See all features
+        <a href="#features" className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-black border border-slate-100 hover:border-slate-200 hover:scale-[1.03] active:scale-[0.98] transition-all px-8 py-4 rounded-2xl font-black shadow-xl text-base backdrop-blur-sm uppercase tracking-widest">
+          Explore
         </a>
       </motion.div>
 
       {/* Stats */}
       <motion.div
         variants={stagger} initial="hidden" animate="show"
-        className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl mx-auto"
+        className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto"
       >
         {stats.map((s) => (
-          <motion.div key={s.label} variants={fade}
-            className="flex flex-col items-center p-5 rounded-2xl bg-white/80 backdrop-blur border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+          <motion.div key={s.label} variants={fadeUp}
+            className="flex flex-col items-center p-5 rounded-3xl bg-white border border-slate-50 shadow-sm hover:shadow-xl transition-all duration-500 group"
           >
-            <span className="text-3xl font-bold text-slate-900">{s.value}</span>
-            <span className="text-sm text-slate-500 font-medium mt-0.5">{s.label}</span>
+            <span className="text-2xl font-black text-black group-hover:scale-110 transition-transform">{s.value}</span>
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">{s.label}</span>
           </motion.div>
         ))}
       </motion.div>
     </section>
 
     {/* ── Features Grid ── */}
-    <section id="features" className="relative z-10 bg-slate-50 py-24 px-4">
-      <div className="max-w-6xl mx-auto">
+    <section id="features" className="relative z-10 bg-slate-50/30 py-20 px-4">
+      <div className="max-w-7xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-          className="text-center mb-14"
+          initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.8 }}
+          className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-sm font-medium shadow-sm mb-4">
-            <Zap className="w-4 h-4 text-yellow-500" /> Everything you need in one place
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-slate-100 text-black text-[10px] font-black shadow-sm mb-4 uppercase tracking-[0.2em]">
+            <Zap className="w-3 h-3 text-yellow-500 fill-yellow-500" /> Toolkit
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight mb-4">
-            Everything you need for{" "}
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 italic">liftoff</span>
+          <h2 className="text-2xl sm:text-4xl font-black text-black tracking-tighter mb-4 uppercase italic">
+            Fluency is here.
           </h2>
-          <p className="text-slate-500 font-medium max-w-xl mx-auto text-lg">
-            Anva combines community, AI, and specialized tools to create the most effective language learning experience.
+          <p className="text-slate-400 font-bold max-w-lg mx-auto text-sm leading-relaxed uppercase tracking-wide">
+            We've combined global community with cutting-edge AI for a natural balance.
           </p>
         </motion.div>
 
         <motion.div
-          variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
+          variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-50px" }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
         >
           {features.map((f) => (
-            <motion.div key={f.title} variants={fade}
-              whileHover={{ y: -6, transition: { duration: 0.2 } }}
-              className="group bg-white border border-slate-100 rounded-[2rem] p-7 shadow-sm hover:shadow-xl transition-all cursor-default"
+            <motion.div key={f.title} variants={fadeUp}
+              whileHover={{ y: -6, scale: 1.01 }}
+              className="card-premium p-6 group cursor-default bg-white flex flex-col items-center text-center"
             >
-              <div className={`w-12 h-12 rounded-2xl ${f.bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
+              <div className={`w-12 h-12 rounded-2xl ${f.bg} flex items-center justify-center mb-5 group-hover:rotate-[10deg] transition-all duration-500 shadow-sm`}>
                 <span className={`bg-clip-text text-transparent bg-gradient-to-br ${f.gradient}`}>
                   {f.icon}
                 </span>
               </div>
-              <h3 className="font-bold text-slate-900 text-lg mb-2 tracking-tight">{f.title}</h3>
-              <p className="text-slate-500 text-sm font-medium leading-relaxed">{f.desc}</p>
+              <h3 className="font-black text-black text-sm mb-2 tracking-widest uppercase">{f.title}</h3>
+              <p className="text-slate-400 text-[11px] font-bold uppercase tracking-tight leading-relaxed max-w-[200px]">{f.desc}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -215,33 +230,33 @@ const LandingPage = () => (
     </section>
 
     {/* ── How it works ── */}
-    <section id="how" className="relative z-10 bg-white py-24 px-4">
-      <div className="max-w-4xl mx-auto">
+    <section id="how" className="relative z-10 bg-white py-20 px-4 overflow-hidden">
+      <div className="max-w-5xl mx-auto relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-          className="text-center mb-14"
+          initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }}
+          className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 text-sm font-medium shadow-sm mb-4">
-            <Clock className="w-4 h-4 text-blue-500" /> Up and running in minutes
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border border-slate-100 text-black text-[10px] font-black shadow-sm mb-4 uppercase tracking-[0.2em]">
+            <Clock className="w-3 h-3 text-blue-500" /> Steps
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight mb-4">Simple. Fast. Effective.</h2>
-          <p className="text-slate-500 font-medium max-w-xl mx-auto">Three steps to start speaking fluently with real native speakers.</p>
+          <h2 className="text-2xl sm:text-4xl font-black text-black tracking-tighter mb-4 uppercase italic">Simple. Fast.</h2>
+          <p className="text-slate-400 font-bold max-w-xl mx-auto text-sm uppercase tracking-wide">Start your global journey in minutes.</p>
         </motion.div>
 
         <motion.div
           variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          className="grid grid-cols-1 md:grid-cols-3 gap-5"
         >
           {steps.map((step, i) => (
-            <motion.div key={step.num} variants={fade}
-              className="relative bg-slate-50 border border-slate-100 rounded-[2rem] p-8 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all"
+            <motion.div key={step.num} variants={fadeUp}
+              className="relative bg-slate-50 group border border-slate-50 rounded-3xl p-6 shadow-sm hover:shadow-xl hover:bg-white hover:-translate-y-1 transition-all duration-500 overflow-hidden flex flex-col items-center text-center"
             >
-              {i < steps.length - 1 && (
-                <ArrowRight className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300 z-10" />
-              )}
-              <span className="text-5xl font-black text-slate-100 select-none leading-none block mb-4">{step.num}</span>
-              <h3 className="font-bold text-slate-900 text-lg mb-2">{step.title}</h3>
-              <p className="text-slate-500 text-sm font-medium leading-relaxed">{step.desc}</p>
+              <div className="absolute -right-1 -top-1 text-5xl font-black text-slate-200/20 select-none group-hover:text-blue-500/5 transition-colors">
+                {step.num}
+              </div>
+              <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.3em] block mb-4">{step.num}</span>
+              <h3 className="font-black text-black text-base mb-2 group-hover:text-blue-600 transition-colors uppercase tracking-widest">{step.title}</h3>
+              <p className="text-slate-400 text-[11px] font-bold uppercase tracking-tight leading-relaxed">{step.desc}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -249,26 +264,25 @@ const LandingPage = () => (
     </section>
 
     {/* ── Final CTA ── */}
-    <section className="relative z-10 bg-slate-900 text-white py-24 px-4 overflow-hidden">
-      <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none" />
-
+    <section className="relative z-10 bg-slate-950 text-white py-32 px-4 overflow-hidden">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15)_0%,transparent_70%)] pointer-events-none" />
+      
       <motion.div
-        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}
-        className="relative z-10 max-w-2xl mx-auto text-center"
+        initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.8 }}
+        className="relative z-10 max-w-4xl mx-auto text-center"
       >
-        <h2 className="text-4xl sm:text-5xl font-bold mb-5 tracking-tight">Ready to reach new heights?</h2>
-        <p className="text-slate-400 font-medium mb-10 text-lg max-w-lg mx-auto">
-          Join 12,000+ learners already using Anva to connect, practice, and grow — all for free.
+        <h2 className="text-4xl sm:text-7xl font-black mb-8 tracking-tighter leading-none">Ready to soar?</h2>
+        <p className="text-slate-400 font-bold mb-12 text-lg max-w-xl mx-auto leading-relaxed uppercase tracking-wide">
+          Join 12,000+ learners already using Anva to build bridges, not just learn words.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
           <Link to="/sign-up"
-            className="flex items-center gap-2 bg-white text-slate-900 hover:bg-slate-100 transition-all px-8 py-3.5 rounded-full font-bold shadow-lg hover:scale-[1.03] active:scale-[0.97] text-base"
+            className="group flex items-center gap-2.5 bg-white text-slate-900 hover:bg-blue-50 transition-all px-10 py-5 rounded-2xl font-black shadow-2xl hover:scale-[1.05] active:scale-[0.97] text-lg"
           >
-            Create Free Account <ArrowRight className="w-4 h-4" />
+            Get Started Now <ArrowRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
           <Link to="/login"
-            className="flex items-center gap-2 border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition-all px-8 py-3.5 rounded-full font-semibold text-base"
+            className="flex items-center gap-2.5 border-2 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white transition-all px-10 py-5 rounded-2xl font-bold text-lg"
           >
             Sign In
           </Link>
@@ -277,13 +291,21 @@ const LandingPage = () => (
     </section>
 
     {/* ── Footer ── */}
-    <footer className="relative z-10 bg-slate-950 py-10 px-4 text-center border-t border-slate-800">
-      <div className="flex items-center justify-center gap-2 mb-3">
-        <AnvaLogo className="h-7 w-7 rounded-lg text-primary opacity-80" />
-        <span className="text-slate-400 font-bold text-base">Anva</span>
+    <footer className="relative z-10 bg-slate-950 py-20 px-4 text-center border-t border-slate-900">
+      <div className="flex items-center justify-center gap-3 mb-6 group cursor-pointer">
+        <div className="bg-slate-900 p-1.5 rounded-lg group-hover:rotate-12 transition-transform">
+          <AnvaLogo className="h-6 w-6 text-slate-400" />
+        </div>
+        <span className="text-white font-black text-xl tracking-tighter">Anva</span>
       </div>
-      <p className="text-slate-600 text-sm font-medium">
-        © {new Date().getFullYear()} Anva. Fly high with every word.
+      <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-8 text-slate-500 font-bold uppercase text-xs tracking-widest">
+        <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+        <Link to="/terms"   className="hover:text-white transition-colors">Terms</Link>
+        <a href="mailto:ashokgumma20@gmail.com" className="hover:text-white transition-colors">Contact</a>
+        <a href="https://github.com/Ashok-Gumma" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
+      </div>
+      <p className="text-slate-700 text-xs font-black uppercase tracking-[0.2em]">
+        © {new Date().getFullYear()} Anva. Reach for the skies.
       </p>
     </footer>
   </div>

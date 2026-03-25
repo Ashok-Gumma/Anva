@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { useAuth } from "@clerk/clerk-react";
 import { SignIn, SignUp } from "@clerk/clerk-react";
@@ -24,6 +24,8 @@ import AssistantPage from "./pages/AssistantPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import CompilerPage from "./pages/CompilerPage.jsx";
 import FriendProfilePage from "./pages/FriendProfilePage.jsx";
+import PrivacyPage from "./pages/PrivacyPage.jsx";
+import TermsPage from "./pages/TermsPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
@@ -34,8 +36,17 @@ const App = () => {
   const queryClient = useQueryClient();
   const { isLoading, authUser } = useAuthUser();
   const { theme } = useThemeStore();
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
 
   const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
+
+  // Minimum loading timer (1.5s)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Invalidate authUser whenever Clerk's sign-in state changes
   useEffect(() => {
@@ -54,8 +65,8 @@ const App = () => {
   }, [isAuthenticated]);
 
   // AxiosClerkInterceptor always renders so it's ready before the first fetch.
-  // PageLoader is shown as a sibling until auth resolves.
-  const isAuthResolving = !isClerkLoaded || isLoading;
+  // PageLoader is shown as a sibling until auth resolves AND timer finish.
+  const isAuthResolving = !isClerkLoaded || isLoading || !minLoadingComplete;
 
   return (
     <>
@@ -136,6 +147,10 @@ const App = () => {
             <Route path="/user/:id"      element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />
             <Route path="/chat/:id"      element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
             <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
+            
+            {/* ── Legal ── */}
+            <Route path="/privacy"       element={<PrivacyPage />} />
+            <Route path="/terms"         element={<TermsPage />} />
           </Routes>
 
           <Toaster />

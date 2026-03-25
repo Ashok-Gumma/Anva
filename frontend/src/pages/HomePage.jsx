@@ -183,7 +183,7 @@ const HomePage = () => {
 
         {/* ── Friends Header ── */}
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-base-content">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-base-content uppercase tracking-widest">
             Your Friends
           </h2>
 
@@ -227,10 +227,10 @@ const HomePage = () => {
         <motion.section variants={itemVariants}>
           <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-base-content">
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-base-content uppercase tracking-widest">
                 Meet New Learners
               </h2>
-              <p className="text-base-content/70 font-medium mt-0.5">
+              <p className="text-base-content/60 text-xs font-bold uppercase tracking-wide mt-1">
                 Discover perfect language exchange partners
               </p>
             </div>
@@ -290,12 +290,12 @@ const HomePage = () => {
                         </div>
 
                         <div>
-                          <h3 className="font-bold text-lg text-base-content tracking-tight">
+                          <h3 className="font-bold text-base text-base-content tracking-tight">
                             {user.fullName}
                           </h3>
                           {user.location && (
-                            <div className="flex items-center text-xs font-medium text-base-content/60 mt-0.5">
-                              <MapPinIcon className="size-3.5 mr-1" />
+                            <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-base-content/50 mt-0.5">
+                              <MapPinIcon className="size-3 mr-1" />
                               {user.location}
                             </div>
                           )}

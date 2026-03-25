@@ -9,12 +9,23 @@ body {
 
 /* ─── Glassmorphism ─────────────────────────────────────────── */
 .glass-panel {
-  @apply bg-base-100/70 backdrop-blur-xl border border-base-content/10 shadow-xl;
+  @apply bg-white/40 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
 }
 
 /* ─── Card micro-animations ─────────────────────────────────── */
-.card {
-  @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border border-base-content/5;
+.card-premium {
+  @apply transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl border border-slate-100 bg-white rounded-[2rem];
+}
+
+/* ─── Floating Animation ───────────────────────────────────── */
+@keyframes float {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }
 
 /* ─── Button tap effect ─────────────────────────────────────── */
