@@ -1,11 +1,18 @@
 import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
+import { useAuth } from "@clerk/clerk-react";
+import { SignIn, SignUp } from "@clerk/clerk-react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import AxiosClerkInterceptor from "./components/AxiosClerkInterceptor.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Layout from "./components/Layout.jsx";
+import PageLoader from "./components/PageLoader.jsx";
 
 import HomePage from "./pages/HomePage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
 import FriendsPage from "./pages/Friends.jsx";
 import FlashcardsPage from "./pages/FlashcardsPage.jsx";
-import SignUpPage from "./pages/SignUpPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
@@ -17,22 +24,27 @@ import AssistantPage from "./pages/AssistantPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import CompilerPage from "./pages/CompilerPage.jsx";
 import FriendProfilePage from "./pages/FriendProfilePage.jsx";
-import FeaturesPage from "./pages/FeaturesPage.jsx";
 
 import { Toaster } from "react-hot-toast";
-
-import PageLoader from "./components/PageLoader.jsx";
 import useAuthUser from "./hooks/useAuthUser.js";
-import Layout from "./components/Layout.jsx";
 import { useThemeStore } from "./store/useThemeStore.js";
 
 const App = () => {
+  const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
+  const queryClient = useQueryClient();
   const { isLoading, authUser } = useAuthUser();
   const { theme } = useThemeStore();
 
-  const isAuthenticated = Boolean(authUser);
-  const isOnboarded = authUser?.isOnboarded;
+  const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
 
+  // Invalidate authUser whenever Clerk's sign-in state changes
+  useEffect(() => {
+    if (isClerkLoaded) {
+      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+    }
+  }, [isClerkSignedIn, isClerkLoaded, queryClient]);
+
+  // Keep-alive ping every 2 minutes
   useEffect(() => {
     if (!isAuthenticated) return;
     const interval = setInterval(() => {
@@ -41,211 +53,95 @@ const App = () => {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
-  if (isLoading) return <PageLoader />;
+  // AxiosClerkInterceptor always renders so it's ready before the first fetch.
+  // PageLoader is shown as a sibling until auth resolves.
+  const isAuthResolving = !isClerkLoaded || isLoading;
 
   return (
-    <div className="min-h-screen bg-base-200 text-base-content font-sans tracking-tight" data-theme={theme}>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <HomePage />
-              </Layout>
-            ) : (
-                <LandingPage />
-            )
-          }
-        />
+    <>
+      {/* 
+        Always rendered — registers Clerk's getToken into the axios interceptor
+        the moment Clerk initializes, BEFORE the first authUser query fires.
+      */}
+      <AxiosClerkInterceptor />
 
-        <Route
-          path="/features"
-          element={
-            <FeaturesPage />
-          }
-        />
+      {isAuthResolving ? (
+        <PageLoader />
+      ) : (
+        <div className="min-h-screen bg-base-200 text-base-content font-sans tracking-tight" data-theme={theme}>
+          <Routes>
+            {/* ── Public ── */}
+            <Route
+              path="/"
+              element={
+                isAuthenticated && authUser?.isOnboarded ? (
+                  <Layout showSidebar><HomePage /></Layout>
+                ) : (
+                  <LandingPage />
+                )
+              }
+            />
 
-        <Route
-          path="/friends"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <FriendsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
+            {/* ── Clerk Auth pages ── */}
+            <Route
+              path="/sign-in/*"
+              element={
+                !isAuthenticated ? (
+                  <div className="min-h-screen flex items-center justify-center bg-base-200">
+                    <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" afterSignInUrl="/" />
+                  </div>
+                ) : (
+                  <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
+                )
+              }
+            />
+            <Route
+              path="/sign-up/*"
+              element={
+                !isAuthenticated ? (
+                  <div className="min-h-screen flex items-center justify-center bg-base-200">
+                    <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" afterSignUpUrl="/onboarding" />
+                  </div>
+                ) : (
+                  <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
+                )
+              }
+            />
 
-        <Route
-          path="/flashcards"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <FlashcardsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
+            {/* ── Legacy login pages ── */}
+            <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
+            <Route path="/signup" element={!isAuthenticated ? <Navigate to="/sign-up" replace /> : <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
+            <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
+            <Route path="/reset-password/:token" element={!isAuthenticated ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
 
-        {/* ✅ ASSISTANT ROUTE */}
-        <Route
-          path="/assistant"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <AssistantPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
+            {/* ── Onboarding ── */}
+            <Route
+              path="/onboarding"
+              element={
+                !isAuthenticated
+                  ? <Navigate to="/sign-in" replace />
+                  : authUser?.isOnboarded
+                    ? <Navigate to="/" replace />
+                    : <OnboardingPage />
+              }
+            />
 
-        <Route
-          path="/signup"
-          element={
-            !isAuthenticated ? (
-              <SignUpPage />
-            ) : (
-              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
-            )
-          }
-        />
+            {/* ── Protected routes ── */}
+            <Route path="/friends"       element={<ProtectedRoute element={<Layout showSidebar><FriendsPage /></Layout>} />} />
+            <Route path="/flashcards"    element={<ProtectedRoute element={<Layout showSidebar><FlashcardsPage /></Layout>} />} />
+            <Route path="/assistant"     element={<ProtectedRoute element={<Layout showSidebar><AssistantPage /></Layout>} />} />
+            <Route path="/notifications" element={<ProtectedRoute element={<Layout showSidebar><NotificationsPage /></Layout>} />} />
+            <Route path="/profile"       element={<ProtectedRoute element={<Layout showSidebar><ProfilePage /></Layout>} />} />
+            <Route path="/compiler"      element={<ProtectedRoute element={<Layout showSidebar><CompilerPage /></Layout>} />} />
+            <Route path="/user/:id"      element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />
+            <Route path="/chat/:id"      element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
+            <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
+          </Routes>
 
-        <Route
-          path="/login"
-          element={
-            !isAuthenticated ? (
-              <LoginPage />
-            ) : (
-              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
-            )
-          }
-        />
-
-        <Route
-          path="/forgot-password"
-          element={
-            !isAuthenticated ? (
-              <ForgotPasswordPage />
-            ) : (
-              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
-            )
-          }
-        />
-
-        <Route
-          path="/reset-password/:token"
-          element={
-            !isAuthenticated ? (
-              <ResetPasswordPage />
-            ) : (
-              <Navigate to={isOnboarded ? "/" : "/onboarding"} />
-            )
-          }
-        />
-
-        <Route
-          path="/notifications"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <NotificationsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        <Route
-          path="/call/:id"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <CallPage />
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        <Route
-          path="/chat/:id"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar={false}>
-                <ChatPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        <Route
-          path="/onboarding"
-          element={
-            isAuthenticated ? (
-              !isOnboarded ? (
-                <OnboardingPage />
-              ) : (
-                <Navigate to="/" />
-              )
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <ProfilePage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        {/* COMPILER ROUTE */}
-        <Route
-          path="/compiler"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <CompilerPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-
-        {/* FRIEND PROFILE ROUTE */}
-        <Route
-          path="/user/:id"
-          element={
-            isAuthenticated && isOnboarded ? (
-              <Layout showSidebar>
-                <FriendProfilePage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAuthenticated ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-      </Routes>
-
-      <Toaster />
-    </div>
+          <Toaster />
+        </div>
+      )}
+    </>
   );
 };
 

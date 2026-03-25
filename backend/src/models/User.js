@@ -12,10 +12,21 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    clerkId: {
+      type: String,
+      default: "",
+      index: true,
+    },
     password: {
       type: String,
-      required: true,
-      minlength: 6,
+      default: "",
+      validate: {
+        validator: function (v) {
+          // Only enforce length when a password is actually provided (not for Clerk users)
+          return v === "" || v.length >= 6;
+        },
+        message: "Password must be at least 6 characters",
+      },
     },
     bio: {
       type: String,
@@ -66,7 +77,8 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+  // Only hash if password was modified AND is not empty (Clerk users may have no password)
+  if (!this.isModified("password") || !this.password) return next();
 
   try {
     const salt = await bcrypt.genSalt(10);

@@ -65,6 +65,17 @@ export const checkGrammar = async (req, res) => {
     res.status(200).json({ reply });
   } catch (error) {
     console.error("Assistant grammar error:", error);
-    res.status(500).json({ reply: "Cannot check grammar right now.", isFallback: true });
+
+    if (error?.status === 429 || error?.code === "insufficient_quota") {
+      return res.status(200).json({
+        reply: "⚠️ Grammar check is temporarily unavailable — the AI quota has been exceeded. Please add credits to your OpenAI account at platform.openai.com/settings/billing, or try again later.",
+        isFallback: true,
+      });
+    }
+
+    return res.status(200).json({
+      reply: "❌ Grammar check failed. Please try again in a moment.",
+      isFallback: true,
+    });
   }
 };

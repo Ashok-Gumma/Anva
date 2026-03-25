@@ -30,10 +30,14 @@ export const getAuthUser = async () => {
     const res = await axiosInstance.get("/auth/me");
     return res.data;
   } catch (error) {
-    console.log("Error in getAuthUser:", error);
+    // 401 is expected when the user is not logged in — don't pollute the console
+    if (error?.response?.status !== 401) {
+      console.error("Error in getAuthUser:", error);
+    }
     return null;
   }
 };
+
 
 export const updateProfile = async (data) => {
   const response = await axiosInstance.put("/users/profile", data);
@@ -49,10 +53,7 @@ export const checkGrammar = async (text) => {
   return response.data;
 };
 
-export const googleLogin = async (token) => {
-  const response = await axiosInstance.post("/auth/google", { token });
-  return response.data;
-};
+
 
 export const completeOnboarding = async (userData) => {
   const response = await axiosInstance.post("/auth/onboarding", userData);

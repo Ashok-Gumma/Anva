@@ -4,24 +4,25 @@
 
 body {
   @apply antialiased selection:bg-primary selection:text-primary-content;
+  scroll-behavior: smooth;
 }
 
-/* Glassmorphism panel for aesthetic depth */
+/* ─── Glassmorphism ─────────────────────────────────────────── */
 .glass-panel {
   @apply bg-base-100/70 backdrop-blur-xl border border-base-content/10 shadow-xl;
 }
 
-/* Subtle micro-animations for standard cards */
+/* ─── Card micro-animations ─────────────────────────────────── */
 .card {
   @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border border-base-content/5;
 }
 
-/* Smooth active bounds */
+/* ─── Button tap effect ─────────────────────────────────────── */
 .btn {
   @apply transition-transform active:scale-[0.98];
 }
 
-/* Gradient background animation */
+/* ─── Gradient background ───────────────────────────────────── */
 .gradient-bg {
   background: linear-gradient(-45deg, var(--fallback-p,oklch(var(--p)/1)), var(--fallback-s,oklch(var(--s)/1)), var(--fallback-a,oklch(var(--a)/1)));
   background-size: 400% 400%;
@@ -29,10 +30,51 @@ body {
 }
 
 @keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0%   { background-position: 0%   50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
 }
+
+/* ─── Shimmer skeleton loader ───────────────────────────────── */
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Slide-in-up utility ───────────────────────────────────── */
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in-up {
+  animation: slideInUp 0.4s ease both;
+}
+
+/* ─── Fade-in utility ───────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease both;
+}
+
+/* ─── Glow pulse ────────────────────────────────────────────── */
+.glow-ring {
+  box-shadow: 0 0 0 3px oklch(var(--p) / 0.25);
+}
+
+/* ─── Custom scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-base-content/20 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-base-content/40; }
+
+
 
 .str-chat__channel {
   display: flex;
