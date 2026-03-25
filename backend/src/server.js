@@ -21,11 +21,11 @@ const PORT = process.env.PORT || 5001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Allowed origins (add your deployed frontend URL)
+// ✅ Allowed origins
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "https://your-vercel-app.vercel.app", // 🔥 replace this
+  "https://anva-akzm.onrender.com", // production Render URL
 ].filter(Boolean);
 
 // ✅ CORS config
