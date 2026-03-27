@@ -59,7 +59,8 @@ app.use(cookieParser());
 
 // 🔥 Rate Limiting
 app.use("/api/", globalLimiter);
-app.use("/api/auth", authLimiter);
+app.use("/api/auth/signup", authLimiter);
+app.use("/api/auth/login", authLimiter);
 
 // ✅ API Routes
 app.use("/api/auth", authRoutes);

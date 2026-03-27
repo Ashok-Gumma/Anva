@@ -1,15 +1,71 @@
-import { useParams, Link } from "react-router";
-import { useQuery } from "@tanstack/react-query";
-import { getUserProfile } from "../lib/api";
-import { MapPinIcon, Github, Linkedin, ArrowLeftIcon, MessageCircleIcon } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getUserProfile, unfriend, blockUser, unblockUser, sendFriendRequest } from "../lib/api";
+import { MapPinIcon, Github, Linkedin, ArrowLeftIcon, MessageCircleIcon, UserMinusIcon, SlashIcon, UserPlusIcon, CheckCircleIcon } from "lucide-react";
 import PageLoader from "../components/PageLoader";
+import toast from "react-hot-toast";
+import useAuthUser from "../hooks/useAuthUser";
 
 const FriendProfilePage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { authUser } = useAuthUser();
 
   const { data: user, isLoading, isError } = useQuery({
     queryKey: ["userProfile", id],
     queryFn: () => getUserProfile(id),
+  });
+
+  const unfriendMutation = useMutation({
+    mutationFn: () => unfriend(id),
+    onSuccess: () => {
+      toast.success("Unfriended successfully");
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile", id] });
+      navigate("/friends");
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to unfriend");
+    },
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: () => blockUser(id),
+    onSuccess: () => {
+      toast.success("User blocked successfully");
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile", id] });
+      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to block user");
+    },
+  });
+
+  const unblockMutation = useMutation({
+    mutationFn: () => unblockUser(id),
+    onSuccess: () => {
+      toast.success("User unblocked successfully");
+      queryClient.invalidateQueries({ queryKey: ["userProfile", id] });
+      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to unblock user");
+    },
+  });
+
+  const addFriendMutation = useMutation({
+    mutationFn: () => sendFriendRequest(id),
+    onSuccess: () => {
+      toast.success("Friend request sent!");
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendRequests"] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to send request");
+    },
   });
 
   if (isLoading) return <PageLoader />;
@@ -50,11 +106,64 @@ const FriendProfilePage = () => {
             </div>
           )}
 
-          <div className="flex gap-4 mt-6 w-full justify-center">
-            <Link to={`/chat/${user._id}`} className="btn btn-primary w-40 shadow-sm rounded-full">
-              <MessageCircleIcon className="size-5 mr-2" />
-              Message
-            </Link>
+          <div className="flex flex-wrap gap-3 mt-6 w-full justify-center">
+            {/* Show different buttons based on relationship status */}
+            {/* Only show friendship actions if they are friends AND not blocked */}
+            {authUser?.friends?.some(fId => fId.toString() === id) && !authUser?.blockedUsers?.some(bId => bId.toString() === id) ? (
+              <>
+                <Link to={`/chat/${user._id}`} className="btn btn-primary px-8 shadow-sm rounded-full">
+                  <MessageCircleIcon className="size-5 mr-2" />
+                  Message
+                </Link>
+                
+                <button 
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to unfriend this user?")) {
+                      unfriendMutation.mutate();
+                    }
+                  }}
+                  disabled={unfriendMutation.isPending}
+                  className="btn btn-outline btn-error px-8 rounded-full"
+                >
+                  <UserMinusIcon className="size-5 mr-2" />
+                  {unfriendMutation.isPending ? "Unfriending..." : "Unfriend"}
+                </button>
+              </>
+            ) : !authUser?.blockedUsers?.some(bId => bId.toString() === id) && !authUser?.friends?.some(fId => fId.toString() === id) ? (
+              <button 
+                onClick={() => addFriendMutation.mutate()}
+                disabled={addFriendMutation.isPending}
+                className="btn btn-primary px-8 rounded-full"
+              >
+                <UserPlusIcon className="size-5 mr-2" />
+                {addFriendMutation.isPending ? "Sending..." : "Add Friend"}
+              </button>
+            ) : null}
+
+            {/* Block/Unblock Button */}
+            {authUser?.blockedUsers?.some(bId => bId.toString() === id) ? (
+              <button 
+                onClick={() => unblockMutation.mutate()}
+                disabled={unblockMutation.isPending}
+                className="btn btn-outline btn-success px-8 rounded-full"
+              >
+                <CheckCircleIcon className="size-5 mr-2" />
+                {unblockMutation.isPending ? "Unblocking..." : "Unblock"}
+              </button>
+            ) : (
+              <button 
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to block this user?")) {
+                    blockMutation.mutate();
+                  }
+                }}
+                disabled={blockMutation.isPending}
+                className="btn btn-ghost text-error px-8 rounded-full border border-error/20 hover:bg-error/10"
+              >
+                <SlashIcon className="size-5 mr-2" />
+                {blockMutation.isPending ? "Blocking..." : "Block"}
+              </button>
+            )}
           </div>
 
           <div className="divider w-full"></div>

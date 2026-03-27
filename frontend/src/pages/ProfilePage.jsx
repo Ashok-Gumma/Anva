@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateProfile, updatePassword } from "../lib/api";
@@ -198,12 +199,20 @@ const ProfilePage = () => {
         <div className="pt-6 border-t border-base-content/10">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-base-content tracking-tight text-lg">Security Settings</h3>
-            <button 
-              onClick={() => setIsEditingPassword(!isEditingPassword)}
-              className="px-4 py-2 text-sm font-medium text-base-content bg-base-200 hover:bg-base-300 rounded-xl transition-colors"
-            >
-              {isEditingPassword ? "Cancel" : "Change Password"}
-            </button>
+            <div className="flex gap-2">
+              <Link
+                to="/blocked-users"
+                className="px-4 py-2 text-sm font-medium text-error bg-error/10 hover:bg-error/20 rounded-xl transition-colors"
+              >
+                Blocked Users
+              </Link>
+              <button 
+                onClick={() => setIsEditingPassword(!isEditingPassword)}
+                className="px-4 py-2 text-sm font-medium text-base-content bg-base-200 hover:bg-base-300 rounded-xl transition-colors"
+              >
+                {isEditingPassword ? "Cancel" : "Change Password"}
+              </button>
+            </div>
           </div>
 
           {isEditingPassword && (

@@ -68,3 +68,42 @@ export const generateStreamToken = (userId, exp) => {
     throw error;
   }
 };
+
+/**
+ * Blocks a user in Stream Chat
+ * @param {string} userId - The user who is blocking
+ * @param {string} targetId - The user to be blocked
+ */
+export const blockStreamUser = async (userId, targetId) => {
+  try {
+    // In Node SDK, the first argument is the target user to block, 
+    // and the second is the user who is performing the block.
+    await streamClient.blockUser(targetId.toString(), userId.toString());
+    console.log(`[STREAM] Blocked ${targetId} for ${userId}`);
+  } catch (error) {
+    console.error("Error blocking Stream user:", error.message || error);
+  }
+};
+
+/**
+ * Unblocks a user in Stream Chat
+ * @param {string} userId - The user who is unblocking
+ * @param {string} targetId - The user to be unblocked
+ */
+export const unblockStreamUser = async (userId, targetId) => {
+  try {
+    // In Node SDK, it might be unblockUser or unBlockUser. 
+    // We'll try unblockUser with the correct argument order first.
+    if (typeof streamClient.unblockUser === "function") {
+      await streamClient.unblockUser(targetId.toString(), userId.toString());
+    } else if (typeof streamClient.unBlockUser === "function") {
+      await streamClient.unBlockUser(targetId.toString(), userId.toString());
+    } else {
+      console.warn("[STREAM] Neither unblockUser nor unBlockUser found, attempting lift restriction via unbanUser");
+      await streamClient.unbanUser(targetId.toString(), { user_id: userId.toString() });
+    }
+    console.log(`[STREAM] Unblocked ${targetId} for ${userId}`);
+  } catch (error) {
+    console.error("Error unblocking Stream user:", error.message || error);
+  }
+};

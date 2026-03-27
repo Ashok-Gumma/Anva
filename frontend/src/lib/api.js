@@ -109,3 +109,23 @@ export async function executeCompilerCode(data) {
   const response = await axiosInstance.post("/compiler/execute", data);
   return response.data;
 }
+
+export async function unfriend(userId) {
+  const response = await axiosInstance.delete(`/users/friend/${userId}`);
+  return response.data;
+}
+
+export async function blockUser(userId) {
+  const response = await axiosInstance.post(`/users/block/${userId}`);
+  return response.data;
+}
+
+export async function unblockUser(userId) {
+  const response = await axiosInstance.delete(`/users/block/${userId}`);
+  return response.data;
+}
+
+export async function getBlockedUsers() {
+  const response = await axiosInstance.get("/users/blocked");
+  return response.data;
+}

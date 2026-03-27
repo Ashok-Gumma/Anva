@@ -9,7 +9,11 @@ import {
   sendFriendRequest,
   updateProfile,
   updatePassword,
-  getUserProfile
+  getUserProfile,
+  unfriend,
+  blockUser,
+  unblockUser,
+  getBlockedUsers
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
@@ -19,6 +23,7 @@ router.use(protectRoute);
 
 router.get("/", getRecommendedUsers);
 router.get("/friends", getMyFriends);
+router.get("/blocked", getBlockedUsers);
 
 router.put("/profile", updateProfile);
 router.put("/password", updatePassword);
@@ -30,5 +35,8 @@ router.get("/friend-requests", getFriendRequests);
 router.get("/outgoing-friend-requests", getOutgoingFriendReqs);
 
 router.get("/:id", getUserProfile);
+router.delete("/friend/:id", unfriend);
+router.post("/block/:id", blockUser);
+router.delete("/block/:id", unblockUser);
 
 export default router;
