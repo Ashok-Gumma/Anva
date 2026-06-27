@@ -418,7 +418,7 @@ const HomePage = () => {
               ) : (
                 <div className="flex -space-x-4 pl-4 pt-4 pb-4">
                   {friends.slice(0, 6).map((friend) => (
-                    <Link key={friend._id} to={`/profile/${friend._id}`} className="relative group/avatar hover:z-10 transition-transform hover:scale-110">
+                    <Link key={friend._id} to={`/user/${friend._id}`} className="relative group/avatar hover:z-10 transition-transform hover:scale-110">
                       <div className="size-14 rounded-full border-4 border-base-100 bg-base-300 overflow-hidden shadow-sm">
                         {friend.profilePic ? (
                           <img src={friend.profilePic} alt={friend.fullName} className="w-full h-full object-cover" />
