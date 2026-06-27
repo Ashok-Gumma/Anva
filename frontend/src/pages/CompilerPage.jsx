@@ -2,6 +2,7 @@ import { useState } from "react";
 import Editor from "@monaco-editor/react";
 import { Play, CheckCircle2, AlertCircle } from "lucide-react";
 import { executeCompilerCode } from "../lib/api";
+import toast from "react-hot-toast";
 
 const LANGUAGES = {
   javascript: { version: "18.15.0", code: 'console.log("Hello from JavaScript!");' },
@@ -25,10 +26,35 @@ const LANGUAGES = {
   css: { version: "3", code: 'body {\n  background-color: #f0f0f0;\n  color: #333;\n  font-family: sans-serif;\n}\n\nh1 {\n  color: #007bff;\n}' }
 };
 
+const PRESETS = {
+  javascript: [
+    { title: "FizzBuzz", code: `// FizzBuzz Implementation in JS\nfor (let i = 1; i <= 20; i++) {\n  if (i % 3 === 0 && i % 5 === 0) console.log("FizzBuzz");\n  else if (i % 3 === 0) console.log("Fizz");\n  else if (i % 5 === 0) console.log("Buzz");\n  else console.log(i);\n}` },
+    { title: "Fibonacci Sequence", code: `// Fibonacci Sequence Generator\nfunction fibonacci(n) {\n  let sequence = [0, 1];\n  for (let i = 2; i < n; i++) {\n    sequence.push(sequence[i - 1] + sequence[i - 2]);\n  }\n  return sequence;\n}\nconsole.log(fibonacci(10));` },
+    { title: "Array Reverse", code: `// Reverse Array\nconst array = [1, 2, 3, 4, 5];\nconst reversed = array.reverse();\nconsole.log("Original: [1,2,3,4,5]");\nconsole.log("Reversed:", reversed);` }
+  ],
+  python: [
+    { title: "FizzBuzz", code: `# FizzBuzz in Python\nfor i in range(1, 21):\n    if i % 3 == 0 and i % 5 == 0:\n        print("FizzBuzz")\n    elif i % 3 == 0:\n        print("Fizz")\n    elif i % 5 == 0:\n        print("Buzz")\n    else:\n        print(i)` },
+    { title: "Fibonacci Sequence", code: `# Fibonacci Generator\ndef fibonacci(n):\n    seq = [0, 1]\n    while len(seq) < n:\n        seq.append(seq[-1] + seq[-2])\n    return seq\nprint(fibonacci(10))` },
+    { title: "Palindrome Check", code: `# Check if String is Palindrome\ndef is_palindrome(s):\n    cleaned = "".join(c.lower() for c in s if c.isalnum())\n    return cleaned == cleaned[::-1]\n\nprint("racecar:", is_palindrome("racecar"))\nprint("hello:", is_palindrome("hello"))` }
+  ],
+  cpp: [
+    { title: "Hello World", code: `#include <iostream>\n\nint main() {\n    std::cout << "Hello World!" << std::endl;\n    return 0;\n}` },
+    { title: "Factorial", code: `#include <iostream>\n\nlong long factorial(int n) {\n    if (n <= 1) return 1;\n    return n * factorial(n - 1);\n}\n\nint main() {\n    std::cout << "Factorial of 5: " << factorial(5) << std::endl;\n    return 0;\n}` }
+  ],
+  java: [
+    { title: "Factorial Calculator", code: `public class Main {\n    public static int factorial(int n) {\n        return (n <= 1) ? 1 : n * factorial(n - 1);\n    }\n    public static void main(String[] args) {\n        System.out.println("Factorial of 5: " + factorial(5));\n    }\n}` }
+  ],
+  go: [
+    { title: "Sum of Slice", code: `package main\n\nimport "fmt"\n\nfunc main() {\n    nums := []int{1, 2, 3, 4, 5}\n    sum := 0\n    for _, num := range nums {\n        sum += num\n    }\n    fmt.Println("Sum of elements:", sum)\n}` }
+  ]
+};
+
 const CompilerPage = () => {
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState(LANGUAGES["javascript"].code);
   const [output, setOutput] = useState("");
+  const [stdin, setStdin] = useState("");
+  const [activeTab, setActiveTab] = useState("run");
   const [isRunning, setIsRunning] = useState(false);
   const [isError, setIsError] = useState(false);
   
@@ -44,12 +70,12 @@ const CompilerPage = () => {
     setIsError(false);
     setOutput("Executing Code...\n");
 
-    // Cloud/Backend Execution 
     try {
       const data = await executeCompilerCode({
         language: language,
         version: LANGUAGES[language].version,
-        files: [{ content: code }]
+        files: [{ content: code }],
+        stdin: stdin
       });
 
       if (data.run) {
@@ -72,43 +98,65 @@ const CompilerPage = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-base-300">
+    <div className="ide-split-container p-4">
       {/* Editor Section */}
-      <div className="flex-1 flex flex-col border-r border-base-content/10">
-        <div className="p-4 bg-base-100 flex flex-wrap items-center justify-between border-b border-base-content/10 gap-2">
-          <div className="flex items-center gap-4">
-            <h2 className="font-bold text-lg hidden sm:block">Code Compiler</h2>
-            <div className="flex items-center gap-2">
+      <div className="lg:col-span-7 ide-panel rounded-2xl">
+        <div className="ide-panel-header">
+          <div className="flex items-center gap-3">
+            <span className="font-extrabold tracking-wider text-sm hidden sm:block">Editor</span>
+            <select
+              className="select select-bordered select-xs w-36 font-mono font-bold text-xs"
+              value={language}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+            >
+              {Object.keys(LANGUAGES).map((lang) => (
+                <option key={lang} value={lang}>{lang.toUpperCase()}</option>
+              ))}
+            </select>
+            {PRESETS[language] && (
               <select
-                className="select select-bordered select-sm w-40 font-mono"
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="select select-bordered select-xs w-44 font-mono font-bold text-[10px] bg-primary/10 border-primary/20 text-primary"
+                onChange={(e) => {
+                  const selectedPreset = PRESETS[language].find(p => p.title === e.target.value);
+                  if (selectedPreset) {
+                    setCode(selectedPreset.code);
+                    toast.success(`Loaded preset: ${selectedPreset.title}`);
+                  }
+                  e.target.value = "";
+                }}
+                defaultValue=""
               >
-                {Object.keys(LANGUAGES).map((lang) => (
-                  <option key={lang} value={lang}>{lang.toUpperCase()}</option>
+                <option value="" disabled>📐 ALGORITHMS</option>
+                {PRESETS[language].map((preset) => (
+                  <option key={preset.title} value={preset.title}>{preset.title}</option>
                 ))}
               </select>
-              
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-base-200 rounded-lg border border-base-content/5 text-[10px] font-bold uppercase tracking-wider text-base-content/60">
-                <CheckCircle2 className="size-3 text-green-500" />
-                <span>Cloud Run Enabled</span>
-              </div>
-            </div>
+            )}
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
-                onClick={runCode}
-                disabled={isRunning}
-                className="btn btn-primary btn-sm w-32 shadow-md"
+              onClick={() => {
+                setCode(LANGUAGES[language].code);
+                toast.success("Code reset to default template.");
+              }}
+              className="btn btn-ghost btn-xs text-xs font-bold"
             >
-                {isRunning ? <span className="loading loading-spinner loading-xs"></span> : <Play className="size-4" />}
-                Run Code
+              Reset
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(code);
+                toast.success("Code copied to clipboard!");
+              }}
+              className="btn btn-ghost btn-xs text-xs font-bold"
+            >
+              Copy
             </button>
           </div>
         </div>
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden relative min-h-[300px]">
           <Editor
             height="100%"
             language={language === "cpp" ? "cpp" : language}
@@ -127,14 +175,89 @@ const CompilerPage = () => {
         </div>
       </div>
 
-      {/* Output Terminal Section */}
-      <div className="w-full lg:w-1/3 flex flex-col bg-[#1e1e1e] border-t lg:border-t-0 border-base-content/20 shadow-inner">
-        <div className="p-3 bg-[#252526] text-gray-300 font-semibold border-b border-[#3c3c3c] text-sm uppercase tracking-wider flex items-center justify-between">
-          <span>Terminal Output</span>
-          {isError && <AlertCircle className="size-4 text-red-500" />}
+      {/* Input / Output Section */}
+      <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
+        {/* Input Pane */}
+        <div className="flex-1 ide-panel rounded-2xl min-h-[220px]">
+          <div className="ide-panel-header p-0 flex items-stretch">
+            <div className="flex">
+              <button
+                className={`px-5 text-[10px] font-extrabold uppercase tracking-widest border-r border-base-content/10 flex items-center justify-center transition-colors ${
+                  activeTab === 'run'
+                    ? 'bg-base-100 text-primary border-b-2 border-b-primary'
+                    : 'text-base-content/50 hover:text-base-content hover:bg-base-content/5'
+                }`}
+                onClick={() => setActiveTab('run')}
+              >
+                Run / Stdin
+              </button>
+              <button
+                className={`px-5 text-[10px] font-extrabold uppercase tracking-widest border-r border-base-content/10 flex items-center justify-center transition-colors ${
+                  activeTab === 'visualize'
+                    ? 'bg-base-100 text-primary border-b-2 border-b-primary'
+                    : 'text-base-content/50 hover:text-base-content hover:bg-base-content/5'
+                }`}
+                onClick={() => setActiveTab('visualize')}
+              >
+                Visualize Code
+              </button>
+            </div>
+            
+            <div className="flex-1 flex items-center justify-end px-3">
+              <button
+                onClick={runCode}
+                disabled={isRunning}
+                className="btn btn-primary btn-xs font-extrabold uppercase tracking-wider px-3"
+              >
+                {isRunning ? (
+                  <span className="loading loading-spinner size-3"></span>
+                ) : (
+                  <Play className="size-3 mr-1" />
+                )}
+                Run Code
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 p-4 flex flex-col bg-base-100/40 overflow-hidden">
+            {activeTab === 'run' ? (
+              <div className="flex-1 flex flex-col gap-2 overflow-hidden h-full">
+                <span className="text-[10px] font-black uppercase text-base-content/50 tracking-widest">Enter Input here</span>
+                <textarea
+                  className="textarea textarea-bordered font-mono text-sm w-full flex-1 bg-base-200/50 focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed resize-none"
+                  placeholder="Provide program inputs here (one per line)..."
+                  value={stdin}
+                  onChange={(e) => setStdin(e.target.value)}
+                />
+                <span className="text-[9px] font-bold text-base-content/40 uppercase tracking-tighter">
+                  If your code takes input, add it in the above box before running.
+                </span>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-4 text-base-content/60">
+                <span className="text-xs font-bold uppercase tracking-wider mb-2">Code Visualizer Mode</span>
+                <p className="text-[11px] max-w-xs font-medium leading-relaxed">
+                  Trace state changes, memory variables, and logic blocks as your code runs line-by-line.
+                </p>
+                <div className="mt-3 badge badge-primary badge-outline font-bold uppercase tracking-widest text-[8px] py-1 px-2">Coming Soon</div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className={`flex-1 p-4 font-mono text-sm overflow-y-auto whitespace-pre-wrap ${isError ? "text-red-400" : "text-gray-300"}`}>
-          {output || ">> Ready to run code."}
+
+        {/* Terminal/Output Pane */}
+        <div className="flex-1 ide-panel rounded-2xl min-h-[220px]">
+          <div className="ide-panel-header">
+            <span>Terminal Output</span>
+            {isError && (
+              <span className="badge badge-error gap-1 text-[9px] font-extrabold uppercase py-1">
+                <AlertCircle className="size-3" /> Error
+              </span>
+            )}
+          </div>
+          <div className="flex-1 p-4 bg-[#1a1a1a] text-zinc-300 font-mono text-xs overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">
+            {output || ">> Ready to run code."}
+          </div>
         </div>
       </div>
     </div>

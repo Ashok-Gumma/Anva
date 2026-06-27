@@ -1,21 +1,14 @@
-import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import BottomNav from "./BottomNav";
 
-const Layout = ({ children, showSidebar = false }) => {
+const Layout = ({ children }) => {
   return (
-    <div className="min-h-screen bg-base-200">
-      <div className="flex">
-        {showSidebar && <Sidebar />}
+    <div className="min-h-screen bg-base-200 flex flex-col">
+      <Navbar />
 
-        <div className="flex-1 flex flex-col min-w-0">
-          <Navbar />
-
-          <main className="flex-1 overflow-y-auto pb-20 md:pb-0">{children}</main>
-          
-          <BottomNav />
-        </div>
-      </div>
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">{children}</main>
+      
+      <BottomNav />
     </div>
   );
 };

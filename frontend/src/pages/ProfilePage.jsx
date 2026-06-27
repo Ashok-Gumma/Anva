@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -96,13 +96,37 @@ const ProfilePage = () => {
     updateProfileMutation(payload);
   };
 
+  const completenessScore = useMemo(() => {
+    let score = 0;
+    if (previewImage || authUser?.profilePic) score += 20;
+    if (authUser?.bio) score += 20;
+    if (authUser?.nativeLanguage) score += 15;
+    if (authUser?.learningLanguage) score += 15;
+    if (authUser?.location) score += 10;
+    if (githubUrl || authUser?.githubUrl) score += 10;
+    if (linkedinUrl || authUser?.linkedinUrl) score += 10;
+    return score;
+  }, [authUser, previewImage, githubUrl, linkedinUrl]);
+
+  const completenessSuggestions = useMemo(() => {
+    const suggestions = [];
+    if (!previewImage && !authUser?.profilePic) suggestions.push("Upload a profile photo to personalize your profile.");
+    if (!authUser?.bio) suggestions.push("Add a bio so other language learners can know you better.");
+    if (!authUser?.nativeLanguage) suggestions.push("Set your native language to match with exchange partners.");
+    if (!authUser?.learningLanguage) suggestions.push("Select what language you are practicing.");
+    if (!authUser?.location) suggestions.push("Specify your location to meet local partners.");
+    if (!githubUrl && !authUser?.githubUrl) suggestions.push("Add your GitHub link to showcase your code.");
+    if (!linkedinUrl && !authUser?.linkedinUrl) suggestions.push("Add your LinkedIn link to highlight your professional network.");
+    return suggestions;
+  }, [authUser, previewImage, githubUrl, linkedinUrl]);
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+    <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)] bg-base-300">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-base-100 rounded-[2rem] shadow-xl border border-base-content/10 w-full max-w-lg p-8 sm:p-10 space-y-8"
+        className="bg-base-100 rounded-[2rem] shadow-xl border border-base-content/10 w-full max-w-lg p-8 sm:p-10 space-y-6"
       >
         <div className="text-center space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-base-content">Profile Settings</h1>
@@ -143,9 +167,38 @@ const ProfilePage = () => {
             />
           </div>
 
-          <p className="text-xs text-base-content/40 font-medium max-w-xs text-center mt-2">
+          <p className="text-xs text-base-content/40 font-medium max-w-xs text-center mt-1">
             Upload a squared image. Supported formats: JPG, PNG, WEBP.
           </p>
+        </div>
+
+        {/* Profile Completeness Pane */}
+        <div className="space-y-3 p-5 rounded-2xl bg-base-200 border border-base-content/10 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-widest text-base-content/60">Profile Completeness</span>
+            <span className="text-sm font-extrabold text-primary">{completenessScore}%</span>
+          </div>
+          <div className="w-full bg-base-300 rounded-full h-2 overflow-hidden border border-base-content/5 shadow-inner">
+            <div 
+              className="bg-primary h-full rounded-full transition-all duration-500" 
+              style={{ width: `${completenessScore}%` }}
+            />
+          </div>
+          {completenessSuggestions.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              <span className="text-[9px] font-black uppercase text-base-content/40 tracking-wider">Suggested improvements:</span>
+              <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-base-content/70 font-medium">
+                {completenessSuggestions.slice(0, 2).map((s, idx) => (
+                  <li key={idx} className="leading-tight">{s}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-[10px] text-success font-bold uppercase tracking-tight flex items-center gap-1.5 mt-1">
+              <span className="size-1.5 rounded-full bg-success inline-block" />
+              Your profile is fully complete! Excellent job.
+            </p>
+          )}
         </div>
 
         {/* User Stats Display (Read-Only) */}

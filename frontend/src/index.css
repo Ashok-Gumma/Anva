@@ -2,9 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+body, input, textarea, select {
   @apply antialiased selection:bg-primary selection:text-primary-content;
   scroll-behavior: smooth;
+  font-family: 'Comic Neue', cursive, sans-serif !important;
+  font-weight: 700 !important; /* Bold, thick body font! */
+}
+
+/* Bold, thick script font for headings, logos, and highlights */
+h1, h2, h3, h4, h5, h6,
+.logo-text, .font-curly {
+  font-family: 'Dancing Script', cursive, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+/* Flowing bold script/handwritten curly font for buttons, badges, links, tables, and labels */
+.btn, .badge, a, button,
+th, td, label {
+  font-family: 'Dancing Script', cursive, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+/* Monospace fonts for editor and snippets */
+code, pre, .font-mono, .monaco-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
 /* ─── Glassmorphism ─────────────────────────────────────────── */
@@ -117,3 +138,25 @@ body {
 .str-chat__message-input {
   border-top: 1px solid #ddd;
 }
+
+/* ─── IDE Panel Styling ─────────────────────────────────────── */
+.ide-panel {
+  @apply bg-base-100 border border-base-content/10 flex flex-col overflow-hidden transition-all duration-300;
+}
+
+.ide-panel-header {
+  @apply px-4 py-3 bg-base-200/40 border-b border-base-content/10 flex items-center justify-between text-xs font-bold uppercase tracking-wider text-base-content/70 h-12 select-none;
+}
+
+.ide-panel-body {
+  @apply p-4 flex-1 overflow-y-auto;
+}
+
+.ide-split-container {
+  @apply h-auto lg:h-[calc(100vh-4rem)] bg-base-300 p-4 gap-4 grid grid-cols-1 lg:grid-cols-12 overflow-y-auto lg:overflow-hidden;
+}
+
+.ide-button-group {
+  @apply flex items-center gap-2;
+}
+

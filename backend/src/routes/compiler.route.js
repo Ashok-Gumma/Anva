@@ -34,7 +34,7 @@ const LANG_MAP = {
 };
 
 router.post("/execute", protectRoute, async (req, res) => {
-  const { language, files } = req.body;
+  const { language, files, stdin } = req.body;
   const code = files?.[0]?.content || "";
   const lang = language?.toLowerCase();
   
@@ -60,7 +60,7 @@ router.post("/execute", protectRoute, async (req, res) => {
       },
       data: {
         language: oneCompilerLang,
-        stdin: "",
+        stdin: stdin || "",
         files: [
           {
             name: `main.${lang === 'javascript' ? 'js' : lang === 'typescript' ? 'ts' : lang === 'cpp' ? 'cpp' : lang}`, // fallback extension
