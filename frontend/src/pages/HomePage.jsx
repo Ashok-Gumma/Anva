@@ -18,22 +18,16 @@ import {
   UsersIcon,
   SearchIcon,
   Sparkles,
-  Play,
-  Pause,
-  RotateCcw,
-  Timer,
-  Trophy,
   Brain,
   Terminal,
   BookOpen,
-  ChevronRight,
   Flame
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
 import FriendCard, { getLanguageIcon } from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import ProgressDashboard from "../components/ProgressDashboard";
 import SkeletonCard from "../components/SkeletonCard";
 
@@ -55,15 +49,8 @@ const HomePage = () => {
   const { authUser } = useAuthUser();
   const [searchQuery, setSearchQuery] = useState("");
 
-  /* ── Interactive State (XP, Streak, Goal) ── */
+  /* ── Interactive State (XP) ── */
   const [xp, setXp] = useState(() => Number(localStorage.getItem("anva_xp") || "1240"));
-  const [studyTimeToday, setStudyTimeToday] = useState(() => Number(localStorage.getItem("anva_study_time") || "15"));
-  const [streak, setStreak] = useState(() => Number(localStorage.getItem("anva_streak") || "5"));
-
-  /* ── Pomodoro Timer State ── */
-  const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerMode, setTimerMode] = useState("work"); // "work" or "break"
 
   /* ── Daily Challenge State ── */
   const [challengeSolved, setChallengeSolved] = useState(() => localStorage.getItem("anva_challenge_solved") === "true");
@@ -82,33 +69,7 @@ const HomePage = () => {
     enabled: !!authUser,
   });
 
-  // Pomodoro countdown timer logic
-  useEffect(() => {
-    let interval = null;
-    if (isTimerRunning && pomodoroTime > 0) {
-      interval = setInterval(() => {
-        setPomodoroTime((prev) => prev - 1);
-      }, 1000);
-    } else if (isTimerRunning && pomodoroTime === 0) {
-      setIsTimerRunning(false);
-      if (timerMode === "work") {
-        const newXp = xp + 50;
-        const newTime = studyTimeToday + 25;
-        setXp(newXp);
-        setStudyTimeToday(newTime);
-        localStorage.setItem("anva_xp", newXp.toString());
-        localStorage.setItem("anva_study_time", newTime.toString());
-        toast.success("🏆 Focus block complete! You studied for 25 minutes and earned +50 XP!");
-        setPomodoroTime(5 * 60);
-        setTimerMode("break");
-      } else {
-        toast.success("Break finished! Let's get back to studying.");
-        setPomodoroTime(25 * 60);
-        setTimerMode("work");
-      }
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning, pomodoroTime, timerMode, xp, studyTimeToday]);
+
 
   useEffect(() => {
     if (!authUser) return;
@@ -240,16 +201,7 @@ const HomePage = () => {
     }
   };
 
-  const handlePomodoroReset = () => {
-    setIsTimerRunning(false);
-    setPomodoroTime(timerMode === "work" ? 25 * 60 : 5 * 60);
-  };
 
-  const formatTimer = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
 
   if (!authUser) return null;
 
@@ -275,7 +227,7 @@ const HomePage = () => {
               Welcome back, {authUser.fullName?.split(" ")[0]}! 👋
             </h1>
             <p className="text-xs sm:text-sm text-base-content/60 leading-relaxed font-medium">
-              Your study streak is active, and the compiler is hot. Let's make some progress on your daily goals today!
+              Your compiler is hot. Let's write some code and connect with peers today!
             </p>
           </div>
 
@@ -325,7 +277,7 @@ const HomePage = () => {
 
         {/* ── 2. DYNAMIC PROGRESS METRICS ── */}
         <motion.div variants={itemVariants}>
-          <ProgressDashboard xp={xp} studyTimeToday={studyTimeToday} streak={streak} />
+          <ProgressDashboard />
         </motion.div>
 
         {/* ── 3. WORKSPACE COLUMNS ── */}
@@ -520,94 +472,7 @@ const HomePage = () => {
           {/* RIGHT COLUMN: Interactive Widgets (Timer, Quiz, Logs) */}
           <div className="lg:col-span-5 space-y-8">
             
-            {/* 1. Pomodoro Focus Timer */}
-            <motion.div 
-              variants={itemVariants}
-              className="bg-base-100 rounded-3xl border border-base-content/10 p-6 shadow-sm flex flex-col justify-between gap-4"
-            >
-              <div className="flex items-center justify-between border-b border-base-content/5 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-8 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center border border-orange-500/20">
-                    <Timer className="size-4 animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-base-content">
-                      Focus Session
-                    </h3>
-                    <span className="text-[9px] text-base-content/40 font-bold uppercase tracking-wider">
-                      Pomodoro Method
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex gap-1.5">
-                  <button 
-                    onClick={() => {
-                      setTimerMode("work");
-                      setPomodoroTime(25 * 60);
-                      setIsTimerRunning(false);
-                    }}
-                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer ${
-                      timerMode === "work" ? "bg-orange-500 text-white" : "bg-base-200 text-base-content/60"
-                    }`}
-                  >
-                    Work (25m)
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setTimerMode("break");
-                      setPomodoroTime(5 * 60);
-                      setIsTimerRunning(false);
-                    }}
-                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer ${
-                      timerMode === "break" ? "bg-success text-success-content" : "bg-base-200 text-base-content/60"
-                    }`}
-                  >
-                    Break (5m)
-                  </button>
-                </div>
-              </div>
-
-              {/* Timer Display */}
-              <div className="flex flex-col items-center py-4 bg-base-200/50 rounded-2xl border border-base-content/5">
-                <span className="text-4xl font-mono font-black tracking-widest text-base-content select-none">
-                  {formatTimer(pomodoroTime)}
-                </span>
-                <span className="text-[9px] font-bold text-base-content/45 uppercase tracking-wider mt-1">
-                  {timerMode === "work" ? "🧠 Concentration Mode" : "☕ Rest Interval"}
-                </span>
-              </div>
-
-              {/* Timer Controls */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setIsTimerRunning(!isTimerRunning)}
-                  className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.98] ${
-                    isTimerRunning 
-                      ? "bg-base-300 text-base-content hover:bg-base-300/80" 
-                      : "bg-orange-500 text-white hover:shadow-lg hover:shadow-orange-500/20"
-                  }`}
-                >
-                  {isTimerRunning ? (
-                    <>
-                      <Pause className="size-4" /> Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="size-4 fill-white" /> Start Focus
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={handlePomodoroReset}
-                  className="p-3 bg-base-200 hover:bg-base-300 rounded-xl text-base-content border border-base-content/10 transition-colors cursor-pointer"
-                  title="Reset timer"
-                >
-                  <RotateCcw className="size-4" />
-                </button>
-              </div>
-            </motion.div>
 
             {/* 2. Daily Brain Teaser */}
             <motion.div 
