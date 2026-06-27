@@ -13,7 +13,7 @@ const PageLoader = () => {
     >
       <div className="relative flex flex-col items-center gap-12">
         {/* Animated Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] animate-pulse pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-base-content/5 rounded-full blur-[100px] animate-pulse pointer-events-none" />
 
         {/* Pulsing Logo */}
         <motion.div
@@ -31,8 +31,8 @@ const PageLoader = () => {
           }}
           className="relative z-10"
         >
-          <div className="p-6 rounded-[2.5rem] bg-black shadow-2xl shadow-blue-500/20">
-            <AnvaLogo className="size-20 text-white" />
+          <div className="p-6 rounded-[2.5rem] bg-base-content shadow-2xl shadow-base-content/10">
+            <AnvaLogo className="size-20 text-base-100" />
           </div>
         </motion.div>
 
@@ -50,7 +50,7 @@ const PageLoader = () => {
                 repeat: Infinity,
                 repeatDelay: 2
               }}
-              className="text-4xl font-black tracking-tighter text-black dark:text-white"
+              className="text-4xl font-black tracking-tighter text-base-content"
             >
               {letter}
             </motion.span>
@@ -59,13 +59,13 @@ const PageLoader = () => {
 
         {/* Progress Bar (Subtle) */}
         <motion.div 
-          className="absolute -bottom-16 w-32 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"
+          className="absolute -bottom-16 w-32 h-1 bg-base-content/10 rounded-full overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
           <motion.div 
-            className="h-full bg-blue-600 rounded-full"
+            className="h-full bg-base-content rounded-full"
             initial={{ width: "0%" }}
             animate={{ width: "100%" }}
             transition={{ 

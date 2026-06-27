@@ -171,7 +171,17 @@ const AssistantPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Doubt History States
-  const [sessions, setSessions] = useState(INITIAL_MOCK_SESSIONS);
+  const [sessions, setSessions] = useState(() => {
+    try {
+      // Clean up the broken state from previous implementation
+      localStorage.removeItem("anva_assistant_sessions");
+      const deletedIds = JSON.parse(localStorage.getItem("anva_assistant_deleted_sessions") || "[]");
+      return INITIAL_MOCK_SESSIONS.filter(s => !deletedIds.includes(s.id));
+    } catch (e) {
+      console.error("Failed to parse deleted sessions from local storage");
+    }
+    return INITIAL_MOCK_SESSIONS;
+  });
   const [selectedSessionId, setSelectedSessionId] = useState("active");
 
   const bottomRef = useRef(null);
@@ -336,6 +346,18 @@ const AssistantPage = () => {
   const deleteSession = (id, e) => {
     e.stopPropagation(); // Avoid selecting the session when deleting it
     setSessions(prev => prev.filter(s => s.id !== id));
+    
+    // Persist deleted id
+    try {
+      const deletedIds = JSON.parse(localStorage.getItem("anva_assistant_deleted_sessions") || "[]");
+      if (!deletedIds.includes(id)) {
+        deletedIds.push(id);
+        localStorage.setItem("anva_assistant_deleted_sessions", JSON.stringify(deletedIds));
+      }
+    } catch(err) {
+      console.error("Failed to save deleted session id:", err);
+    }
+
     if (selectedSessionId === id) {
       setSelectedSessionId("active");
     }
