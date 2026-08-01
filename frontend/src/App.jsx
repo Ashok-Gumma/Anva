@@ -56,9 +56,10 @@ const App = () => {
     }
   }, [isClerkSignedIn, isClerkLoaded, queryClient]);
 
-  // Keep-alive ping every 2 minutes
+  // Keep-alive ping immediately & every 2 minutes
   useEffect(() => {
     if (!isAuthenticated) return;
+    import("./lib/api").then(({ sendPing }) => sendPing().catch(console.error));
     const interval = setInterval(() => {
       import("./lib/api").then(({ sendPing }) => sendPing().catch(console.error));
     }, 2 * 60 * 1000);
@@ -86,10 +87,12 @@ const App = () => {
             <Route
               path="/"
               element={
-                isAuthenticated && authUser?.isOnboarded ? (
+                !isAuthenticated ? (
+                  <LandingPage />
+                ) : authUser?.isOnboarded ? (
                   <Layout showSidebar><HomePage /></Layout>
                 ) : (
-                  <LandingPage />
+                  <Navigate to="/onboarding" replace />
                 )
               }
             />
@@ -100,7 +103,7 @@ const App = () => {
               element={
                 !isAuthenticated ? (
                   <div className="min-h-screen flex items-center justify-center bg-base-200">
-                    <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" afterSignInUrl="/" />
+                    <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/" />
                   </div>
                 ) : (
                   <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
@@ -112,7 +115,7 @@ const App = () => {
               element={
                 !isAuthenticated ? (
                   <div className="min-h-screen flex items-center justify-center bg-base-200">
-                    <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" afterSignUpUrl="/onboarding" />
+                    <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" fallbackRedirectUrl="/onboarding" forceRedirectUrl="/onboarding" />
                   </div>
                 ) : (
                   <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />

@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
 
+/**
+ * Full-Page Interactive Particle Background
+ * Uniformly distributed across 100% of the screen width and height with
+ * real-time cursor repulsion physics, screen wrap-around, and organic floating motion.
+ */
 const ParticleBackground = () => {
   const canvasRef = useRef(null);
 
@@ -16,94 +21,118 @@ const ParticleBackground = () => {
     window.addEventListener("resize", resize);
     resize();
 
-    let targetOffsetX = 0;
-    let targetOffsetY = 0;
+    // Mouse tracking & physics state
+    const mouse = {
+      x: -1000,
+      y: -1000,
+      targetX: -1000,
+      targetY: -1000,
+      vx: 0,
+      vy: 0,
+      radius: 180
+    };
+
+    let prevMouseX = -1000;
+    let prevMouseY = -1000;
 
     const handleMouseMove = (e) => {
-        targetOffsetX = (e.clientY / window.innerHeight - 0.5) * 1.5; 
-        targetOffsetY = (e.clientX / window.innerWidth - 0.5) * 1.5; 
+      mouse.targetX = e.clientX;
+      mouse.targetY = e.clientY;
+      mouse.vx = e.clientX - prevMouseX;
+      mouse.vy = e.clientY - prevMouseY;
+      prevMouseX = e.clientX;
+      prevMouseY = e.clientY;
     };
+
+    const handleMouseLeave = () => {
+      mouse.targetX = -1000;
+      mouse.targetY = -1000;
+    };
+
     window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseleave", handleMouseLeave);
 
-    // The Antigravity colors: vivid blue, purple, pink, orange, yellow
-    const colors = ["#2b6cb0", "#6b46c1", "#ed64a6", "#ed8936", "#ecc94b", "#4299e1"];
+    // Vivid Antigravity Brand Color Palette
+    const colors = [
+      "#2563eb", "#3b82f6", "#6366f1", "#8b5cf6", 
+      "#ec4899", "#f59e0b", "#06b6d4", "#10b981", "#ed8936"
+    ];
+    
+    // Spread 1100 particles uniformly across full screen width & height
+    const numParticles = 1100;
     const particles = [];
-    const numParticles = 800;
 
-    // Distribute points on a sphere
+    const createParticle = () => {
+      return {
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 1.2 + 1.0,
+        alpha: Math.random() * 0.55 + 0.3,
+        offsetAngle: Math.random() * Math.PI * 2,
+        speed: Math.random() * 0.02 + 0.005,
+        dispX: 0,
+        dispY: 0
+      };
+    };
+
     for (let i = 0; i < numParticles; i++) {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(Math.random() * 2 - 1);
-        const radius = Math.random() * 150 + 200; // Thick shell
-
-        particles.push({
-            x: radius * Math.sin(phi) * Math.cos(theta),
-            y: radius * Math.sin(phi) * Math.sin(theta),
-            z: radius * Math.cos(phi),
-            color: colors[Math.floor(Math.random() * colors.length)],
-            baseSize: Math.random() * 1.5 + 1.5,
-            offsetAngle: Math.random() * Math.PI * 2,
-            speed: Math.random() * 0.02 + 0.01
-        });
+      particles.push(createParticle());
     }
-
-    let baseAngleX = 0;
-    let baseAngleY = 0;
-    let mouseOffsetX = 0;
-    let mouseOffsetY = 0;
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
 
-      // Slow continuous global rotation
-      baseAngleX += 0.0005;
-      baseAngleY += 0.001;
+      // Smooth cursor interpolation
+      mouse.x += (mouse.targetX - mouse.x) * 0.15;
+      mouse.y += (mouse.targetY - mouse.y) * 0.15;
 
-      // Smooth interpolation towards mouse offset
-      mouseOffsetX += (targetOffsetX - mouseOffsetX) * 0.05;
-      mouseOffsetY += (targetOffsetY - mouseOffsetY) * 0.05;
+      particles.forEach((p) => {
+        // Continuous organic floating drift
+        p.offsetAngle += p.speed;
+        const driftX = Math.sin(p.offsetAngle) * 0.8;
+        const driftY = Math.cos(p.offsetAngle) * 0.8;
 
-      const currentAngleX = baseAngleX + mouseOffsetX;
-      const currentAngleY = baseAngleY + mouseOffsetY;
+        p.x += p.vx + driftX * 0.1;
+        p.y += p.vy + driftY * 0.1;
 
-      const cosX = Math.cos(currentAngleX);
-      const sinX = Math.sin(currentAngleX);
-      const cosY = Math.cos(currentAngleY);
-      const sinY = Math.sin(currentAngleY);
+        // Wrap around screen edges so particles continuously cover entire screen
+        if (p.x < -20) p.x = canvas.width + 20;
+        if (p.x > canvas.width + 20) p.x = -20;
+        if (p.y < -20) p.y = canvas.height + 20;
+        if (p.y > canvas.height + 20) p.y = -20;
 
-      particles.forEach(p => {
-          // Extra local wobble
-          p.offsetAngle += p.speed;
-          const wobble = Math.sin(p.offsetAngle) * 5;
+        // Compute current screen position with mouse displacement
+        let renderX = p.x + p.dispX;
+        let renderY = p.y + p.dispY;
 
-          // Rotate around X
-          let y1 = (p.y + wobble) * cosX - p.z * sinX;
-          let z1 = (p.y + wobble) * sinX + p.z * cosX;
+        // Mouse Repulsion & Velocity Wave Physics
+        const dx = renderX - mouse.x;
+        const dy = renderY - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-          // Rotate around Y
-          let x2 = p.x * cosY + z1 * sinY;
-          let z2 = -p.x * sinY + z1 * cosY;
-          let y2 = y1;
-
-          // Perspective projection
-          const fov = 1000;
-          const scale = fov / (fov + z2 + 300);
+        if (dist < mouse.radius && mouse.x > 0) {
+          const force = (1 - dist / mouse.radius) * 45;
+          const angle = Math.atan2(dy, dx);
           
-          const x2d = centerX + x2 * scale * 1.8;
-          const y2d = centerY + y2 * scale * 1.8;
+          p.dispX += Math.cos(angle) * force * 0.4 + mouse.vx * 0.09;
+          p.dispY += Math.sin(angle) * force * 0.4 + mouse.vy * 0.09;
+        }
 
-          // Draw the dotted particle
-          ctx.beginPath();
-          // Adding a slight squeeze to make them look like tiny angled dashes
-          ctx.ellipse(x2d, y2d, p.baseSize * scale, p.baseSize * scale * 1.5, currentAngleX + currentAngleY, 0, Math.PI * 2);
-          
-          // Fading the dots based on Z depth to enhance 3D feel
-          const depthAlpha = Math.max(0.1, Math.min(0.9, (z2 + 400) / 800));
-          ctx.globalAlpha = depthAlpha;
-          ctx.fillStyle = p.color;
-          ctx.fill();
+        // Spring damping back to original path
+        p.dispX *= 0.88;
+        p.dispY *= 0.88;
+
+        // Draw particle
+        ctx.beginPath();
+        const currentSize = p.size + Math.sin(p.offsetAngle) * 0.3;
+        ctx.ellipse(renderX, renderY, Math.max(0.7, currentSize), Math.max(0.7, currentSize * 1.2), p.offsetAngle, 0, Math.PI * 2);
+        
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.fill();
       });
 
       animationFrameId = requestAnimationFrame(render);
@@ -114,6 +143,7 @@ const ParticleBackground = () => {
     return () => {
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);
@@ -121,7 +151,7 @@ const ParticleBackground = () => {
   return (
     <canvas 
       ref={canvasRef} 
-      className="absolute inset-0 z-0 pointer-events-none opacity-80 mix-blend-multiply"
+      className="fixed inset-0 z-0 pointer-events-none opacity-75 w-full h-full"
     />
   );
 };

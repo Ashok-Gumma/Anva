@@ -177,7 +177,7 @@ const AssistantPage = () => {
       localStorage.removeItem("anva_assistant_sessions");
       const deletedIds = JSON.parse(localStorage.getItem("anva_assistant_deleted_sessions") || "[]");
       return INITIAL_MOCK_SESSIONS.filter(s => !deletedIds.includes(s.id));
-    } catch (e) {
+    } catch {
       console.error("Failed to parse deleted sessions from local storage");
     }
     return INITIAL_MOCK_SESSIONS;
@@ -214,9 +214,16 @@ const AssistantPage = () => {
   const clearHistory = async () => {
     try {
       await axiosInstance.delete("/assistant/history");
-      setDbMessages([{ role: "assistant", content: "History cleared. How can I help you now?" }]);
+      setDbMessages([{ role: "assistant", content: "Hi! I'm your AI study assistant. How can I help you today?" }]);
+
+      // Also clear all mock sessions from history
+      const allMockIds = INITIAL_MOCK_SESSIONS.filter(s => s.id !== "active").map(s => s.id);
+      localStorage.setItem("anva_assistant_deleted_sessions", JSON.stringify(allMockIds));
+      setSessions(INITIAL_MOCK_SESSIONS.filter(s => s.id === "active"));
+      setSelectedSessionId("active");
+
       setSettingsOpen(false);
-      toast.success("Chat history cleared successfully!");
+      toast.success("All chat history cleared successfully!");
     } catch (err) {
       console.error("Failed to clear history:", err);
       toast.error("Failed to clear chat history.");
@@ -343,8 +350,21 @@ const AssistantPage = () => {
     }
   };
 
-  const deleteSession = (id, e) => {
+  const deleteSession = async (id, e) => {
     e.stopPropagation(); // Avoid selecting the session when deleting it
+
+    if (id === "active") {
+      try {
+        await axiosInstance.delete("/assistant/history");
+        setDbMessages([{ role: "assistant", content: "Hi! I'm your AI study assistant. How can I help you today?" }]);
+        toast.success("Active chat history cleared.");
+      } catch (err) {
+        console.error("Failed to clear active history:", err);
+        toast.error("Failed to clear active chat history.");
+      }
+      return;
+    }
+
     setSessions(prev => prev.filter(s => s.id !== id));
     
     // Persist deleted id
@@ -471,16 +491,14 @@ const AssistantPage = () => {
                   </div>
                 </div>
 
-                {/* Trash Icon for mock sessions */}
-                {sess.id !== "active" && (
-                  <button
-                    onClick={(e) => deleteSession(sess.id, e)}
-                    className="p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded-md transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer ml-1 shrink-0"
-                    title="Remove thread"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                )}
+                {/* Trash Icon for all sessions */}
+                <button
+                  onClick={(e) => deleteSession(sess.id, e)}
+                  className="p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded-md transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer ml-1 shrink-0"
+                  title={sess.id === "active" ? "Clear active chat" : "Remove thread"}
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
 
                 {/* Pulsing indicator for active session */}
                 {sess.id === "active" && (

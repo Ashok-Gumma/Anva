@@ -108,7 +108,7 @@ const ChatPage = () => {
     try {
       const response = await checkGrammar(grammarText);
       setGrammarResult(response.reply);
-    } catch (error) {
+    } catch {
       setGrammarResult("Failed to check grammar.");
     } finally {
       setIsGrammarLoading(false);
@@ -118,11 +118,13 @@ const ChatPage = () => {
   if (loading || !chatClient || !channel) return <ChatLoader />;
 
   return (
-    <div className="h-[93vh]">
+    <div className="h-[calc(100vh-4rem)] w-full bg-base-200 overflow-hidden flex flex-col">
       <Chat client={chatClient}>
         <Channel channel={channel}>
-          <div className="w-full relative">
-            <CallButton handleVideoCall={handleVideoCall} />
+          <div className="w-full h-full flex flex-col relative overflow-hidden">
+            <div className="absolute top-3 right-6 z-30 pointer-events-auto">
+              <CallButton handleVideoCall={handleVideoCall} />
+            </div>
             <Window>
               <ChannelHeader />
               <MessageList />

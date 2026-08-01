@@ -7,6 +7,15 @@ body, input, textarea, select {
   scroll-behavior: smooth;
 }
 
+/* Custom Typography */
+.font-apple {
+  font-family: -apple-system, BlinkMacSystemFont, "Plus Jakarta Sans", "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif !important;
+}
+
+.font-curly {
+  font-family: "Caveat", "Playfair Display", Georgia, serif !important;
+}
+
 /* Monospace fonts for editor and snippets */
 code, pre, .font-mono, .monaco-editor {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
@@ -92,35 +101,133 @@ code, pre, .font-mono, .monaco-editor {
 
 
 
-.str-chat__channel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(to bottom, #c9e8c9, #b7e7bb);
-  height: 100%;
+/* ─── Stream Chat Complete UI & Wallpaper Styling ───────────── */
+.str-chat {
+  height: 100% !important;
+  width: 100% !important;
+  font-family: inherit !important;
 }
 
-.str-chat__container {
-  max-width: 1200px;
-  width: 100%;
-  height: 80% !important;
-  margin: 0 auto !important;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+.str-chat__channel {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  width: 100% !important;
+  background-color: #f2ece4 !important;
+  background-image: url("/chat-bg.png") !important;
+  background-repeat: repeat !important;
+  background-size: 400px auto !important;
+}
+
+[data-theme="dark"] .str-chat__channel {
+  background-color: #0b141a !important;
+  background-image: radial-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("/chat-bg.png") !important;
+}
+
+.str-chat__container,
+.str-chat__window,
+.str-chat__main-panel {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Header */
+.str-chat__header-livestream,
+.str-chat__channel-header {
+  @apply bg-base-100/90 backdrop-blur-md border-b border-base-content/10 px-6 py-3 shrink-0 shadow-sm z-20;
+  height: 64px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.str-chat__channel-header-title {
+  @apply font-bold text-base text-base-content tracking-tight;
+}
+
+.str-chat__channel-header-info {
+  @apply text-xs text-base-content/60 font-medium;
+}
+
+/* Make ALL internal message list containers transparent so wallpaper shines through! */
+.str-chat__list,
+.str-chat__list-main,
+.str-chat__virtual-list,
+.str-chat__message-list,
+.str-chat__reverse-infinite-scroll,
+.str-chat__ul {
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 .str-chat__list {
-  background-color: #ffffff;
-  padding: 12px;
+  flex: 1 1 auto !important;
+  padding: 20px 24px !important;
+  overflow-y: auto !important;
 }
 
+/* Empty chat "No chats here yet..." styling */
+.str-chat__no-chats-yet,
+.str-chat__empty-channel {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.str-chat__no-chats-yet svg,
+.str-chat__empty-channel svg {
+  @apply text-base-content/40 opacity-70;
+}
+
+/* Hide Stream default notifications */
 .str-chat__list-notifications {
-  display: none;
+  display: none !important;
 }
 
+/* Message Bubbles */
+.str-chat__message-simple {
+  margin-bottom: 12px !important;
+}
+
+.str-chat__message-simple-text-inner {
+  border-radius: 18px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  padding: 10px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.str-chat__message--me .str-chat__message-simple-text-inner {
+  background: #d9fdd3 !important;
+  color: #111b21 !important;
+  border-top-right-radius: 4px !important;
+}
+
+[data-theme="dark"] .str-chat__message--me .str-chat__message-simple-text-inner {
+  background: #005c4b !important;
+  color: #e9edef !important;
+}
+
+.str-chat__message--other .str-chat__message-simple-text-inner {
+  background: #ffffff !important;
+  color: #111b21 !important;
+  border-top-left-radius: 4px !important;
+}
+
+[data-theme="dark"] .str-chat__message--other .str-chat__message-simple-text-inner {
+  background: #202c33 !important;
+  color: #e9edef !important;
+}
+
+/* Message Input Area */
 .str-chat__message-input {
-  border-top: 1px solid #ddd;
+  @apply bg-base-100/90 backdrop-blur-md border-t border-base-content/10 p-3 shrink-0 shadow-lg z-20;
 }
 
 /* ─── IDE Panel Styling ─────────────────────────────────────── */

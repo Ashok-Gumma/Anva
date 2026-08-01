@@ -42,7 +42,7 @@ const Friends = () => {
         friend.nativeLanguage?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         friend.learningLanguage?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const isOnline = friend.lastActive && (new Date() - new Date(friend.lastActive)) <= 3 * 60 * 1000;
+      const isOnline = friend.lastActive && (new Date() - new Date(friend.lastActive)) <= 5 * 60 * 1000;
       const matchesOnline = !onlineOnly || isOnline;
 
       return matchesSearch && matchesOnline;

@@ -4,72 +4,39 @@ import { useThemeStore } from "../store/useThemeStore";
 
 const PageLoader = () => {
   const { theme } = useThemeStore();
-  const letters = ["A", "N", "V", "A"];
 
   return (
     <div 
-      className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 overflow-hidden" 
+      className="min-h-screen flex flex-col items-center justify-center bg-[#f8f6ee] text-[#2c221e] dark:bg-[#161412] dark:text-[#f8f6ee] overflow-hidden relative selection:bg-amber-900/20" 
       data-theme={theme}
     >
-      <div className="relative flex flex-col items-center gap-12">
-        {/* Animated Background Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-base-content/5 rounded-full blur-[100px] animate-pulse pointer-events-none" />
+      {/* Warm Retro Ambient Backlight Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-600/10 dark:bg-amber-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
 
-        {/* Pulsing Logo */}
+      <div className="relative flex flex-col items-center gap-6 z-10 px-4">
+        {/* Floating Animated Retro Logo Badge */}
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ 
-            scale: [0.8, 1.1, 1],
-            opacity: 1,
-            y: [0, -10, 0]
-          }}
-          transition={{ 
-            duration: 1.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            times: [0, 0.5, 1]
-          }}
-          className="relative z-10"
+          initial={{ opacity: 0, scale: 0.88 }}
+          animate={{ opacity: 1, scale: [0.95, 1.02, 0.98, 1], y: [0, -6, 0] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          className="relative p-3 bg-white/60 dark:bg-black/30 rounded-full border border-base-content/10 shadow-2xl backdrop-blur-sm"
         >
-          <div className="p-6 rounded-[2.5rem] bg-base-content shadow-2xl shadow-base-content/10">
-            <AnvaLogo className="size-20 text-base-100" />
-          </div>
+          <AnvaLogo className="size-36 sm:size-44 shadow-md" />
         </motion.div>
 
-        {/* Staggered Text */}
-        <div className="flex gap-4">
-          {letters.map((letter, index) => (
-            <motion.span
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.5,
-                delay: 0.3 + index * 0.1,
-                ease: "easeOut",
-                repeat: Infinity,
-                repeatDelay: 2
-              }}
-              className="text-4xl font-black tracking-tighter text-base-content"
-            >
-              {letter}
-            </motion.span>
-          ))}
-        </div>
-
-        {/* Progress Bar (Subtle) */}
+        {/* Retro Shimmer Loading Line */}
         <motion.div 
-          className="absolute -bottom-16 w-32 h-1 bg-base-content/10 rounded-full overflow-hidden"
+          className="w-48 sm:w-56 h-1 bg-current opacity-25 rounded-full overflow-hidden relative mt-2"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          animate={{ opacity: 0.35 }}
+          transition={{ delay: 0.3 }}
         >
           <motion.div 
-            className="h-full bg-base-content rounded-full"
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
+            className="h-full bg-current rounded-full"
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
             transition={{ 
-              duration: 2,
+              duration: 1.8,
               repeat: Infinity,
               ease: "easeInOut"
             }}

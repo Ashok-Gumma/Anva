@@ -100,7 +100,7 @@ const HomePage = () => {
 
   const [challengeSolved, setChallengeSolved] = useState(() => localStorage.getItem(challengeKey) === "true");
   const [selectedTeaserOption, setSelectedTeaserOption] = useState(null);
-  const [teaserError, setTeaserError] = useState(false);
+  const [_teaserError, setTeaserError] = useState(false);
 
   /* ── Random Motivational Quote ── */
   const dailyQuote = useMemo(() => {

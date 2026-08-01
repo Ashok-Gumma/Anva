@@ -110,7 +110,7 @@ export async function getMyFriends(req, res) {
       .select("friends blockedUsers")
       .populate(
         "friends",
-        "fullName profilePic location bio nativeLanguage learningLanguage blockedUsers"
+        "fullName profilePic location bio nativeLanguage learningLanguage blockedUsers lastActive"
       );
 
     // Filter out friends I have blocked OR who have blocked me
