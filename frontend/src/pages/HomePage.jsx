@@ -17,11 +17,12 @@ import {
   UserPlusIcon,
   UsersIcon,
   SearchIcon,
-  Sparkles,
   Brain,
+  BrainCircuit,
   Terminal,
   BookOpen,
-  Flame
+  Flame,
+  Zap
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
@@ -274,7 +275,7 @@ const HomePage = () => {
           
           <div className="relative z-10 space-y-3 mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-widest text-primary">
-              <Sparkles className="size-3.5" />
+              <BrainCircuit className="size-3.5" />
               Intelligence Hub
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-base-content">
@@ -315,21 +316,20 @@ const HomePage = () => {
         {/* ── 3. DAILY BRAIN TEASER TILE (Spans 1 col, 2 rows) ── */}
         <motion.div 
           variants={itemVariants}
-          className="md:col-span-1 lg:row-span-2 relative bg-gradient-to-br from-neutral to-neutral-focus rounded-[2rem] border border-white/5 p-6 shadow-xl flex flex-col justify-between overflow-hidden group min-h-[400px] h-full"
+          className="md:col-span-1 lg:row-span-2 relative bg-base-100 rounded-[2rem] border border-base-content/10 p-6 shadow-xl flex flex-col justify-between overflow-hidden group min-h-[400px] h-full transition-all duration-300 hover:border-secondary/20"
         >
-          {/* Dark Glass Vibe */}
-          <div className="absolute inset-0 bg-base-300/40 backdrop-blur-3xl z-0" />
-          <div className="absolute -top-12 -right-12 size-32 bg-secondary/10 rounded-full blur-[40px] z-0 group-hover:bg-secondary/20 transition-colors duration-500" />
+          {/* Decorative Glow */}
+          <div className="absolute -top-12 -right-12 size-32 bg-secondary/10 rounded-full blur-[40px] z-0 group-hover:bg-secondary/20 transition-colors duration-500 pointer-events-none" />
           
-          <div className="relative z-10 flex items-center gap-3 border-b border-white/5 pb-4">
-            <div className="size-10 rounded-xl bg-secondary/20 text-secondary flex items-center justify-center border border-secondary/30 shrink-0 shadow-inner">
+          <div className="relative z-10 flex items-center gap-3 border-b border-base-content/10 pb-4">
+            <div className="size-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center border border-secondary/20 shrink-0 shadow-inner">
               <Brain className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-xs font-black uppercase tracking-widest text-white/90 truncate">
+              <h3 className="text-xs font-black uppercase tracking-widest text-base-content truncate">
                 Daily Brain Teaser
               </h3>
-              <span className="text-[10px] text-white/40 font-bold uppercase tracking-wider block truncate">
+              <span className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider block truncate">
                 {todayTeaser.topic}
               </span>
             </div>
@@ -341,7 +341,7 @@ const HomePage = () => {
           </div>
 
           {/* Code block */}
-          <div className="relative z-10 bg-black/40 p-4 rounded-2xl border border-white/5 mt-4 text-[11px] font-mono leading-relaxed text-white/80 overflow-x-auto text-left whitespace-pre shadow-inner">
+          <div className="relative z-10 bg-base-200/80 p-4 rounded-2xl border border-base-content/10 mt-4 text-[11px] font-mono leading-relaxed text-base-content overflow-x-auto text-left whitespace-pre shadow-inner">
             {todayTeaser.code}
           </div>
 
@@ -350,12 +350,12 @@ const HomePage = () => {
             {todayTeaser.options.map((option, index) => {
               const isSelected = selectedTeaserOption === index;
               const isCorrectAnswer = index === todayTeaser.answerIndex;
-              let btnStyle = "bg-white/5 hover:bg-white/10 border-white/5 text-white/80";
+              let btnStyle = "bg-base-200/50 hover:bg-base-200 border-base-content/10 text-base-content/80 hover:text-base-content";
               
               if (challengeSolved && isCorrectAnswer) {
-                btnStyle = "bg-success border-success text-black font-bold shadow-[0_0_15px_rgba(var(--color-success),0.4)]";
+                btnStyle = "bg-success/20 border-success/40 text-success font-bold shadow-sm";
               } else if (isSelected && !isCorrectAnswer) {
-                btnStyle = "bg-error border-error text-black font-bold";
+                btnStyle = "bg-error/20 border-error/40 text-error font-bold";
               }
 
               return (
@@ -363,11 +363,11 @@ const HomePage = () => {
                   key={index}
                   onClick={() => handleTeaserOptionClick(index)}
                   disabled={challengeSolved}
-                  className={`w-full p-3.5 rounded-xl border text-xs text-left transition-all duration-300 flex items-center justify-between cursor-pointer backdrop-blur-md ${btnStyle} hover:-translate-y-0.5`}
+                  className={`w-full p-3.5 rounded-xl border text-xs text-left transition-all duration-300 flex items-center justify-between cursor-pointer ${btnStyle} hover:-translate-y-0.5`}
                 >
                   <span className="truncate pr-2 font-medium">{option}</span>
-                  {challengeSolved && isCorrectAnswer && <span className="text-[10px] font-black shrink-0">✓</span>}
-                  {isSelected && !isCorrectAnswer && <span className="text-[10px] font-black shrink-0">✗</span>}
+                  {challengeSolved && isCorrectAnswer && <span className="text-[10px] font-black shrink-0 text-success">✓</span>}
+                  {isSelected && !isCorrectAnswer && <span className="text-[10px] font-black shrink-0 text-error">✗</span>}
                 </button>
               );
             })}
@@ -462,7 +462,7 @@ const HomePage = () => {
           <div className="p-6 border-b border-base-content/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-200/30">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center border border-secondary/20 shrink-0">
-                <Sparkles className="size-5 text-secondary" />
+                <UsersIcon className="size-5 text-secondary" />
               </div>
               <div>
                 <h2 className="text-sm font-black uppercase tracking-widest text-base-content leading-tight">
@@ -558,7 +558,7 @@ const HomePage = () => {
                             className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all duration-300 shadow-sm cursor-pointer ${
                               hasRequestBeenSent
                                 ? "bg-base-300 text-base-content/30 cursor-not-allowed"
-                                : "bg-base-content text-base-100 hover:scale-[1.02] hover:shadow-md"
+                                : "bg-primary text-primary-content hover:scale-[1.02] hover:shadow-md"
                             }`}
                             onClick={() => handleSendRequest(user._id)}
                             disabled={hasRequestBeenSent || loadingIds.has(user._id)}

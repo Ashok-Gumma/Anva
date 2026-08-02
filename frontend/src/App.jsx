@@ -49,6 +49,13 @@ const App = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Sync data-theme attribute on document element when theme changes
+  useEffect(() => {
+    if (theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  }, [theme]);
+
   // Invalidate authUser whenever Clerk's sign-in state changes
   useEffect(() => {
     if (isClerkLoaded) {

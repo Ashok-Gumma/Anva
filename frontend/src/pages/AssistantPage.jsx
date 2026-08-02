@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { axiosInstance } from "../lib/axios";
 import { 
-  Image as ImageIcon, 
   Send, 
   X, 
-  User, 
   Bot, 
-  Sparkles, 
+  BrainCircuit,
+  Wand2,
   Mic, 
   MicOff, 
-  History, 
   Plus, 
   Settings, 
   Paperclip,
@@ -19,7 +17,10 @@ import {
   GitBranch,
   Code,
   Trash2,
-  BookOpen
+  Search,
+  Sparkles,
+  Zap,
+  Cpu
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -37,7 +38,7 @@ const SUGGESTIONS = [
     title: "Python List Comprehensions",
     prompt: "Explain Python list comprehensions and write an example of filtering and mapping with an if-else statement.",
     icon: Code,
-    color: "text-yellow-500 bg-yellow-500/10 border-yellow-500/20"
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20"
   },
   {
     title: "SQL Joins Explained",
@@ -49,7 +50,7 @@ const SUGGESTIONS = [
     title: "BST Tree Traversal",
     prompt: "Show me a JavaScript recursive in-order traversal function for a Binary Search Tree and explain its complexity.",
     icon: GitBranch,
-    color: "text-green-500 bg-green-500/10 border-green-500/20"
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
   }
 ];
 
@@ -59,7 +60,7 @@ const INITIAL_MOCK_SESSIONS = [
     id: "active",
     title: "Active Doubt Session",
     isCurrent: true,
-    icon: Sparkles,
+    icon: BrainCircuit,
     date: "Current"
   },
   {
@@ -118,22 +119,22 @@ const formatMessageContent = (text) => {
       const language = match ? match[1] : "";
       const code = match ? match[2] : part.slice(3, -3);
       return (
-        <div key={index} className="my-4 rounded-xl overflow-hidden border border-base-content/10 bg-base-300 text-left font-mono">
+        <div key={index} className="my-4 rounded-2xl overflow-hidden border border-base-content/10 bg-base-300/80 text-left font-mono shadow-inner">
           {language && (
-            <div className="bg-base-300/80 px-4 py-1.5 text-[10px] font-bold text-base-content/50 uppercase border-b border-base-content/5 flex justify-between items-center">
+            <div className="bg-base-300 px-4 py-2 text-[10px] font-black text-base-content/60 uppercase border-b border-base-content/10 flex justify-between items-center tracking-wider">
               <span>{language}</span>
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(code);
                   toast.success("Code copied to clipboard!");
                 }}
-                className="hover:text-base-content transition-colors text-[9px] uppercase tracking-wider cursor-pointer btn-ghost btn-xs btn"
+                className="hover:text-primary transition-colors text-[9px] font-bold uppercase tracking-wider cursor-pointer btn-ghost btn-xs btn"
               >
                 Copy
               </button>
             </div>
           )}
-          <pre className="p-4 overflow-x-auto text-xs leading-relaxed text-base-content/95 selection:bg-primary/30">
+          <pre className="p-4 overflow-x-auto text-xs leading-relaxed text-base-content selection:bg-primary/30">
             <code>{code.trim()}</code>
           </pre>
         </div>
@@ -147,7 +148,7 @@ const formatMessageContent = (text) => {
         {inlineParts.map((subPart, subIndex) => {
           if (subPart.startsWith("`") && subPart.endsWith("`")) {
             return (
-              <code key={subIndex} className="px-1.5 py-0.5 rounded bg-base-300 text-base-content font-mono text-xs border border-base-content/5">
+              <code key={subIndex} className="px-1.5 py-0.5 rounded-md bg-base-300 text-primary font-mono text-xs border border-base-content/10 font-bold">
                 {subPart.slice(1, -1)}
               </code>
             );
@@ -169,11 +170,11 @@ const AssistantPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Doubt History States
   const [sessions, setSessions] = useState(() => {
     try {
-      // Clean up the broken state from previous implementation
       localStorage.removeItem("anva_assistant_sessions");
       const deletedIds = JSON.parse(localStorage.getItem("anva_assistant_deleted_sessions") || "[]");
       return INITIAL_MOCK_SESSIONS.filter(s => !deletedIds.includes(s.id));
@@ -197,7 +198,7 @@ const AssistantPage = () => {
         if (res.data && res.data.length > 0) {
           setDbMessages(res.data);
         } else {
-          setDbMessages([{ role: "assistant", content: "Hi! I'm your AI study assistant. How can I help you today?" }]);
+          setDbMessages([{ role: "assistant", content: "Hi! I'm your AI study assistant. How can I help you study today?" }]);
         }
       } catch (err) {
         console.error("Failed to load history:", err);
@@ -216,7 +217,6 @@ const AssistantPage = () => {
       await axiosInstance.delete("/assistant/history");
       setDbMessages([{ role: "assistant", content: "Hi! I'm your AI study assistant. How can I help you today?" }]);
 
-      // Also clear all mock sessions from history
       const allMockIds = INITIAL_MOCK_SESSIONS.filter(s => s.id !== "active").map(s => s.id);
       localStorage.setItem("anva_assistant_deleted_sessions", JSON.stringify(allMockIds));
       setSessions(INITIAL_MOCK_SESSIONS.filter(s => s.id === "active"));
@@ -333,13 +333,11 @@ const AssistantPage = () => {
     setSelectedSessionId("active");
     setMobileMenuOpen(false);
     
-    // Check if we already have a clean greeting
     if (dbMessages.length <= 1) {
       toast.success("Ready for a new doubt session.");
       return;
     }
 
-    // Clear backend history
     try {
       await axiosInstance.delete("/assistant/history");
       setDbMessages([{ role: "assistant", content: "Hi! I'm your AI study assistant. How can I help you today?" }]);
@@ -351,7 +349,7 @@ const AssistantPage = () => {
   };
 
   const deleteSession = async (id, e) => {
-    e.stopPropagation(); // Avoid selecting the session when deleting it
+    e.stopPropagation();
 
     if (id === "active") {
       try {
@@ -367,7 +365,6 @@ const AssistantPage = () => {
 
     setSessions(prev => prev.filter(s => s.id !== id));
     
-    // Persist deleted id
     try {
       const deletedIds = JSON.parse(localStorage.getItem("anva_assistant_deleted_sessions") || "[]");
       if (!deletedIds.includes(id)) {
@@ -392,7 +389,12 @@ const AssistantPage = () => {
     textareaRef.current?.focus();
   };
 
-  // User & Bot Avatar Components
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return sessions;
+    const q = searchQuery.toLowerCase();
+    return sessions.filter((s) => s.title?.toLowerCase().includes(q));
+  }, [sessions, searchQuery]);
+
   const UserAvatar = () => {
     const initials = authUser?.fullName ? authUser.fullName.charAt(0).toUpperCase() : "S";
     return (
@@ -409,12 +411,11 @@ const AssistantPage = () => {
   const BotAvatar = () => {
     return (
       <div className="size-9 rounded-xl bg-gradient-to-tr from-primary to-accent text-primary-content flex items-center justify-center shadow-md border border-primary/20 shrink-0">
-        <Sparkles className="size-4 text-primary-content animate-pulse" />
+        <Bot className="size-5 text-primary-content" />
       </div>
     );
   };
 
-  // Determine current active messages
   const activeMessages = selectedSessionId === "active"
     ? dbMessages
     : (sessions.find(s => s.id === selectedSessionId)?.messages || []);
@@ -424,11 +425,11 @@ const AssistantPage = () => {
   const renderSidebarContent = () => (
     <>
       {/* Brand Header */}
-      <div className="p-6 border-b border-base-content/10 bg-base-100/50 backdrop-blur-md shrink-0">
-        <div className="flex items-center justify-between mb-6">
+      <div className="p-5 border-b border-base-content/10 bg-base-100/50 backdrop-blur-md shrink-0">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="size-9 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-inner">
-              <Sparkles className="size-5 text-primary stroke-[2]" />
+              <BrainCircuit className="size-5 text-primary stroke-[2]" />
             </div>
             <div>
               <h1 className="text-sm font-black tracking-widest uppercase text-base-content">Anva AI</h1>
@@ -446,19 +447,33 @@ const AssistantPage = () => {
         {/* New Doubt Button */}
         <button 
           onClick={handleNewDoubt}
-          className="w-full py-3 bg-primary text-primary-content text-xs font-bold uppercase tracking-wider rounded-xl hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer"
+          className="w-full py-2.5 bg-primary text-primary-content text-xs font-bold uppercase tracking-wider rounded-xl hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer mb-3"
         >
           <Plus className="size-4 stroke-[2.5]" />
           New Doubt
         </button>
+
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-base-content/40" />
+          <input
+            type="text"
+            placeholder="Search doubt threads..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-xs bg-base-200/60 border border-base-content/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 font-medium text-base-content placeholder:text-base-content/40 transition-all"
+          />
+        </div>
       </div>
       
       {/* Threads List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
         <h2 className="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em] px-2 mb-2">Doubt History</h2>
         
-        <div className="space-y-1.5">
-          {sessions.map((sess) => {
+        {filteredSessions.length === 0 ? (
+          <p className="text-xs text-base-content/40 text-center py-6 font-medium">No threads found</p>
+        ) : (
+          filteredSessions.map((sess) => {
             const isSelected = selectedSessionId === sess.id;
             const SessIcon = sess.icon || Code;
             
@@ -471,7 +486,7 @@ const AssistantPage = () => {
                 }}
                 className={`p-3 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between group relative overflow-hidden ${
                   isSelected 
-                    ? "bg-primary/10 border-primary/25 text-primary shadow-sm" 
+                    ? "bg-primary/10 border-primary/30 text-primary shadow-sm" 
                     : "bg-base-100/50 border-base-content/5 text-base-content hover:bg-base-200/80 hover:border-base-content/10"
                 }`}
               >
@@ -482,7 +497,7 @@ const AssistantPage = () => {
                     <SessIcon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-bold truncate ${isSelected ? "text-primary" : "text-base-content"}`}>
+                    <p className={`text-xs font-black truncate ${isSelected ? "text-primary" : "text-base-content"}`}>
                       {sess.title}
                     </p>
                     <p className="text-[9px] text-base-content/40 mt-0.5 uppercase font-bold tracking-tight">
@@ -491,7 +506,6 @@ const AssistantPage = () => {
                   </div>
                 </div>
 
-                {/* Trash Icon for all sessions */}
                 <button
                   onClick={(e) => deleteSession(sess.id, e)}
                   className="p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded-md transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer ml-1 shrink-0"
@@ -500,14 +514,13 @@ const AssistantPage = () => {
                   <Trash2 className="size-3.5" />
                 </button>
 
-                {/* Pulsing indicator for active session */}
                 {sess.id === "active" && (
                   <span className="size-2 rounded-full bg-success animate-pulse shrink-0 ml-1" />
                 )}
               </div>
             );
-          })}
-        </div>
+          })
+        )}
       </div>
 
       {/* Settings Footer */}
@@ -527,14 +540,13 @@ const AssistantPage = () => {
   );
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] md:h-[calc(100vh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
-      
-      {/* Sidebar - Desktop */}
+    <div className="flex h-[calc(100vh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
+      {/* Desktop Sidebar */}
       <aside className="w-72 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}
       </aside>
 
-      {/* Sidebar - Mobile Drawer */}
+      {/* Mobile Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
@@ -563,7 +575,7 @@ const AssistantPage = () => {
       </AnimatePresence>
 
       {/* Main Chat Content */}
-      <div className="flex-1 flex flex-col relative bg-base-200 w-full overflow-hidden">
+      <div className="flex-1 flex flex-col relative chat-wallpaper w-full overflow-hidden">
         
         {/* Settings Overlay */}
         <AnimatePresence>
@@ -601,27 +613,17 @@ const AssistantPage = () => {
                     </button>
                   </div>
 
-                  <div className="p-5 rounded-2xl bg-base-200 border border-base-content/5 flex items-center justify-between opacity-50">
-                    <div>
-                      <h3 className="text-xs font-black uppercase tracking-widest mb-1 text-base-content">Theme Syncing</h3>
-                      <p className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider">Active Preference</p>
-                    </div>
-                    <div className="size-6 rounded-full bg-primary flex items-center justify-center shadow-sm">
-                      <span className="size-3 bg-primary-content rounded-full" />
-                    </div>
-                  </div>
-
                   <div className="p-5 rounded-2xl bg-base-200 border border-base-content/5 flex items-center justify-between">
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-widest mb-1 text-base-content">Voice Feedback</h3>
-                      <p className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider">Experimental feature</p>
+                      <h3 className="text-xs font-black uppercase tracking-widest mb-1 text-base-content">Voice Assistant</h3>
+                      <p className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider">Speech-to-text input enabled</p>
                     </div>
                     <input type="checkbox" className="toggle toggle-primary toggle-sm" defaultChecked />
                   </div>
                 </div>
 
                 <p className="mt-10 text-center text-[8px] font-black text-base-content/30 uppercase tracking-[0.5em]">
-                  ANVA CORE SETTINGS v1.2
+                  ANVA CORE SETTINGS v5.2
                 </p>
               </motion.div>
             </motion.div>
@@ -629,7 +631,7 @@ const AssistantPage = () => {
         </AnimatePresence>
 
         {/* Sticky Header */}
-        <header className="p-4 sm:p-5 flex items-center justify-between bg-base-100/40 backdrop-blur-md border-b border-base-content/5 sticky top-0 z-25 w-full shrink-0">
+        <header className="px-4 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-25 w-full shrink-0 flex items-center justify-between min-h-[64px]">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setMobileMenuOpen(true)}
@@ -646,7 +648,7 @@ const AssistantPage = () => {
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             {selectedSessionId !== "active" ? (
               <span className="px-2.5 py-1 rounded-lg bg-base-300 border border-base-content/10 text-[9px] font-black uppercase tracking-wider text-base-content/50">
                 Read-Only
@@ -658,7 +660,7 @@ const AssistantPage = () => {
             )}
             
             <button 
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => setSettingsOpen(false)}
               className="p-2 border border-base-content/10 hover:border-base-content/20 rounded-full hover:bg-base-content/5 transition-all text-base-content cursor-pointer"
               title="Settings"
             >
@@ -677,8 +679,8 @@ const AssistantPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col items-center text-center py-10 md:py-16 px-4"
               >
-                <div className="size-16 rounded-3xl bg-gradient-to-tr from-primary to-accent text-primary-content flex items-center justify-center shadow-lg border border-primary/20 mb-6 animate-pulse">
-                  <Sparkles className="size-8 text-primary-content animate-pulse" />
+                <div className="size-16 rounded-3xl bg-gradient-to-tr from-primary to-accent text-primary-content flex items-center justify-center shadow-lg border border-primary/20 mb-6">
+                  <BrainCircuit className="size-8 text-primary-content" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black text-base-content tracking-tight mb-3">
                   How can I help you study today?
@@ -694,7 +696,7 @@ const AssistantPage = () => {
                       <button
                         key={idx}
                         onClick={() => handleSuggestionClick(sug.prompt)}
-                        className="p-4 rounded-2xl bg-base-100 border border-base-content/10 hover:border-primary/30 hover:bg-base-200/50 hover:shadow-md transition-all text-left flex gap-3 group relative cursor-pointer"
+                        className="p-4 rounded-2xl bg-base-100 border border-base-content/10 hover:border-primary/40 hover:bg-base-200/50 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 text-left flex gap-3 group relative cursor-pointer"
                       >
                         <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 border ${sug.color}`}>
                           <SugIcon className="size-4" />
@@ -769,7 +771,7 @@ const AssistantPage = () => {
         </main>
 
         {/* Floating Capsule Bottom Input Area */}
-        <footer className="w-full bg-gradient-to-t from-base-200 via-base-200/90 to-transparent pt-8 pb-6 px-4 absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
+        <footer className="w-full bg-gradient-to-t from-base-100/90 via-base-100/50 to-transparent pt-8 pb-6 px-4 absolute bottom-0 left-0 right-0 z-10 pointer-events-none">
           <div className="max-w-3xl mx-auto pointer-events-auto relative">
             
             <AnimatePresence>

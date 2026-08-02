@@ -24,7 +24,7 @@ const ProgressDashboard = () => {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="relative group h-full p-6 rounded-[2rem] bg-gradient-to-b from-base-100/80 to-base-200/50 backdrop-blur-xl border border-white/5 hover:border-accent/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(var(--color-accent),0.1)] transition-all duration-300 flex flex-col justify-between overflow-hidden"
+      className="relative group h-full p-6 rounded-[2rem] bg-gradient-to-b from-base-100/80 to-base-200/50 backdrop-blur-xl border border-base-content/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(var(--color-accent),0.1)] transition-all duration-300 flex flex-col justify-between overflow-hidden"
     >
       {/* Decorative Glow */}
       <div className="absolute -top-12 -right-12 size-32 bg-accent/20 rounded-full blur-[40px] group-hover:bg-accent/30 transition-colors" />

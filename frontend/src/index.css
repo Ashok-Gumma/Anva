@@ -101,13 +101,14 @@ code, pre, .font-mono, .monaco-editor {
 
 
 
-/* ─── Stream Chat Complete UI & Wallpaper Styling ───────────── */
+/* ─── Stream Chat & Assistant Complete UI & Wallpaper Styling ───────────── */
 .str-chat {
   height: 100% !important;
   width: 100% !important;
   font-family: inherit !important;
 }
 
+.chat-wallpaper,
 .str-chat__channel {
   display: flex !important;
   flex-direction: column !important;
@@ -119,7 +120,28 @@ code, pre, .font-mono, .monaco-editor {
   background-size: 400px auto !important;
 }
 
-[data-theme="dark"] .str-chat__channel {
+[data-theme="dark"] .chat-wallpaper,
+[data-theme="coffee"] .chat-wallpaper,
+[data-theme="synthwave"] .chat-wallpaper,
+[data-theme="halloween"] .chat-wallpaper,
+[data-theme="forest"] .chat-wallpaper,
+[data-theme="black"] .chat-wallpaper,
+[data-theme="luxury"] .chat-wallpaper,
+[data-theme="dracula"] .chat-wallpaper,
+[data-theme="dim"] .chat-wallpaper,
+[data-theme="sunset"] .chat-wallpaper,
+[data-theme="night"] .chat-wallpaper,
+[data-theme="dark"] .str-chat__channel,
+[data-theme="coffee"] .str-chat__channel,
+[data-theme="synthwave"] .str-chat__channel,
+[data-theme="halloween"] .str-chat__channel,
+[data-theme="forest"] .str-chat__channel,
+[data-theme="black"] .str-chat__channel,
+[data-theme="luxury"] .str-chat__channel,
+[data-theme="dracula"] .str-chat__channel,
+[data-theme="dim"] .str-chat__channel,
+[data-theme="sunset"] .str-chat__channel,
+[data-theme="night"] .str-chat__channel {
   background-color: #0b141a !important;
   background-image: radial-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("/chat-bg.png") !important;
 }
@@ -190,44 +212,120 @@ code, pre, .font-mono, .monaco-editor {
   display: none !important;
 }
 
-/* Message Bubbles */
+/* Message Bubbles & Links */
 .str-chat__message-simple {
   margin-bottom: 12px !important;
 }
 
 .str-chat__message-simple-text-inner {
   border-radius: 18px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
   padding: 10px 16px !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
+  word-break: break-word !important;
 }
 
 .str-chat__message--me .str-chat__message-simple-text-inner {
-  background: #d9fdd3 !important;
-  color: #111b21 !important;
+  background: var(--fallback-p, oklch(var(--p)/1)) !important;
+  color: var(--fallback-pc, oklch(var(--pc)/1)) !important;
   border-top-right-radius: 4px !important;
 }
 
-[data-theme="dark"] .str-chat__message--me .str-chat__message-simple-text-inner {
-  background: #005c4b !important;
-  color: #e9edef !important;
+.str-chat__message--me .str-chat__message-simple-text-inner a {
+  color: var(--fallback-pc, oklch(var(--pc)/1)) !important;
+  text-decoration: underline !important;
+  font-weight: 700 !important;
 }
 
 .str-chat__message--other .str-chat__message-simple-text-inner {
-  background: #ffffff !important;
-  color: #111b21 !important;
+  background: var(--fallback-b1, oklch(var(--b1)/1)) !important;
+  color: var(--fallback-bc, oklch(var(--bc)/1)) !important;
+  border: 1px solid oklch(var(--bc) / 0.1) !important;
   border-top-left-radius: 4px !important;
 }
 
-[data-theme="dark"] .str-chat__message--other .str-chat__message-simple-text-inner {
-  background: #202c33 !important;
-  color: #e9edef !important;
+.str-chat__message--other .str-chat__message-simple-text-inner a {
+  color: var(--fallback-p, oklch(var(--p)/1)) !important;
+  text-decoration: underline !important;
+  font-weight: 700 !important;
+}
+
+/* ─── Stream Chat Link Previews & Attachment Cards Theme Overrides ─── */
+.str-chat__message-attachment,
+.str-chat__message-attachment-card,
+.str-chat__message-attachment--card,
+.str-chat__card,
+.str-chat__card-preview,
+.str-chat__message-attachment-card-container {
+  background: var(--fallback-b1, oklch(var(--b1)/1)) !important;
+  color: var(--fallback-bc, oklch(var(--bc)/1)) !important;
+  border: 1px solid oklch(var(--bc) / 0.12) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  margin-top: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.str-chat__message-attachment-card-header,
+.str-chat__message-attachment-card-details,
+.str-chat__card-header,
+.str-chat__card-details,
+.str-chat__message-attachment-card-content,
+.str-chat__card-content {
+  background: var(--fallback-b2, oklch(var(--b2)/1)) !important;
+  color: var(--fallback-bc, oklch(var(--bc)/1)) !important;
+  padding: 10px 14px !important;
+}
+
+.str-chat__message-attachment-card-title,
+.str-chat__card-title,
+.str-chat__message-attachment-card--title,
+.str-chat__message-attachment-card-header a {
+  color: var(--fallback-bc, oklch(var(--bc)/1)) !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+}
+
+.str-chat__message-attachment-card-text,
+.str-chat__card-text,
+.str-chat__message-attachment-card--text,
+.str-chat__message-attachment-card-description {
+  color: oklch(var(--bc) / 0.7) !important;
+  font-size: 12px !important;
+}
+
+.str-chat__message-attachment-card-author-name,
+.str-chat__card-author,
+.str-chat__message-attachment-card-domain,
+.str-chat__message-attachment-card-url {
+  color: var(--fallback-p, oklch(var(--p)/1)) !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+}
+
+.str-chat__message-attachment-card-image,
+.str-chat__card-image {
+  background: var(--fallback-b2, oklch(var(--b2)/1)) !important;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1) !important;
 }
 
 /* Message Input Area */
-.str-chat__message-input {
-  @apply bg-base-100/90 backdrop-blur-md border-t border-base-content/10 p-3 shrink-0 shadow-lg z-20;
+.str-chat__message-input,
+.str-chat__message-input-flat {
+  @apply bg-base-100/95 backdrop-blur-md border-t border-base-content/10 p-3 shrink-0 shadow-lg z-20 !important;
+}
+
+.str-chat__textarea textarea {
+  @apply bg-base-200/50 border border-base-content/10 rounded-xl p-3 text-base-content text-sm placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans transition-all !important;
+}
+
+.str-chat__send-button {
+  @apply btn btn-primary btn-circle btn-sm shadow-md hover:scale-105 active:scale-95 transition-all ml-2 shrink-0 !important;
+}
+
+.str-chat__send-button svg {
+  @apply text-primary-content !important;
 }
 
 /* ─── IDE Panel Styling ─────────────────────────────────────── */
