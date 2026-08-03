@@ -6,8 +6,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        serif: ['Inter', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', '"Quicksand"', 'sans-serif'],
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        curly: ['"Caveat"', '"Playfair Display"', 'serif'],
       },
     },
   },

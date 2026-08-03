@@ -309,10 +309,11 @@ const HomePage = () => {
               Intelligence Hub
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-base-content">
-              Welcome back,<br/>{authUser.fullName?.split(" ")[0]}! 👋
+              Welcome back,<br/>
+              <span className="font-curly font-bold italic text-primary text-4xl sm:text-5xl">{authUser.fullName?.split(" ")[0]}! 👋</span>
             </h1>
             <p className="text-sm text-base-content/60 leading-relaxed font-medium max-w-md">
-              Your compiler is hot. Let's write some code and connect with peers today!
+              Your compiler is hot. Let's write code and <span className="font-curly font-bold italic text-secondary text-base">connect with peers</span> today!
             </p>
           </div>
 

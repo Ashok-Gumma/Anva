@@ -682,7 +682,7 @@ const AssistantPage = () => {
                   <BrainCircuit className="size-8 text-primary-content" />
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black text-base-content tracking-tight mb-3">
-                  How can I help you study today?
+                  How can I help you <span className="font-curly font-bold italic text-primary text-3xl md:text-4xl">study today?</span>
                 </h2>
                 <p className="text-xs md:text-sm text-base-content/50 font-semibold max-w-md mb-10 uppercase tracking-wider leading-relaxed">
                   Ask about programming concepts, verify code grammar, clear doubts, or debug runtime errors.

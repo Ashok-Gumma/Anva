@@ -149,13 +149,19 @@ const Friends = () => {
     return friends.filter((friend) => friend && friend._id);
   }, [friends]);
 
+  const validOutgoingReqs = useMemo(() => {
+    return outgoingFriendReqs.filter((req) => req?.recipient?._id);
+  }, [outgoingFriendReqs]);
+
   const filteredFriends = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return validFriends.filter((friend) => {
-      const matchesSearch = 
-        friend.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        friend.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        friend.nativeLanguage?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        friend.learningLanguage?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch =
+        !q ||
+        (friend.fullName && friend.fullName.toLowerCase().includes(q)) ||
+        (friend.location && friend.location.toLowerCase().includes(q)) ||
+        (friend.nativeLanguage && friend.nativeLanguage.toLowerCase().includes(q)) ||
+        (friend.learningLanguage && friend.learningLanguage.toLowerCase().includes(q));
 
       const isOnline = friend.lastActive && (new Date() - new Date(friend.lastActive)) <= 5 * 60 * 1000;
       const matchesOnline = !onlineOnly || isOnline;
@@ -165,12 +171,15 @@ const Friends = () => {
   }, [validFriends, searchQuery, onlineOnly]);
 
   const filteredExploreUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return recommendedUsers.filter((user) => {
+      if (!user || !user._id) return false;
       const matchesSearch =
-        user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.nativeLanguage?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.learningLanguage?.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        (user.fullName && user.fullName.toLowerCase().includes(q)) ||
+        (user.location && user.location.toLowerCase().includes(q)) ||
+        (user.nativeLanguage && user.nativeLanguage.toLowerCase().includes(q)) ||
+        (user.learningLanguage && user.learningLanguage.toLowerCase().includes(q));
 
       const isOnline = user.lastActive && (new Date() - new Date(user.lastActive)) <= 5 * 60 * 1000;
       const matchesOnline = !onlineOnly || isOnline;
@@ -180,22 +189,23 @@ const Friends = () => {
   }, [recommendedUsers, searchQuery, onlineOnly]);
 
   const filteredSentUsers = useMemo(() => {
-    return outgoingFriendReqs
+    const q = searchQuery.trim().toLowerCase();
+    return validOutgoingReqs
       .map((req) => req.recipient)
-      .filter((user) => user && user._id)
       .filter((user) => {
         const matchesSearch =
-          user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.nativeLanguage?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          user.learningLanguage?.toLowerCase().includes(searchQuery.toLowerCase());
+          !q ||
+          (user.fullName && user.fullName.toLowerCase().includes(q)) ||
+          (user.location && user.location.toLowerCase().includes(q)) ||
+          (user.nativeLanguage && user.nativeLanguage.toLowerCase().includes(q)) ||
+          (user.learningLanguage && user.learningLanguage.toLowerCase().includes(q));
 
         const isOnline = user.lastActive && (new Date() - new Date(user.lastActive)) <= 5 * 60 * 1000;
         const matchesOnline = !onlineOnly || isOnline;
 
         return matchesSearch && matchesOnline;
       });
-  }, [outgoingFriendReqs, searchQuery, onlineOnly]);
+  }, [validOutgoingReqs, searchQuery, onlineOnly]);
 
   const isLoading =
     activeTab === "network"
@@ -224,10 +234,10 @@ const Friends = () => {
               <span className="text-xs font-extrabold uppercase tracking-widest text-primary">Community Hub</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-base-content tracking-tight">
-              Peer Network & Discovery
+              Peer Network & <span className="font-curly font-normal italic text-primary text-3xl sm:text-4xl ml-1">Discovery</span>
             </h1>
             <p className="text-xs font-medium text-base-content/60 max-w-lg">
-              Connect with language partners around the world, send study requests, and grow your learning network.
+              Connect with language partners around the world, send study requests, and grow your <span className="font-curly font-bold italic text-secondary text-sm">learning network</span>.
             </p>
           </div>
 
@@ -242,7 +252,7 @@ const Friends = () => {
             </div>
             <div className="px-4 py-2 bg-base-200/80 rounded-2xl border border-base-content/10 text-center">
               <span className="text-[10px] font-black uppercase text-base-content/40 block">Sent</span>
-              <span className="text-lg font-black text-accent">{outgoingFriendReqs.length}</span>
+              <span className="text-lg font-black text-accent">{validOutgoingReqs.length}</span>
             </div>
           </div>
         </motion.div>
@@ -296,7 +306,7 @@ const Friends = () => {
               <Send className="size-4 z-10" />
               <span className="z-10">Sent Requests</span>
               <span className={`z-10 px-2 py-0.5 rounded-md text-[10px] font-bold ${activeTab === "sent" ? "bg-base-100/25 text-white" : "bg-base-300 text-base-content/60"}`}>
-                {outgoingFriendReqs.length}
+                {validOutgoingReqs.length}
               </span>
             </button>
           </div>
@@ -411,11 +421,11 @@ const Friends = () => {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-lg text-base-content">
-                    {searchQuery ? "No matching learners found" : "All caught up!"}
+                    {searchQuery || onlineOnly ? "No matching learners found" : "All caught up!"}
                   </h3>
                   <p className="text-xs text-base-content/60 font-medium mt-1">
-                    {searchQuery
-                      ? "Try checking your spelling or search terms."
+                    {searchQuery || onlineOnly
+                      ? "Try clearing search keywords or active filters."
                       : "You have connected with or sent requests to all active community learners!"}
                   </p>
                 </div>
@@ -569,13 +579,15 @@ const Friends = () => {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-lg text-base-content">
-                    {searchQuery ? "No matching sent requests" : "No pending sent requests"}
+                    {searchQuery || onlineOnly ? "No matching sent requests" : "No pending sent requests"}
                   </h3>
                   <p className="text-xs text-base-content/60 font-medium mt-1">
-                    {searchQuery ? "Try checking your search query." : "You haven't sent any pending friend requests."}
+                    {searchQuery || onlineOnly
+                      ? "Try clearing search keywords or active filters."
+                      : "You haven't sent any pending friend requests."}
                   </p>
                 </div>
-                {!searchQuery && (
+                {!searchQuery && !onlineOnly && (
                   <button
                     onClick={() => handleTabChange("explore")}
                     className="btn btn-secondary btn-sm font-extrabold uppercase tracking-wider text-xs rounded-xl shadow-md"

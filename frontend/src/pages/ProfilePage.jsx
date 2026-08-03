@@ -129,7 +129,9 @@ const ProfilePage = () => {
         className="bg-base-100/90 backdrop-blur-md rounded-[2.5rem] shadow-xl border border-base-content/10 w-full max-w-lg p-6 sm:p-10 space-y-6"
       >
         <div className="text-center space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-base-content">Profile Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-base-content">
+            Profile <span className="font-curly font-bold italic text-primary text-3xl sm:text-4xl">Settings</span>
+          </h1>
           <p className="text-xs sm:text-sm text-base-content/60 font-medium">Personalize your avatar, preferences, and security settings</p>
         </div>
 

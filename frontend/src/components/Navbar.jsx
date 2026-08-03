@@ -42,7 +42,9 @@ const Navbar = () => {
           <div className="shrink-0">
             <Link to="/" className="flex items-center gap-2 group">
               <AnvaLogo className="h-8 w-8 object-cover rounded-lg shadow-sm group-hover:scale-105 transition-transform text-primary" />
-              <span className="text-base-content font-bold text-xl tracking-tight hidden sm:block">Anva</span>
+              <span className="text-base-content font-bold text-xl tracking-tight hidden sm:block">
+                An<span className="font-curly font-bold italic text-primary text-2xl ml-0.5">va</span>
+              </span>
             </Link>
           </div>
 

@@ -47,10 +47,10 @@ const FlashcardsPage = () => {
               <span className="text-xs font-extrabold uppercase tracking-widest text-primary">Learning Library</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-base-content tracking-tight">
-              Study Decks & Cheat Sheets
+              Study Decks & <span className="font-curly font-normal italic text-primary text-3xl sm:text-4xl ml-1">Cheat Sheets</span>
             </h1>
             <p className="text-xs sm:text-sm font-medium text-base-content/60 max-w-xl">
-              Master programming concepts, syntax reference sheets, and language manuals with quick PDF guides.
+              Master programming concepts, syntax reference sheets, and language manuals with <span className="font-curly font-bold italic text-secondary text-sm">quick PDF guides</span>.
             </p>
           </div>
 
