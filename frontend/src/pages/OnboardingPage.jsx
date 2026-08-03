@@ -37,12 +37,21 @@ const OnboardingPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    if (
+      formState.nativeLanguage &&
+      formState.learningLanguage &&
+      formState.nativeLanguage.toLowerCase() === formState.learningLanguage.toLowerCase()
+    ) {
+      toast.error("Known language and learning language cannot be the same.");
+      return;
+    }
+
     onboardingMutation(formState);
   };
 
   const handleRandomAvatar = () => {
-    const idx = Math.floor(Math.random() * 100) + 1; // 1-100 included
-    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`;
+    const randomSeed = Math.random().toString(36).substring(7);
+    const randomAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${randomSeed}`;
 
     setFormState({ ...formState, profilePic: randomAvatar });
     toast.success("Random profile picture generated!");
@@ -168,7 +177,17 @@ const OnboardingPage = () => {
                 <select
                   name="nativeLanguage"
                   value={formState.nativeLanguage}
-                  onChange={(e) => setFormState({ ...formState, nativeLanguage: e.target.value })}
+                  onChange={(e) => {
+                    const newNative = e.target.value;
+                    setFormState((prev) => ({
+                      ...prev,
+                      nativeLanguage: newNative,
+                      learningLanguage:
+                        prev.learningLanguage.toLowerCase() === newNative.toLowerCase()
+                          ? ""
+                          : prev.learningLanguage,
+                    }));
+                  }}
                   className="select select-bordered w-full"
                 >
                   <option value="">Select your Known language</option>
@@ -192,11 +211,20 @@ const OnboardingPage = () => {
                   className="select select-bordered w-full"
                 >
                   <option value="">Select language you're learning</option>
-                  {LANGUAGES.map((lang) => (
-                    <option key={`learning-${lang}`} value={lang.toLowerCase()}>
-                      {lang}
-                    </option>
-                  ))}
+                  {LANGUAGES.map((lang) => {
+                    const isKnown =
+                      formState.nativeLanguage &&
+                      lang.toLowerCase() === formState.nativeLanguage.toLowerCase();
+                    return (
+                      <option
+                        key={`learning-${lang}`}
+                        value={lang.toLowerCase()}
+                        disabled={isKnown}
+                      >
+                        {lang} {isKnown ? "(Known Language)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>

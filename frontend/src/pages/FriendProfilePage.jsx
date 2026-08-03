@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getUserProfile, unfriend, blockUser, unblockUser, sendFriendRequest } from "../lib/api";
-import { MapPinIcon, Github, Linkedin, ArrowLeftIcon, MessageCircleIcon, UserMinusIcon, SlashIcon, UserPlusIcon, CheckCircleIcon } from "lucide-react";
+import { getUserProfile, unfriend, blockUser, unblockUser, sendFriendRequest, cancelFriendRequest, getOutgoingFriendReqs } from "../lib/api";
+import { MapPinIcon, Github, Linkedin, ArrowLeftIcon, MessageCircleIcon, UserMinusIcon, SlashIcon, UserPlusIcon, CheckCircleIcon, Undo2 } from "lucide-react";
 import PageLoader from "../components/PageLoader";
 import toast from "react-hot-toast";
 import useAuthUser from "../hooks/useAuthUser";
@@ -57,14 +57,34 @@ const FriendProfilePage = () => {
     },
   });
 
+  const { data: outgoingFriendReqs = [] } = useQuery({
+    queryKey: ["outgoingFriendReqs"],
+    queryFn: getOutgoingFriendReqs,
+  });
+
+  const hasRequestBeenSent = outgoingFriendReqs.some((req) => req?.recipient?._id === id);
+
   const addFriendMutation = useMutation({
     mutationFn: () => sendFriendRequest(id),
     onSuccess: () => {
       toast.success("Friend request sent!");
-      queryClient.invalidateQueries({ queryKey: ["outgoingFriendRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile", id] });
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to send request");
+    },
+  });
+
+  const cancelRequestMutation = useMutation({
+    mutationFn: () => cancelFriendRequest(id),
+    onSuccess: () => {
+      toast.success("Friend request unsent ↩️");
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile", id] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to unsend request");
     },
   });
 
@@ -74,39 +94,67 @@ const FriendProfilePage = () => {
   const isOnline = user.lastActive && (new Date() - new Date(user.lastActive)) <= 3 * 60 * 1000;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
-      <div className="card bg-base-100 shadow-xl w-full max-w-2xl border border-base-content/10">
+    <div className="min-h-screen bg-base-200/50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto space-y-6">
         
-        {/* Header Ribbon */}
-        <div className="bg-primary/10 h-32 w-full rounded-t-2xl relative flex items-start p-4">
-          <button onClick={() => window.history.back()} className="btn btn-sm btn-circle btn-ghost bg-base-100/50 hover:bg-base-100 backdrop-blur">
-            <ArrowLeftIcon className="size-4" />
-          </button>
-        </div>
+        {/* Back Navigation */}
+        <button 
+          onClick={() => navigate(-1)} 
+          className="btn btn-ghost btn-sm gap-2 font-semibold text-base-content/70 hover:text-base-content"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Back
+        </button>
 
-        <div className="card-body px-8 pt-0 flex flex-col items-center relative -mt-16">
+        {/* Profile Card */}
+        <div className="bg-base-100 rounded-3xl p-6 sm:p-8 shadow-sm border border-base-content/5 space-y-6">
           
-          {/* Avatar */}
-          <div className={`avatar ${isOnline ? 'online' : 'offline'} mb-4`}>
-            <div className="relative w-32 h-32 rounded-full border-4 border-base-100 bg-base-200 text-3xl font-bold flex items-center justify-center overflow-hidden shadow-lg">
-              {user.profilePic ? (
-                <img src={user.profilePic} alt={user.fullName} className="object-cover w-full h-full" />
-              ) : (
-                <span>{user.fullName?.charAt(0).toUpperCase()}</span>
+          {/* Header section with avatar, name, and actions */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+            
+            {/* Avatar */}
+            <div className="relative">
+              <div className="size-28 sm:size-32 rounded-3xl bg-secondary text-secondary-content flex items-center justify-center font-black text-4xl overflow-hidden shadow-inner">
+                {user.profilePic ? (
+                  <img src={user.profilePic} alt={user.fullName} className="w-full h-full object-cover" />
+                ) : (
+                  user.fullName?.charAt(0)?.toUpperCase()
+                )}
+              </div>
+              {isOnline && (
+                <span className="absolute bottom-1 right-1 size-5 rounded-full bg-success border-4 border-base-100 shadow-sm" title="Online" />
               )}
+            </div>
+
+            {/* Name, Handle, Location */}
+            <div className="space-y-2 flex-1">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{user.fullName}</h1>
+              
+              {user.location && (
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-semibold text-base-content/60">
+                  <MapPinIcon className="size-3.5 text-primary" />
+                  {user.location}
+                </div>
+              )}
+
+              {/* Language Badges */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                {user.nativeLanguage && (
+                  <span className="badge badge-secondary badge-outline text-xs font-bold gap-1">
+                    Native: {user.nativeLanguage}
+                  </span>
+                )}
+                {user.learningLanguage && (
+                  <span className="badge badge-accent badge-outline text-xs font-bold gap-1">
+                    Learning: {user.learningLanguage}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-center">{user.fullName}</h2>
-          
-          {user.location && (
-            <div className="flex items-center text-sm opacity-70 mt-1">
-              <MapPinIcon className="size-4 mr-1" />
-              {user.location}
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-3 mt-6 w-full justify-center">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3 pt-2">
             {/* Show different buttons based on relationship status */}
             {/* Only show friendship actions if they are friends AND not blocked */}
             {authUser?.friends?.some(fId => fId.toString() === id) && !authUser?.blockedUsers?.some(bId => bId.toString() === id) ? (
@@ -130,14 +178,25 @@ const FriendProfilePage = () => {
                 </button>
               </>
             ) : !authUser?.blockedUsers?.some(bId => bId.toString() === id) && !authUser?.friends?.some(fId => fId.toString() === id) ? (
-              <button 
-                onClick={() => addFriendMutation.mutate()}
-                disabled={addFriendMutation.isPending}
-                className="btn btn-primary px-8 rounded-full"
-              >
-                <UserPlusIcon className="size-5 mr-2" />
-                {addFriendMutation.isPending ? "Sending..." : "Add Friend"}
-              </button>
+              hasRequestBeenSent ? (
+                <button 
+                  onClick={() => cancelRequestMutation.mutate()}
+                  disabled={cancelRequestMutation.isPending}
+                  className="btn btn-outline btn-error px-8 rounded-full"
+                >
+                  <Undo2 className="size-5 mr-2" />
+                  {cancelRequestMutation.isPending ? "Unsending..." : "Unsend Request"}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => addFriendMutation.mutate()}
+                  disabled={addFriendMutation.isPending}
+                  className="btn btn-primary px-8 rounded-full"
+                >
+                  <UserPlusIcon className="size-5 mr-2" />
+                  {addFriendMutation.isPending ? "Sending..." : "Add Friend"}
+                </button>
+              )
             ) : null}
 
             {/* Block/Unblock Button */}

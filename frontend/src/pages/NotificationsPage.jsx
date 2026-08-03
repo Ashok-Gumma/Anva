@@ -51,15 +51,15 @@ const NotificationsPage = () => {
             {/* ---------------- FRIEND REQUESTS ---------------- */}
             {incomingRequests.length > 0 && (
               <section className="space-y-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
+                <h2 className="text-xl font-black tracking-tight flex items-center gap-2 text-base-content">
                   <UserCheckIcon className="h-5 w-5 text-primary" />
                   Friend Requests
-                  <span className="badge badge-primary ml-2">
+                  <span className="badge badge-primary font-black ml-2 px-2.5">
                     {incomingRequests.length}
                   </span>
                 </h2>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {incomingRequests.map((request) => {
                     const name =
                       request.sender?.fullName || "Unknown User";
@@ -67,59 +67,56 @@ const NotificationsPage = () => {
                     return (
                       <div
                         key={request._id}
-                        className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
+                        className="bg-base-100/90 backdrop-blur-md rounded-3xl p-5 border border-base-content/10 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                       >
-                        <div className="card-body p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              {/* Avatar with letter fallback */}
-                              <div className="relative w-14 h-14 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-lg overflow-hidden">
-                                {/* Letter fallback */}
-                                <span className="absolute inset-0 flex items-center justify-center">
-                                  {name.charAt(0).toUpperCase()}
-                                </span>
-
-                                {/* Profile image */}
-                                {request.sender?.profilePic && (
-                                  <img
-                                    src={request.sender.profilePic}
-                                    alt={name}
-                                    loading="lazy"
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = "none";
-                                    }}
-                                  />
-                                )}
-                              </div>
-
-                              <div>
-                                <h3 className="font-semibold">{name}</h3>
-
-                                <div className="flex flex-wrap gap-1.5 mt-1">
-                                  <span className="badge badge-secondary badge-sm">
-                                    Native:{" "}
-                                    {request.sender?.nativeLanguage || "N/A"}
-                                  </span>
-                                  <span className="badge badge-outline badge-sm">
-                                    Learning:{" "}
-                                    {request.sender?.learningLanguage || "N/A"}
-                                  </span>
-                                </div>
-                              </div>
+                        <div className="flex items-center gap-4">
+                          {/* Avatar with gradient ring */}
+                          <div className="size-16 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent p-0.5 shadow-md shrink-0">
+                            <div className="size-full rounded-[0.9rem] bg-base-100 text-base-content flex items-center justify-center font-black text-xl overflow-hidden relative">
+                              <span className="absolute inset-0 flex items-center justify-center font-black text-primary">
+                                {name.charAt(0).toUpperCase()}
+                              </span>
+                              {request.sender?.profilePic && (
+                                <img
+                                  src={request.sender.profilePic}
+                                  alt={name}
+                                  loading="lazy"
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              )}
                             </div>
+                          </div>
 
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() =>
-                                acceptRequestMutation(request._id)
-                              }
-                              disabled={isPending}
-                            >
-                              Accept
-                            </button>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-extrabold text-base text-base-content tracking-tight truncate">{name}</h3>
+
+                            <div className="flex flex-wrap gap-2 mt-1.5">
+                              {request.sender?.nativeLanguage && (
+                                <span className="px-2.5 py-0.5 bg-secondary/10 text-secondary border border-secondary/20 text-[10px] font-extrabold rounded-lg">
+                                  Native: {request.sender.nativeLanguage}
+                                </span>
+                              )}
+                              {request.sender?.learningLanguage && (
+                                <span className="px-2.5 py-0.5 bg-accent/10 text-accent border border-accent/20 text-[10px] font-extrabold rounded-lg">
+                                  Learning: {request.sender.learningLanguage}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
+
+                        <button
+                          className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-extrabold text-xs uppercase tracking-wider bg-gradient-to-r from-primary to-secondary text-primary-content hover:brightness-110 shadow-md transition-all cursor-pointer"
+                          onClick={() =>
+                            acceptRequestMutation(request._id)
+                          }
+                          disabled={isPending}
+                        >
+                          {isPending ? "Accepting..." : "Accept Request"}
+                        </button>
                       </div>
                     );
                   })}

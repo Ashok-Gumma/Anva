@@ -4,7 +4,7 @@ import ParticleBackground from "../components/ParticleBackground";
 import AnvaLogo from "../components/AnvaLogo";
 import { 
   Users, 
-  Sparkles, 
+  Zap, 
   BookOpen, 
   Video, 
   Code, 
@@ -23,7 +23,7 @@ const features = [
   {
     title: "AI Language Tutor",
     description: "Get 24/7 assistance with grammar, vocabulary, and conversational practice from our advanced AI.",
-    icon: <Sparkles className="w-6 h-6" />,
+    icon: <Zap className="w-6 h-6" />,
     color: "bg-purple-50 text-purple-600"
   },
   {
@@ -106,7 +106,7 @@ const FeaturesPage = () => {
             transition={{ duration: 0.5 }}
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 text-sm shadow-sm font-medium mb-6"
           >
-            <Sparkles className="w-4 h-4 text-blue-500" />
+            <Zap className="w-4 h-4 text-blue-500" />
             <span>Discover Anva Features</span>
           </motion.div>
           

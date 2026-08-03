@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import AnvaLogo from "../components/AnvaLogo";
 import ParticleBackground from "../components/ParticleBackground";
 import {
-  Users, Sparkles, BookOpen, Video, Code, Clock,
+  Users, Flame, BookOpen, Video, Code, Clock,
   ArrowRight, MessageSquare, Globe, Zap
 } from "lucide-react";
 
@@ -24,7 +24,7 @@ const features = [
     bg: "bg-blue-50/80 border-blue-100",
   },
   {
-    icon: <Sparkles className="w-6 h-6" />,
+    icon: <Zap className="w-6 h-6" />,
     title: "24/7 AI Language Tutor",
     desc: "Instant grammar correction, interactive doubt sessions, and smart vocabulary feedback powered by AI.",
     gradient: "from-purple-600 to-pink-500",
@@ -141,7 +141,7 @@ const LandingPage = () => (
         initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }}
         className="mb-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100/80 text-blue-700 text-xs font-semibold shadow-2xs"
       >
-        <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+        <Zap className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
         <span>Language & Tech Exchange</span>
       </motion.div>
 

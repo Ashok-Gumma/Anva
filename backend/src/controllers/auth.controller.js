@@ -30,8 +30,7 @@ export async function signup(req, res) {
       return res.status(400).json({ message: "Email already exists, please use a diffrent one" });
     }
 
-    const idx = Math.floor(Math.random() * 100) + 1; // generate a num between 1-100
-    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`;
+    const randomAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
 
     const newUser = await User.create({
       email,
@@ -124,6 +123,12 @@ export async function onboard(req, res) {
           !learningLanguage && "learningLanguage",
           !location && "location",
         ].filter(Boolean),
+      });
+    }
+
+    if (nativeLanguage && learningLanguage && nativeLanguage.toLowerCase() === learningLanguage.toLowerCase()) {
+      return res.status(400).json({
+        message: "Known language and learning language cannot be the same",
       });
     }
 

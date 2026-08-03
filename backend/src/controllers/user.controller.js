@@ -183,6 +183,30 @@ export async function sendFriendRequest(req, res) {
   }
 }
 
+export async function cancelFriendRequest(req, res) {
+  try {
+    const myId = req.user.id;
+    const { id: recipientId } = req.params;
+
+    const friendRequest = await FriendRequest.findOneAndDelete({
+      $or: [
+        { sender: myId, recipient: recipientId },
+        { sender: recipientId, recipient: myId },
+      ],
+      status: "pending",
+    });
+
+    res.status(200).json({
+      message: friendRequest
+        ? "Friend request un-sent successfully"
+        : "Friend request removed",
+    });
+  } catch (error) {
+    console.error("Error in cancelFriendRequest controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
 export async function acceptFriendRequest(req, res) {
   try {
     const { id: requestId } = req.params;

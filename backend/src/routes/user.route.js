@@ -7,6 +7,7 @@ import {
   getOutgoingFriendReqs,
   getRecommendedUsers,
   sendFriendRequest,
+  cancelFriendRequest,
   updateProfile,
   updatePassword,
   getUserProfile,
@@ -29,6 +30,10 @@ router.put("/profile", updateProfile);
 router.put("/password", updatePassword);
 
 router.post("/friend-request/:id", sendFriendRequest);
+router.delete("/friend-request/:id/cancel", cancelFriendRequest);
+router.post("/friend-request/:id/cancel", cancelFriendRequest);
+router.delete("/friend-request/cancel/:id", cancelFriendRequest);
+router.delete("/friend-request/:id", cancelFriendRequest);
 router.put("/friend-request/:id/accept", acceptFriendRequest);
 
 router.get("/friend-requests", getFriendRequests);

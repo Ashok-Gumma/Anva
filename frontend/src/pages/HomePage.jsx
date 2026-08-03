@@ -5,6 +5,7 @@ import {
   getRecommendedUsers,
   getUserFriends,
   sendFriendRequest,
+  cancelFriendRequest,
   getFriendRequests,
   getStreamToken,
 } from "../lib/api";
@@ -22,7 +23,8 @@ import {
   Terminal,
   BookOpen,
   Flame,
-  Zap
+  Zap,
+  Undo2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
@@ -233,6 +235,34 @@ const HomePage = () => {
     sendRequestMutation(userId);
   };
 
+  const { mutate: cancelRequestMutation } = useMutation({
+    mutationFn: cancelFriendRequest,
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ["outgoingFriendReqs"] });
+      queryClient.setQueryData(["outgoingFriendReqs"], (old = []) =>
+        old.filter((req) => req?.recipient?._id !== userId)
+      );
+    },
+    onError: (err, userId) => {
+      setLoadingIds((prev) => { const n = new Set(prev); n.delete(userId); return n; });
+      toast.error(err.response?.data?.message || "Failed to unsend request");
+    },
+    onSuccess: (data, userId) => {
+      setLoadingIds((prev) => { const n = new Set(prev); n.delete(userId); return n; });
+      toast.success("Request unsent ↩️");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+  });
+
+  const handleCancelRequest = (userId) => {
+    if (loadingIds.has(userId)) return;
+    setLoadingIds((prev) => new Set(prev).add(userId));
+    cancelRequestMutation(userId);
+  };
+
   // Daily Teaser Answer Handler
   const handleTeaserOptionClick = (optionIndex) => {
     if (challengeSolved) return;
@@ -257,9 +287,9 @@ const HomePage = () => {
   if (!authUser) return null;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-base-200 min-h-[calc(100vh-4rem)] text-base-content font-sans">
+    <div className="p-3 sm:p-6 lg:p-8 bg-base-200 min-h-[calc(100vh-4rem)] text-base-content font-sans">
       <motion.div
-        className="container mx-auto max-w-[1400px] px-4 py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-min"
+        className="container mx-auto max-w-[1400px] px-2 sm:px-4 py-4 sm:py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 auto-rows-min"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -267,7 +297,7 @@ const HomePage = () => {
         {/* ── 1. HERO TILE (Spans 2 cols) ── */}
         <motion.div 
           variants={itemVariants}
-          className="md:col-span-2 relative bg-base-100 p-8 rounded-[2rem] border border-base-content/10 overflow-hidden flex flex-col justify-between shadow-lg text-base-content group h-full min-h-[300px]"
+          className="md:col-span-2 relative bg-base-100 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-base-content/10 overflow-hidden flex flex-col justify-between shadow-lg text-base-content group h-full min-h-[280px]"
         >
           {/* Subtle Decorative Elements instead of heavy gradient */}
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-primary/5 blur-[60px] pointer-events-none" />
@@ -469,7 +499,7 @@ const HomePage = () => {
                   Discover Partners
                 </h2>
                 <span className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider">
-                  Recommended Matches
+                  Recommended Matches ({filteredUsers.length})
                 </span>
               </div>
             </div>
@@ -504,39 +534,46 @@ const HomePage = () => {
               </div>
             ) : (
               <div className="flex gap-5 min-w-max pb-2">
-                {filteredUsers.slice(0, 5).map((user) => {
+                {filteredUsers.map((user) => {
                   const hasRequestBeenSent = outgoingRequestsIds.has(user._id);
                   return (
                     <div
                       key={user._id}
-                      className="w-64 shrink-0 bg-base-200/50 rounded-2xl border border-base-content/5 hover:border-secondary/30 hover:bg-base-200 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col justify-between"
+                      className="w-68 shrink-0 bg-base-100/90 backdrop-blur-md rounded-[2rem] border border-base-content/10 hover:border-secondary/30 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col justify-between group"
                     >
-                      <div className="p-5 flex flex-col gap-4 h-full justify-between">
+                      <div className="p-5 flex flex-col justify-between h-full space-y-4">
                         {/* User Header */}
                         <div className="flex items-center gap-3">
-                          <div className="relative size-12 rounded-2xl bg-gradient-to-br from-secondary to-accent text-secondary-content flex items-center justify-center font-black text-lg overflow-hidden shadow-inner shrink-0">
-                            <span className="absolute inset-0 flex items-center justify-center">
-                              {user.fullName?.charAt(0).toUpperCase()}
-                            </span>
-                            {user.profilePic && (
-                              <img
-                                src={user.profilePic}
-                                alt={user.fullName}
-                                loading="lazy"
-                                className="absolute inset-0 w-full h-full object-cover"
-                                onError={(e) => { e.currentTarget.style.display = "none"; }}
-                              />
-                            )}
+                          {/* Gradient Avatar Border */}
+                          <div className="size-14 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent p-0.5 shadow-md shrink-0 group-hover:scale-105 transition-transform duration-300">
+                            <div className="size-full rounded-[0.9rem] bg-base-100 text-base-content flex items-center justify-center font-black text-lg overflow-hidden relative">
+                              <span className="absolute inset-0 flex items-center justify-center font-black text-secondary">
+                                {user.fullName?.charAt(0).toUpperCase()}
+                              </span>
+                              {user.profilePic && (
+                                <img
+                                  src={user.profilePic}
+                                  alt={user.fullName}
+                                  loading="lazy"
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                />
+                              )}
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <h3 className="font-black text-xs text-base-content truncate tracking-tight">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-extrabold text-sm text-base-content group-hover:text-secondary transition-colors truncate tracking-tight">
                               {user.fullName}
                             </h3>
-                            {user.location && (
-                              <div className="flex items-center text-[9px] font-bold uppercase tracking-wider text-base-content/40 mt-1 truncate">
-                                <MapPinIcon className="size-3 mr-0.5 shrink-0" />
-                                {user.location}
+                            {user.location ? (
+                              <div className="flex items-center text-[10px] font-bold uppercase tracking-wider text-base-content/50 mt-0.5 truncate">
+                                <MapPinIcon className="size-3 mr-1 shrink-0 text-secondary" />
+                                <span className="truncate">{user.location}</span>
+                              </div>
+                            ) : (
+                              <div className="text-[10px] font-semibold text-base-content/40 mt-0.5">
+                                Learner
                               </div>
                             )}
                           </div>
@@ -545,41 +582,52 @@ const HomePage = () => {
                         <div>
                           {/* Languages */}
                           <div className="flex flex-col gap-1.5 mb-4">
-                            <span className="px-2.5 py-1.5 bg-base-100 text-base-content/70 text-[9px] font-black rounded-lg border border-base-content/5 flex items-center gap-1.5 uppercase tracking-widest shadow-sm">
-                              <span className="text-base-content/30">N</span> {getLanguageIcon(user.nativeLanguage)} {capitalize(user.nativeLanguage)}
+                            <span className="px-3 py-1.5 bg-base-200/50 text-base-content/70 text-[10px] font-extrabold rounded-xl border border-base-content/5 flex items-center gap-1.5 uppercase tracking-widest shadow-xs">
+                              <span className="text-base-content/30 font-black">N</span> {getLanguageIcon(user.nativeLanguage)} {capitalize(user.nativeLanguage)}
                             </span>
-                            <span className="px-2.5 py-1.5 bg-secondary/10 text-secondary text-[9px] font-black rounded-lg border border-secondary/10 flex items-center gap-1.5 uppercase tracking-widest shadow-sm">
-                              <span className="text-secondary/50">L</span> {getLanguageIcon(user.learningLanguage)} {capitalize(user.learningLanguage)}
+                            <span className="px-3 py-1.5 bg-secondary/10 text-secondary text-[10px] font-extrabold rounded-xl border border-secondary/15 flex items-center gap-1.5 uppercase tracking-widest shadow-xs">
+                              <span className="text-secondary/50 font-black">L</span> {getLanguageIcon(user.learningLanguage)} {capitalize(user.learningLanguage)}
                             </span>
                           </div>
 
                           {/* Action Button */}
-                          <button
-                            className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all duration-300 shadow-sm cursor-pointer ${
-                              hasRequestBeenSent
-                                ? "bg-base-300 text-base-content/30 cursor-not-allowed"
-                                : "bg-primary text-primary-content hover:scale-[1.02] hover:shadow-md"
-                            }`}
-                            onClick={() => handleSendRequest(user._id)}
-                            disabled={hasRequestBeenSent || loadingIds.has(user._id)}
-                          >
-                            {hasRequestBeenSent ? (
-                              <>
-                                <CheckCircleIcon className="size-3.5 mr-1.5" />
-                                Sent
-                              </>
-                            ) : loadingIds.has(user._id) ? (
-                              <>
-                                <span className="w-3.5 h-3.5 border-2 border-base-100/30 border-t-base-100 rounded-full animate-spin mr-1.5" />
-                                Sending
-                              </>
-                            ) : (
-                              <>
-                                <UserPlusIcon className="size-3.5 mr-1.5" />
-                                Connect
-                              </>
-                            )}
-                          </button>
+                          {hasRequestBeenSent ? (
+                            <button
+                              className="w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all duration-300 shadow-sm cursor-pointer bg-error/10 text-error hover:bg-error/20 border border-error/20"
+                              onClick={() => handleCancelRequest(user._id)}
+                              disabled={loadingIds.has(user._id)}
+                            >
+                              {loadingIds.has(user._id) ? (
+                                <>
+                                  <span className="w-3.5 h-3.5 border-2 border-error/30 border-t-error rounded-full animate-spin mr-1.5" />
+                                  Unsending
+                                </>
+                              ) : (
+                                <>
+                                  <Undo2 className="size-3.5 mr-1.5" />
+                                  Unsend
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              className="w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center transition-all duration-300 shadow-sm cursor-pointer bg-primary text-primary-content hover:scale-[1.02] hover:shadow-md"
+                              onClick={() => handleSendRequest(user._id)}
+                              disabled={loadingIds.has(user._id)}
+                            >
+                              {loadingIds.has(user._id) ? (
+                                <>
+                                  <span className="w-3.5 h-3.5 border-2 border-primary-content/30 border-t-primary-content rounded-full animate-spin mr-1.5" />
+                                  Sending
+                                </>
+                              ) : (
+                                <>
+                                  <UserPlusIcon className="size-3.5 mr-1.5" />
+                                  Connect
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

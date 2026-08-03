@@ -41,7 +41,7 @@ export const protectRoute = async (req, res, next) => {
               "Anva User";
             profilePic =
               clerkUser.imageUrl ||
-              `https://avatar.iran.liara.run/public/${Math.floor(Math.random() * 100) + 1}.png`;
+              `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
           } catch {
             // Fallback: create minimal user from JWT claims
             // This happens when CLERK_SECRET_KEY is missing from backend/.env
@@ -49,7 +49,7 @@ export const protectRoute = async (req, res, next) => {
             console.warn("    Add CLERK_SECRET_KEY to backend/.env for full user data sync.");
             email = `${clerkId}@clerk.local`;
             fullName = decoded.name || decoded.username || "Anva User";
-            profilePic = `https://avatar.iran.liara.run/public/${Math.floor(Math.random() * 100) + 1}.png`;
+            profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
           }
 
           // Link to existing account if email matches (e.g. Google OAuth user)

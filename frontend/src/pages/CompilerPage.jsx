@@ -105,7 +105,7 @@ const CompilerPage = () => {
           <div className="flex items-center gap-3">
             <span className="font-extrabold tracking-wider text-sm hidden sm:block">Editor</span>
             <select
-              className="select select-bordered select-xs w-36 font-mono font-bold text-xs"
+              className="select select-bordered select-xs w-28 sm:w-36 font-mono font-bold text-[11px] sm:text-xs"
               value={language}
               onChange={(e) => handleLanguageChange(e.target.value)}
             >
@@ -115,7 +115,7 @@ const CompilerPage = () => {
             </select>
             {PRESETS[language] && (
               <select
-                className="select select-bordered select-xs w-44 font-mono font-bold text-[10px] bg-primary/10 border-primary/20 text-primary"
+                className="select select-bordered select-xs w-32 sm:w-44 font-mono font-bold text-[10px] bg-primary/10 border-primary/20 text-primary"
                 onChange={(e) => {
                   const selectedPreset = PRESETS[language].find(p => p.title === e.target.value);
                   if (selectedPreset) {
@@ -247,16 +247,23 @@ const CompilerPage = () => {
 
         {/* Terminal/Output Pane */}
         <div className="flex-1 ide-panel rounded-2xl min-h-[220px]">
-          <div className="ide-panel-header">
-            <span>Terminal Output</span>
-            {isError && (
-              <span className="badge badge-error gap-1 text-[9px] font-extrabold uppercase py-1">
-                <AlertCircle className="size-3" /> Error
+          <div className="ide-panel-header flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-base-content flex items-center gap-2">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              Terminal Output
+            </span>
+            {isError ? (
+              <span className="badge badge-error gap-1 text-[9px] font-black uppercase py-1 px-2">
+                <AlertCircle className="size-3" /> Runtime Error
               </span>
-            )}
+            ) : output && !isRunning ? (
+              <span className="badge badge-success gap-1 text-[9px] font-black uppercase py-1 px-2">
+                <CheckCircle2 className="size-3" /> Execution Complete
+              </span>
+            ) : null}
           </div>
-          <div className="flex-1 p-4 bg-[#1a1a1a] text-zinc-300 font-mono text-xs overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">
-            {output || ">> Ready to run code."}
+          <div className="flex-1 p-4 bg-[#0d1117] text-emerald-400 font-mono text-xs overflow-y-auto whitespace-pre-wrap select-text leading-relaxed border-t border-base-content/10 shadow-inner">
+            {output || ">> Ready to execute code."}
           </div>
         </div>
       </div>

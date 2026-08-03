@@ -45,8 +45,7 @@ export async function handleClerkWebhook(req, res) {
 
       if (!user) {
         // Create new MongoDB user for Clerk-signed-up user
-        const idx = Math.floor(Math.random() * 100) + 1;
-        const randomAvatar = image_url || `https://avatar.iran.liara.run/public/${idx}.png`;
+        const randomAvatar = image_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
 
         user = await User.create({
           clerkId,

@@ -121,54 +121,56 @@ const ProfilePage = () => {
   }, [authUser, previewImage, githubUrl, linkedinUrl]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)] bg-base-300">
+    <div className="p-3 sm:p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)] bg-base-300/40">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-base-100 rounded-[2rem] shadow-xl border border-base-content/10 w-full max-w-lg p-8 sm:p-10 space-y-6"
+        className="bg-base-100/90 backdrop-blur-md rounded-[2.5rem] shadow-xl border border-base-content/10 w-full max-w-lg p-6 sm:p-10 space-y-6"
       >
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-base-content">Profile Settings</h1>
-          <p className="text-base-content/60 font-medium">Update your avatar and personal details</p>
+        <div className="text-center space-y-1.5">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-base-content">Profile Settings</h1>
+          <p className="text-xs sm:text-sm text-base-content/60 font-medium">Personalize your avatar, preferences, and security settings</p>
         </div>
 
         {/* Avatar Upload UI */}
         <div className="flex flex-col items-center gap-4">
-          <div className="relative size-32 sm:size-36 rounded-2xl border border-base-content/10 bg-primary overflow-hidden flex items-center justify-center shadow-md group">
-            {/* Fallback Text */}
-            <span className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-primary-content opacity-90">
-              {authUser?.fullName?.charAt(0).toUpperCase()}
-            </span>
+          <div className="relative size-32 sm:size-36 rounded-[2rem] bg-gradient-to-tr from-primary via-secondary to-accent p-1 shadow-lg group">
+            <div className="size-full rounded-[1.8rem] bg-base-100 text-base-content flex items-center justify-center font-black text-4xl overflow-hidden relative">
+              {/* Fallback Text */}
+              <span className="absolute inset-0 flex items-center justify-center font-black text-primary">
+                {authUser?.fullName?.charAt(0).toUpperCase()}
+              </span>
 
-            {/* Profile Picture */}
-            {(previewImage || authUser?.profilePic) && (
-              <img
-                src={previewImage || authUser?.profilePic}
-                alt="Profile Avatar"
-                className="absolute inset-0 w-full h-full object-cover z-10"
+              {/* Profile Picture */}
+              {(previewImage || authUser?.profilePic) && (
+                <img
+                  src={previewImage || authUser?.profilePic}
+                  alt="Profile Avatar"
+                  className="absolute inset-0 w-full h-full object-cover z-10"
+                />
+              )}
+
+              {/* Overlay */}
+              <label
+                htmlFor="avatar-upload"
+                className="absolute inset-0 z-20 bg-black/60 text-white flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm"
+              >
+                <CameraIcon className="size-8 mb-1" />
+                <span className="text-xs font-extrabold uppercase tracking-wider">Change Photo</span>
+              </label>
+              <input
+                type="file"
+                id="avatar-upload"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
               />
-            )}
-
-            {/* Overlay */}
-            <label
-              htmlFor="avatar-upload"
-              className="absolute inset-0 z-20 bg-black/50 text-white flex flex-col items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-sm"
-            >
-              <CameraIcon className="size-8 mb-1" />
-              <span className="text-sm font-semibold">Change Photo</span>
-            </label>
-            <input
-              type="file"
-              id="avatar-upload"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-            />
+            </div>
           </div>
 
-          <p className="text-xs text-base-content/40 font-medium max-w-xs text-center mt-1">
-            Upload a squared image. Supported formats: JPG, PNG, WEBP.
+          <p className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider max-w-xs text-center">
+            Supported formats: JPG, PNG, WEBP (Compressed automatically)
           </p>
         </div>
 
@@ -250,18 +252,18 @@ const ProfilePage = () => {
 
         {/* Change Password Section */}
         <div className="pt-6 border-t border-base-content/10">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <h3 className="font-bold text-base-content tracking-tight text-lg">Security Settings</h3>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Link
                 to="/blocked-users"
-                className="px-4 py-2 text-sm font-medium text-error bg-error/10 hover:bg-error/20 rounded-xl transition-colors"
+                className="px-3.5 py-1.5 text-xs sm:text-sm font-medium text-error bg-error/10 hover:bg-error/20 rounded-xl transition-colors"
               >
                 Blocked Users
               </Link>
               <button 
                 onClick={() => setIsEditingPassword(!isEditingPassword)}
-                className="px-4 py-2 text-sm font-medium text-base-content bg-base-200 hover:bg-base-300 rounded-xl transition-colors"
+                className="px-3.5 py-1.5 text-xs sm:text-sm font-medium text-base-content bg-base-200 hover:bg-base-300 rounded-xl transition-colors"
               >
                 {isEditingPassword ? "Cancel" : "Change Password"}
               </button>
