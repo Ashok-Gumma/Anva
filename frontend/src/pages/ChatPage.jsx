@@ -75,7 +75,10 @@ const ChatPage = () => {
       if (!tokenData?.token || !authUser || !targetUserId) return;
 
       try {
-        const client = StreamChat.getInstance(STREAM_API_KEY);
+        // Use a longer timeout (15s) — default 3s is too short on slow/first connections
+        const client = StreamChat.getInstance(STREAM_API_KEY, {
+          timeout: 15000,
+        });
 
         if (client.userID !== authUser._id) {
           if (client.userID) await client.disconnectUser();
@@ -94,7 +97,17 @@ const ChatPage = () => {
           members: [authUser._id, targetUserId],
         });
 
-        await currChannel.watch();
+        // Retry watch up to 2 times on timeout
+        let watched = false;
+        for (let attempt = 0; attempt < 3 && !watched; attempt++) {
+          try {
+            await currChannel.watch();
+            watched = true;
+          } catch (err) {
+            if (attempt === 2) throw err;
+            await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+          }
+        }
 
         setChatClient(client);
         setChannel(currChannel);
@@ -108,6 +121,7 @@ const ChatPage = () => {
 
     initChat();
   }, [tokenData, authUser, targetUserId]);
+
 
   const handleVideoCall = () => {
     if (channel) {
@@ -261,7 +275,7 @@ const ChatPage = () => {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-4.25rem)] md:h-[calc(100vh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
+    <div className="flex h-[calc(100dvh-4rem-4.25rem)] md:h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
       {/* Desktop Sidebar */}
       <aside className="w-72 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}

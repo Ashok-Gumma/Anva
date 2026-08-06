@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    bannerPic: {
+      type: String,
+      default: "",
+    },
     nativeLanguage: {
       type: String,
       default: "",
@@ -79,6 +83,12 @@ const userSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+      },
+    ],
+    savedPosts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
       },
     ],
     resetPasswordToken: String,

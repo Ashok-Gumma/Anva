@@ -3,6 +3,7 @@ import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth.route.js";
@@ -78,22 +79,24 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/posts", postRoutes);
 
-// ✅ Serve frontend in production
-if (process.env.NODE_ENV === "production") {
-  // backend/src/ → ../dist = backend/dist/ (committed to git, always exists on Render)
-  const distPath = path.join(__dirname, "../dist");
+// ✅ Serve frontend static assets (Images, Favicons, PDFs)
+const distPath = path.join(__dirname, "../dist");
+const publicPath = path.join(__dirname, "../../frontend/public");
 
-  console.log("📁 Serving frontend from:", distPath);
-
-  // Serve static files
+if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
+}
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+}
 
-  // Catch-all route (React Router)
+if (process.env.NODE_ENV === "production") {
+  // Catch-all route for Single Page Application
   app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"), (err) => {
       if (err) {
         console.error("❌ sendFile error:", err.message);
-        res.status(500).send("Frontend not found. Build may have failed.");
+        res.status(500).send("Frontend not found.");
       }
     });
   });
@@ -104,4 +107,4 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   await connectDB();
   await ensureDefaultAdmin();
-});
+}); 

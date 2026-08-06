@@ -10,6 +10,7 @@ import AdminRoute from "./components/AdminRoute.jsx";
 import Layout from "./components/Layout.jsx";
 import PageLoader from "./components/PageLoader.jsx";
 import AnvaLogo from "./components/AnvaLogo.jsx";
+import AnvaBrandLogo from "./components/AnvaBrandLogo.jsx";
 
 import HomePage from "./pages/HomePage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
@@ -32,6 +33,7 @@ import AdminPage from "./pages/AdminPage.jsx";
 import PrivacyPage from "./pages/PrivacyPage.jsx";
 import TermsPage from "./pages/TermsPage.jsx";
 import EduFeedPage from "./pages/EduFeedPage.jsx";
+import SavedPostsPage from "./pages/SavedPostsPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
@@ -97,7 +99,9 @@ const App = () => {
       {isAuthResolving ? (
         <PageLoader />
       ) : (
-        <div className="min-h-screen bg-base-200 text-base-content font-sans tracking-tight" data-theme={theme}>
+        <div className="min-h-screen bg-base-200 text-base-content font-sans tracking-tight relative" data-theme={theme}>
+          {/* WhatsApp-Style Minimal Wallpaper Pattern across all pages */}
+          <div className="anva-whatsapp-bg" aria-hidden="true" />
           <Routes>
             {/* ── Public ── */}
             <Route
@@ -123,8 +127,7 @@ const App = () => {
                   <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-base-200 font-minimal selection:bg-primary selection:text-primary-content">
                     <div className="mb-6 text-center space-y-1">
                       <div className="inline-flex items-center gap-2 mb-2">
-                        <AnvaLogo className="h-8 w-8 object-cover rounded-xl shadow-sm text-primary" />
-                        <span className="text-xl font-bold tracking-tight text-base-content font-minimal">Anva</span>
+                        <AnvaBrandLogo badgeSize="size-9" textSize="text-2xl" />
                       </div>
                       <h1 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">
                         Welcome back to <span className="font-curly italic text-primary font-bold tracking-wide">Anva</span>
@@ -164,8 +167,7 @@ const App = () => {
                   <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-base-200 font-minimal selection:bg-primary selection:text-primary-content">
                     <div className="mb-6 text-center space-y-1">
                       <div className="inline-flex items-center gap-2 mb-2">
-                        <AnvaLogo className="h-8 w-8 object-cover rounded-xl shadow-sm text-primary" />
-                        <span className="text-xl font-bold tracking-tight text-base-content font-minimal">Anva</span>
+                        <AnvaBrandLogo badgeSize="size-9" textSize="text-2xl" />
                       </div>
                       <h1 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">
                         Start your journey with <span className="font-curly italic text-primary font-bold tracking-wide">Anva</span>
@@ -225,6 +227,7 @@ const App = () => {
             <Route path="/assistant"     element={<ProtectedRoute element={<Layout showSidebar><AssistantPage /></Layout>} />} />
             <Route path="/notifications" element={<ProtectedRoute element={<Layout showSidebar><NotificationsPage /></Layout>} />} />
             <Route path="/profile"       element={<ProtectedRoute element={<Layout showSidebar><ProfilePage /></Layout>} />} />
+            <Route path="/saved-posts"   element={<ProtectedRoute element={<Layout showSidebar><SavedPostsPage /></Layout>} />} />
             <Route path="/support"       element={<ProtectedRoute allowSuspended={true} element={<Layout showSidebar><SupportPage /></Layout>} />} />
             <Route path="/admin"        element={<AdminRoute element={<AdminPage />} />} />
             <Route path="/blocked-users" element={<ProtectedRoute element={<Layout showSidebar><BlockedUsersPage /></Layout>} />} />

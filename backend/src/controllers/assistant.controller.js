@@ -1,26 +1,62 @@
-import axios from "axios";
 import ChatMessage from "../models/ChatMessage.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper for RapidAPI ChatGPT-42 request
+// OpenRouter AI Service (Powered by openrouter/free & Google Gemma 4)
 // ─────────────────────────────────────────────────────────────────────────────
 const callAiApi = async (messages) => {
-  const options = {
-    method: 'POST',
-    url: `https://chatgpt-42.p.rapidapi.com/gpt4`,
-    headers: {
-      'x-rapidapi-key': process.env.RAPIDAPI_KEY,
-      'x-rapidapi-host': "chatgpt-42.p.rapidapi.com",
-      'Content-Type': 'application/json'
-    },
-    data: {
-      messages: messages,
-      web_access: false
-    }
-  };
+  const apiKey = process.env.OPENROUTER_API_KEY;
 
-  const response = await axios.request(options);
-  return response.data.result;
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:5001",
+        "X-Title": "Anva Study Assistant",
+      },
+      body: JSON.stringify({
+        model: "openrouter/free",
+        messages: messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const errJson = await response.json().catch(() => ({}));
+      throw new Error(errJson?.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("Empty AI response received.");
+    }
+
+    return content;
+  } catch (primaryErr) {
+    console.warn("⚠️ OpenRouter free model fallback attempt:", primaryErr.message);
+
+    // Fallback to Google Gemma 4 31B Instruct if primary router is busy
+    const fallbackRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemma-4-31b-it:free",
+        messages: messages,
+      }),
+    });
+
+    if (fallbackRes.ok) {
+      const fallbackData = await fallbackRes.json();
+      return fallbackData?.choices?.[0]?.message?.content || "Hello! I am your study assistant.";
+    }
+
+    throw primaryErr;
+  }
 };
 
 export const chatWithAssistant = async (req, res) => {
@@ -33,16 +69,20 @@ export const chatWithAssistant = async (req, res) => {
     }
 
     // 1. Save User Message to DB
-    const userMsg = await ChatMessage.create({
+    await ChatMessage.create({
       userId,
       role: "user",
       content: message || "Can you help me with this?",
-      image
+      image,
     });
 
-    // 2. Call AI
+    // 2. Call AI Assistant
     const reply = await callAiApi([
-      { role: "system", content: "You are a professional study assistant. Help students clarify doubts clearly." },
+      {
+        role: "system",
+        content:
+          "You are Anva's intelligent, polite, and professional Study Assistant. Help students answer questions, explain concepts clearly, assist with programming, and guide them in their learning journey.",
+      },
       { role: "user", content: message || "Can you help me with this?" },
     ]);
 
@@ -50,22 +90,15 @@ export const chatWithAssistant = async (req, res) => {
     await ChatMessage.create({
       userId,
       role: "assistant",
-      content: reply
+      content: reply,
     });
 
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("🔥 Assistant backend error:", error.response?.data || error.message);
-
-    if (error?.response?.status === 429) {
-      return res.status(200).json({
-        reply: "⚠️ AI service is currently rate-limited. Please try again later.",
-        isFallback: true,
-      });
-    }
+    console.error("🔥 Assistant backend error:", error.message);
 
     return res.status(200).json({
-      reply: "❌ Sorry, the AI assistant encountered an error while processing your request.",
+      reply: "❌ Sorry, the AI assistant encountered an error while processing your request. Please try again.",
       isFallback: true,
     });
   }
@@ -77,7 +110,7 @@ export const getChatHistory = async (req, res) => {
     const history = await ChatMessage.find({ userId })
       .sort({ createdAt: 1 })
       .limit(50);
-    
+
     res.status(200).json(history);
   } catch (error) {
     console.error("Fetch history error:", error.message);
@@ -104,20 +137,17 @@ export const checkGrammar = async (req, res) => {
     }
 
     const reply = await callAiApi([
-      { role: "system", content: "You are a professional language teacher. Review the user's text for spelling and grammar errors. If there are errors, provide the corrected text clearly and explain the corrections briefly. If it is already correct, just say 'The grammar is perfect!'." },
+      {
+        role: "system",
+        content:
+          "You are a professional language & grammar assistant. Review the user's text for spelling and grammar errors. If there are errors, provide the corrected text clearly and explain the corrections briefly. If it is already correct, say 'The grammar is perfect!'.",
+      },
       { role: "user", content: text },
-    ], "gpt-4o-mini");
+    ]);
 
     res.status(200).json({ reply });
   } catch (error) {
-    console.error("Assistant grammar error:", error.response?.data || error.message);
-
-    if (error?.response?.status === 429) {
-      return res.status(200).json({
-        reply: "⚠️ Grammar check is temporarily unavailable due to rate limits. Please try again later.",
-        isFallback: true,
-      });
-    }
+    console.error("Assistant grammar error:", error.message);
 
     return res.status(200).json({
       reply: "❌ Grammar check failed. Please try again in a moment.",

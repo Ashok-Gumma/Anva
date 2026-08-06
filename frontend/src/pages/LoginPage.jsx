@@ -1,5 +1,5 @@
 import { useState } from "react";
-import AnvaLogo from "../components/AnvaLogo";
+import AnvaBrandLogo from "../components/AnvaBrandLogo";
 import { Link } from "react-router";
 import useLogin from "../hooks/useLogin";
 import { motion } from "framer-motion";
@@ -53,9 +53,8 @@ const LoginPage = () => {
           </div>
 
           <div className="mb-6 flex flex-col items-center lg:items-start text-center lg:text-left gap-1">
-            <Link to="/" className="flex items-center gap-2 group mb-1 inline-flex">
-              <AnvaLogo className="h-8 w-8 object-cover rounded-xl shadow-sm group-hover:scale-105 transition-transform text-primary" />
-              <span className="text-xl font-bold tracking-tight text-base-content font-minimal">Anva</span>
+            <Link to="/" className="mb-1 inline-flex">
+              <AnvaBrandLogo badgeSize="size-9" textSize="text-2xl" />
             </Link>
             
             <h2 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">

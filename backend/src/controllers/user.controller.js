@@ -4,17 +4,18 @@ import { upsertStreamUser, blockStreamUser, unblockStreamUser } from "../lib/str
 
 export async function updateProfile(req, res) {
   try {
-    const { profilePic, githubUrl, linkedinUrl } = req.body;
-    const userId = req.user.id;
+    const { profilePic, bannerPic, githubUrl, linkedinUrl } = req.body;
+    const userId = req.user._id || req.user.id;
 
     // Build update object dynamically
     const updateData = {};
     if (profilePic !== undefined) updateData.profilePic = profilePic;
+    if (bannerPic !== undefined) updateData.bannerPic = bannerPic;
     if (githubUrl !== undefined) updateData.githubUrl = githubUrl;
     if (linkedinUrl !== undefined) updateData.linkedinUrl = linkedinUrl;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ message: "No fields to update" });
+      return res.status(200).json(req.user);
     }
 
     const updatedUser = await User.findByIdAndUpdate(

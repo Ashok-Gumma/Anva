@@ -115,6 +115,73 @@ code, pre, .font-mono, .monaco-editor {
   animation: fadeIn 0.3s ease both;
 }
 
+/* ─── WhatsApp Minimal Doodle Background Pattern ────────────── */
+.anva-whatsapp-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-color: currentColor;
+  mask-image: url("/doodle-pattern.svg");
+  -webkit-mask-image: url("/doodle-pattern.svg");
+  mask-repeat: repeat;
+  -webkit-mask-repeat: repeat;
+  mask-size: 280px 280px;
+  -webkit-mask-size: 280px 280px;
+  opacity: 0.08;
+  transition: opacity 0.3s ease;
+}
+
+/* Fallback if mask-image is not rendered */
+@supports not (mask-image: url("")) {
+  .anva-whatsapp-bg {
+    background-image: url("/doodle-pattern.svg");
+    background-repeat: repeat;
+    background-size: 280px 280px;
+    background-color: transparent;
+    opacity: 0.08;
+  }
+}
+
+/* Darker / vibrant DaisyUI themes get boosted contrast */
+[data-theme="dark"] .anva-whatsapp-bg,
+[data-theme="synthwave"] .anva-whatsapp-bg,
+[data-theme="halloween"] .anva-whatsapp-bg,
+[data-theme="black"] .anva-whatsapp-bg,
+[data-theme="luxury"] .anva-whatsapp-bg,
+[data-theme="dracula"] .anva-whatsapp-bg,
+[data-theme="night"] .anva-whatsapp-bg,
+[data-theme="aqua"] .anva-whatsapp-bg,
+[data-theme="forest"] .anva-whatsapp-bg,
+[data-theme="sunset"] .anva-whatsapp-bg,
+[data-theme="cyberpunk"] .anva-whatsapp-bg,
+[data-theme="dim"] .anva-whatsapp-bg {
+  opacity: 0.12;
+}
+
+/* ─── Prevent Doodles From Merging Over Cards & Content ──────── */
+.bg-base-100,
+.card,
+.card-premium,
+.glass-panel,
+.glass-card,
+header,
+nav,
+main > div,
+input,
+textarea,
+select,
+.str-chat__message-simple-text-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Page canvas background translucency so z-0 doodles shine through background canvas only */
+.bg-base-200 {
+  background-color: var(--fallback-b2, oklch(var(--b2) / 0.88)) !important;
+}
+
+
 /* ─── Glow pulse ────────────────────────────────────────────── */
 .glow-ring {
   box-shadow: 0 0 0 3px oklch(var(--p) / 0.25);
@@ -351,3 +418,86 @@ code, pre, .font-mono, .monaco-editor {
   @apply flex items-center gap-2;
 }
 
+/* ─── Mobile & Touch Optimizations ─────────────────────────── */
+
+/* Prevent iOS font inflation */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Remove tap highlight on all interactive elements */
+a, button, input, select, textarea, label, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Minimum 44px touch targets for accessibility (iOS HIG) */
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Exception: icon-only small ghost buttons inside cards keep their actual size */
+.btn-xs {
+  min-height: 32px !important;
+  min-width: 32px !important;
+}
+
+/* Safe-area padding for notched phones (iPhone X+) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Bottom nav safe-area support */
+nav.fixed.bottom-0 {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+}
+
+/* Prevent overscroll bounce on the page (keep momentum scrolling on lists) */
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Smooth momentum scrolling on iOS for scrollable containers */
+.overflow-y-auto, .overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent horizontal scroll bleed on small screens */
+body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Fix 100vh issue on mobile browsers (address bar causes overflow) */
+.min-h-screen {
+  min-height: 100dvh;
+}
+
+/* ─── Mobile Compiler IDE ────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .ide-split-container {
+    height: auto !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* ─── Mobile-friendly form inputs ──────────────────────────── */
+@media (max-width: 768px) {
+  /* Prevent iOS zoom on focus by ensuring inputs are >= 16px */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Allow label text to be smaller while keeping input font safe */
+  .text-xs input, .text-xs textarea {
+    font-size: 16px !important;
+  }
+}

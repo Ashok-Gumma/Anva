@@ -32,6 +32,18 @@ const postSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    pdfUrl: {
+      type: String,
+      default: "",
+    },
+    pdfName: {
+      type: String,
+      default: "",
+    },
+    isFlagged: {
+      type: Boolean,
+      default: false,
+    },
     subject: {
       type: String,
       enum: [
@@ -54,6 +66,14 @@ const postSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// ── Performance Indexes ──
+// Default feed sort (newest first)
+postSchema.index({ createdAt: -1 });
+// Subject-filtered feed
+postSchema.index({ subject: 1, createdAt: -1 });
+// User's own posts
+postSchema.index({ user: 1, createdAt: -1 });
 
 const Post = mongoose.model("Post", postSchema);
 

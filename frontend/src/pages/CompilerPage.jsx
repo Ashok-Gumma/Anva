@@ -156,7 +156,7 @@ const CompilerPage = () => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-hidden relative min-h-[300px]">
+        <div className="flex-1 overflow-hidden relative min-h-[300px] sm:min-h-[400px]">
           <Editor
             height="100%"
             language={language === "cpp" ? "cpp" : language}
@@ -166,10 +166,11 @@ const CompilerPage = () => {
             loading={<div className="flex justify-center items-center h-full"><span className="loading loading-dots"></span></div>}
             options={{
               minimap: { enabled: false },
-              fontSize: 15,
+              fontSize: window.innerWidth < 768 ? 13 : 15,
               wordWrap: "on",
               padding: { top: 16 },
-              automaticLayout: true
+              automaticLayout: true,
+              scrollBeyondLastLine: false,
             }}
           />
         </div>
@@ -178,7 +179,7 @@ const CompilerPage = () => {
       {/* Input / Output Section */}
       <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
         {/* Input Pane */}
-        <div className="flex-1 ide-panel rounded-2xl min-h-[220px]">
+        <div className="flex-1 ide-panel rounded-2xl min-h-[180px] sm:min-h-[220px]">
           <div className="ide-panel-header p-0 flex items-stretch">
             <div className="flex">
               <button

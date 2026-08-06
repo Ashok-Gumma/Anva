@@ -234,6 +234,11 @@ export async function getPosts(subject = "All") {
   return response.data;
 }
 
+export async function getPostById(id) {
+  const response = await axiosInstance.get(`/posts/${id}`);
+  return response.data;
+}
+
 export async function createPost(postData) {
   const response = await axiosInstance.post("/posts", postData);
   return response.data;
@@ -253,5 +258,36 @@ export async function deletePost(id) {
   const response = await axiosInstance.delete(`/posts/${id}`);
   return response.data;
 }
+
+export async function deleteCommentPost({ postId, commentId }) {
+  const response = await axiosInstance.delete(`/posts/${postId}/comment/${commentId}`);
+  return response.data;
+}
+
+export async function updatePost({ id, caption, subject }) {
+  const response = await axiosInstance.put(`/posts/${id}`, { caption, subject });
+  return response.data;
+}
+
+export async function toggleSavePost(id) {
+  const response = await axiosInstance.post(`/posts/${id}/save`);
+  return response.data;
+}
+
+export async function getSavedPosts() {
+  const response = await axiosInstance.get("/posts", {
+    params: { subject: "Saved Posts" },
+  });
+  return response.data;
+}
+
+export async function getUserPosts(userId) {
+  if (!userId) return { posts: [] };
+  const response = await axiosInstance.get("/posts", {
+    params: { userId },
+  });
+  return response.data;
+}
+
 
 
