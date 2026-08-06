@@ -52,44 +52,86 @@ export const protectRoute = async (req, res, next) => {
             profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
           }
 
-          // Link to existing account if email matches (e.g. Google OAuth user)
-          const existingByEmail =
-            email && !email.endsWith("@clerk.local")
-              ? await User.findOne({ email })
-              : null;
+          try {
+            // Link to existing account if email matches (e.g. Google OAuth user)
+            const existingByEmail =
+              email && !email.endsWith("@clerk.local")
+                ? await User.findOne({ email })
+                : null;
 
-          if (existingByEmail) {
-            existingByEmail.clerkId = clerkId;
-            await existingByEmail.save();
-            user = await User.findById(existingByEmail._id).select("-password");
-          } else {
-            // Create brand new user
-            const newUser = await User.create({
-              clerkId,
-              email,
-              fullName,
-              profilePic,
-              password: "",
-              isOnboarded: false,
-            });
-
-            // Register on Stream.io
-            try {
-              await upsertStreamUser({
-                id: newUser._id.toString(),
-                name: newUser.fullName,
-                image: newUser.profilePic || "",
+            if (existingByEmail) {
+              existingByEmail.clerkId = clerkId;
+              await existingByEmail.save();
+              user = await User.findById(existingByEmail._id).select("-password");
+            } else {
+              // Create brand new user
+              const newUser = await User.create({
+                clerkId,
+                email,
+                fullName,
+                profilePic,
+                password: "",
+                isOnboarded: false,
               });
-            } catch (streamErr) {
-              console.error("Stream user creation failed:", streamErr.message);
-            }
 
-            user = await User.findById(newUser._id).select("-password");
-            console.log(`✅ Auto-created MongoDB user: ${email}`);
+              // Register on Stream.io
+              try {
+                await upsertStreamUser({
+                  id: newUser._id.toString(),
+                  name: newUser.fullName,
+                  image: newUser.profilePic || "",
+                });
+              } catch (streamErr) {
+                console.error("Stream user creation failed:", streamErr.message);
+              }
+
+              user = await User.findById(newUser._id).select("-password");
+              console.log(`✅ Auto-created MongoDB user: ${email}`);
+            }
+          } catch (createErr) {
+            // Handle duplicate key race condition (E11000) when parallel requests attempt auto-creation
+            if (createErr.code === 11000) {
+              user = await User.findOne({ $or: [{ clerkId }, { email }] }).select("-password");
+              if (user) {
+                if (!user.clerkId) {
+                  user.clerkId = clerkId;
+                  await user.save();
+                }
+              } else {
+                throw createErr;
+              }
+            } else {
+              throw createErr;
+            }
+          }
+        }
+
+        // ── Check 15-day suspension status & expiration ──
+        if (user.isSuspended) {
+          if (user.suspendedUntil && new Date() > new Date(user.suspendedUntil)) {
+            user.isSuspended = false;
+            user.suspendedAt = null;
+            user.suspendedUntil = null;
+            await user.save();
           }
         }
 
         req.user = user;
+
+        const isAllowedWhenSuspended =
+          req.originalUrl?.includes("/api/auth/me") ||
+          req.originalUrl?.includes("/api/auth/logout") ||
+          req.originalUrl?.includes("/api/support");
+
+        if (user.isSuspended && !isAllowedWhenSuspended) {
+          return res.status(403).json({
+            message: "Your account is currently suspended for 15 days by an administrator.",
+            isSuspended: true,
+            suspendedAt: user.suspendedAt,
+            suspendedUntil: user.suspendedUntil,
+          });
+        }
+
         return next();
       }
     }
@@ -114,7 +156,32 @@ export const protectRoute = async (req, res, next) => {
     const user = await User.findById(decoded.userId).select("-password");
     if (!user) return res.status(401).json({ message: "Unauthorized - User not found" });
 
+    // ── Check 15-day suspension status & expiration for legacy users ──
+    if (user.isSuspended) {
+      if (user.suspendedUntil && new Date() > new Date(user.suspendedUntil)) {
+        user.isSuspended = false;
+        user.suspendedAt = null;
+        user.suspendedUntil = null;
+        await user.save();
+      }
+    }
+
     req.user = user;
+
+    const isAllowedWhenSuspendedLegacy =
+      req.originalUrl?.includes("/api/auth/me") ||
+      req.originalUrl?.includes("/api/auth/logout") ||
+      req.originalUrl?.includes("/api/support");
+
+    if (user.isSuspended && !isAllowedWhenSuspendedLegacy) {
+      return res.status(403).json({
+        message: "Your account is currently suspended for 15 days by an administrator.",
+        isSuspended: true,
+        suspendedAt: user.suspendedAt,
+        suspendedUntil: user.suspendedUntil,
+      });
+    }
+
     next();
   } catch (error) {
     console.error("Error in protectRoute middleware:", error);

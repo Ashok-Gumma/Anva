@@ -1,26 +1,35 @@
 import { useQuery } from "@tanstack/react-query";
-import { getFriendRequests } from "../lib/api";
+import { getFriendRequests, getUserNotifications } from "../lib/api";
 import { Link } from "react-router";
 import { BellIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
- * Animated notification bell with unread badge
+ * Animated notification bell with unread badge (friend requests + support/admin updates)
  */
 const NotificationBadge = () => {
   const { data: friendRequests } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: getFriendRequests,
-    refetchInterval: 60_000, // refresh every minute
+    refetchInterval: 60_000,
   });
 
-  const count = friendRequests?.incomingReqs?.filter((r) => r?.sender)?.length || 0;
+  const { data: notifData } = useQuery({
+    queryKey: ["userNotifications"],
+    queryFn: getUserNotifications,
+    refetchInterval: 30_000,
+  });
+
+  const incomingCount = friendRequests?.incomingReqs?.filter((r) => r?.sender)?.length || 0;
+  const adminUnreadCount = notifData?.unreadCount || 0;
+
+  const totalCount = incomingCount + adminUnreadCount;
 
   return (
     <Link to="/notifications" className="relative p-2 rounded-full hover:bg-base-200 transition-colors group">
       <BellIcon className="h-5 w-5 text-base-content/80 group-hover:text-base-content transition-colors" />
       <AnimatePresence>
-        {count > 0 && (
+        {totalCount > 0 && (
           <motion.span
             key="badge"
             initial={{ scale: 0 }}
@@ -29,7 +38,7 @@ const NotificationBadge = () => {
             transition={{ type: "spring", stiffness: 400, damping: 20 }}
             className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-error text-error-content text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm"
           >
-            {count > 9 ? "9+" : count}
+            {totalCount > 9 ? "9+" : totalCount}
           </motion.span>
         )}
       </AnimatePresence>

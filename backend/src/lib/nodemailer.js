@@ -2,6 +2,12 @@ import nodemailer from "nodemailer";
 
 export const sendResetEmail = async (email, resetUrl) => {
   try {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.warn("⚠️  EMAIL_USER or EMAIL_PASS missing in environment variables (backend/.env).");
+      console.warn(`🔑 [DEV MODE] Password reset link for ${email}: ${resetUrl}`);
+      return false;
+    }
+
     const transporter = nodemailer.createTransport({
       service: "gmail", // Works with Gmail. You will need to use an "App Password" if you have 2FA enabled.
       auth: {

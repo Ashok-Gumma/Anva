@@ -134,3 +134,98 @@ export async function getBlockedUsers() {
   const response = await axiosInstance.get("/users/blocked");
   return response.data;
 }
+
+/* ── Support & Complaints API ── */
+export async function createSupportTicket(ticketData) {
+  const response = await axiosInstance.post("/support", ticketData);
+  return response.data;
+}
+
+export async function getMySupportTickets() {
+  const response = await axiosInstance.get("/support/my-tickets");
+  return response.data;
+}
+
+/* ── Admin API ── */
+export async function getAdminStats() {
+  const response = await axiosInstance.get("/admin/stats");
+  return response.data;
+}
+
+export async function getAdminComplaints(params = {}) {
+  const response = await axiosInstance.get("/admin/complaints", { params });
+  return response.data;
+}
+
+export async function updateComplaintStatus(id, updateData) {
+  const response = await axiosInstance.patch(`/admin/complaints/${id}`, updateData);
+  return response.data;
+}
+
+export async function deleteComplaint(id) {
+  const response = await axiosInstance.delete(`/admin/complaints/${id}`);
+  return response.data;
+}
+
+export async function getAdminUsers(params = {}) {
+  const response = await axiosInstance.get("/admin/users", { params });
+  return response.data;
+}
+
+export async function updateUserRole(id, role) {
+  const response = await axiosInstance.patch(`/admin/users/${id}/role`, { role });
+  return response.data;
+}
+
+export async function updateUserDetailsAdmin(id, data) {
+  const response = await axiosInstance.put(`/admin/users/${id}`, data);
+  return response.data;
+}
+
+export async function deleteUserAdmin(id) {
+  const response = await axiosInstance.delete(`/admin/users/${id}`);
+  return response.data;
+}
+
+export async function toggleSuspendUserAdmin(id) {
+  const response = await axiosInstance.patch(`/admin/users/${id}/suspend`);
+  return response.data;
+}
+
+export async function sendAdminWarning(data) {
+  const response = await axiosInstance.post("/admin/send-warning", data);
+  return response.data;
+}
+
+export async function toggleSuspendOffenderAdmin(identifier) {
+  const response = await axiosInstance.post("/admin/offenders/suspend", { identifier });
+  return response.data;
+}
+
+export async function deleteOffenderAdmin(identifier) {
+  const response = await axiosInstance.post("/admin/offenders/delete", { identifier });
+  return response.data;
+}
+
+export async function promoteToAdmin(email) {
+  const response = await axiosInstance.post("/admin/promote", { email });
+  return response.data;
+}
+
+/* ── Notifications API ── */
+export async function getUserNotifications() {
+  const response = await axiosInstance.get("/notifications");
+  return response.data;
+}
+
+export async function markNotificationRead(id) {
+  const response = await axiosInstance.patch(`/notifications/${id}/read`);
+  return response.data;
+}
+
+export async function deleteNotification(id) {
+  const response = await axiosInstance.delete(`/notifications/${id}`);
+  return response.data;
+}
+
+

@@ -11,8 +11,12 @@ import chatRoutes from "./routes/chat.route.js";
 import assistantRoutes from "./routes/assistant.route.js";
 import compilerRoutes from "./routes/compiler.route.js";
 import clerkWebhookRoutes from "./routes/clerk.route.js";
+import supportRoutes from "./routes/support.route.js";
+import adminRoutes from "./routes/admin.route.js";
+import notificationRoutes from "./routes/notification.route.js";
 
 import { connectDB } from "./lib/db.js";
+import { ensureDefaultAdmin } from "./lib/seedAdmin.js";
 
 import { globalLimiter, authLimiter } from "./middleware/rateLimiter.js";
 
@@ -68,6 +72,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/assistant", assistantRoutes);
 app.use("/api/compiler", compilerRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // ✅ Serve frontend in production
 if (process.env.NODE_ENV === "production") {
@@ -91,7 +98,8 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // ✅ Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
-  connectDB();
+  await connectDB();
+  await ensureDefaultAdmin();
 });

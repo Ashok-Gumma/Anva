@@ -18,14 +18,17 @@ export const setClerkGetToken = (fn) => { _clerkGetToken = fn; };
 axiosInstance.interceptors.request.use(async (config) => {
   if (_clerkGetToken) {
     try {
-      const token = await _clerkGetToken();
+      // Race with 100ms timeout so non-Clerk cookie auth users (like Admin) load instantly without waiting
+      const token = await Promise.race([
+        _clerkGetToken(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 100))
+      ]);
       if (token) {
         config.headers["Authorization"] = `Bearer ${token}`;
       }
     } catch {
-      // Not a Clerk session, let cookie auth handle it
+      // Not a Clerk session, let cookie auth handle it immediately
     }
   }
   return config;
 });
-

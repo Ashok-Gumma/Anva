@@ -8,7 +8,10 @@ import {
   UsersIcon, 
   BookOpenIcon, 
   BrainCircuit, 
-  Code
+  Code,
+  LifeBuoy,
+  ShieldAlert,
+  UserIcon
 } from "lucide-react";
 import useLogout from "../hooks/useLogout";
 import ThemeSelector from "./ThemeSelector";
@@ -18,10 +21,11 @@ import { UserButton, useAuth } from "@clerk/clerk-react";
 const navLinks = [
   { to: "/", icon: HomeIcon, label: "Home" },
   { to: "/friends", icon: UsersIcon, label: "Friends" },
-  { to: "/flashcards", icon: BookOpenIcon, label: "Study Decks" },
+  { to: "/flashcards", icon: BookOpenIcon, label: "Decks" },
   { to: "/compiler", icon: Code, label: "Compiler" },
-  { to: "/assistant", icon: BrainCircuit, label: "AI Assistant" },
-  { to: "/profile", icon: Settings, label: "Profile" },
+  { to: "/assistant", icon: BrainCircuit, label: "Assistant" },
+  { to: "/support", icon: LifeBuoy, label: "Support" },
+  { to: "/profile", icon: UserIcon, label: "Profile" },
 ];
 
 const Navbar = () => {
@@ -32,6 +36,11 @@ const Navbar = () => {
   const { logoutMutation } = useLogout();
 
   const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
+  const isAdmin = authUser?.role === "admin";
+
+  const allNavLinks = isAdmin
+    ? [...navLinks, { to: "/admin", icon: ShieldAlert, label: "Admin", isAdminLink: true }]
+    : navLinks;
 
   return (
     <nav className="bg-base-100/80 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-30 h-16 flex items-center shadow-sm">
@@ -51,7 +60,7 @@ const Navbar = () => {
           {/* Centered Horizontal Navigation (Only on Larger screens if Authenticated) */}
           {isAuthenticated && (
             <div className="hidden md:flex items-center gap-1 lg:gap-2 mx-auto">
-              {navLinks.map(({ to, icon: Icon, label }) => {
+              {allNavLinks.map(({ to, icon: Icon, label, isAdminLink }) => {
                 const isActive = pathname === to || (to !== "/" && pathname.startsWith(to));
                 return (
                   <Link
@@ -59,7 +68,11 @@ const Navbar = () => {
                     to={to}
                     className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border ${
                       isActive
-                        ? "bg-primary/10 text-primary border-primary/20"
+                        ? isAdminLink
+                          ? "bg-primary text-primary-content border-primary"
+                          : "bg-primary/10 text-primary border-primary/20"
+                        : isAdminLink
+                        ? "bg-primary/10 text-primary hover:bg-primary/20 border-primary/30"
                         : "text-base-content/60 hover:bg-base-200 hover:text-base-content border-transparent"
                     }`}
                   >
@@ -108,12 +121,29 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-md dropdown-content bg-base-100 rounded-2xl w-48 border border-base-content/10 flex flex-col gap-1">
+                <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-md dropdown-content bg-base-100 rounded-2xl w-52 border border-base-content/10 flex flex-col gap-1">
                   <li className="px-3 py-2 border-b border-base-content/10 mb-1">
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-bold text-base-content text-sm truncate">{authUser?.fullName}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-base-content text-sm truncate">{authUser?.fullName}</span>
+                        {isAdmin && <span className="badge badge-primary text-[9px] font-extrabold uppercase">Admin</span>}
+                      </div>
                       <span className="text-xs text-base-content/60 truncate opacity-90">{authUser?.email}</span>
                     </div>
+                  </li>
+                  {isAdmin && (
+                    <li>
+                      <Link to="/admin" className="w-full flex items-center justify-start gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-2.5 rounded-xl transition-colors font-bold text-xs">
+                        <ShieldAlert className="w-4 h-4" />
+                        <span>Admin Dashboard</span>
+                      </Link>
+                    </li>
+                  )}
+                  <li>
+                    <Link to="/support" className="w-full flex items-center justify-start gap-2 hover:bg-base-200 px-3 py-2.5 rounded-xl transition-colors">
+                      <LifeBuoy className="w-4 h-4 text-base-content/70" />
+                      <span className="font-medium text-base-content text-sm">Help & Support</span>
+                    </Link>
                   </li>
                   <li>
                     <Link to="/profile" className="w-full flex items-center justify-start gap-2 hover:bg-base-200 px-3 py-2.5 rounded-xl transition-colors">

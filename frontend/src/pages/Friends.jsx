@@ -190,9 +190,10 @@ const Friends = () => {
 
   const filteredSentUsers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return validOutgoingReqs
-      .map((req) => req.recipient)
+    return (Array.isArray(validOutgoingReqs) ? validOutgoingReqs : [])
+      .map((req) => req?.recipient)
       .filter((user) => {
+        if (!user) return false;
         const matchesSearch =
           !q ||
           (user.fullName && user.fullName.toLowerCase().includes(q)) ||

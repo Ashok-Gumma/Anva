@@ -64,6 +64,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
     friends: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -78,6 +83,22 @@ const userSchema = new mongoose.Schema(
     ],
     resetPasswordToken: String,
     resetPasswordExpires: Date,
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+    suspendedUntil: {
+      type: Date,
+      default: null,
+    },
+    suspensionReason: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

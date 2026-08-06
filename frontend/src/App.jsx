@@ -6,8 +6,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import AxiosClerkInterceptor from "./components/AxiosClerkInterceptor.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import AdminRoute from "./components/AdminRoute.jsx";
 import Layout from "./components/Layout.jsx";
 import PageLoader from "./components/PageLoader.jsx";
+import AnvaLogo from "./components/AnvaLogo.jsx";
 
 import HomePage from "./pages/HomePage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
@@ -25,6 +27,8 @@ import ProfilePage from "./pages/ProfilePage.jsx";
 import CompilerPage from "./pages/CompilerPage.jsx";
 import FriendProfilePage from "./pages/FriendProfilePage.jsx";
 import BlockedUsersPage from "./pages/BlockedUsersPage.jsx";
+import SupportPage from "./pages/SupportPage.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
 import PrivacyPage from "./pages/PrivacyPage.jsx";
 import TermsPage from "./pages/TermsPage.jsx";
 
@@ -32,10 +36,14 @@ import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
 import { useThemeStore } from "./store/useThemeStore.js";
 
+import { ShieldAlert, LogOut } from "lucide-react";
+import useLogout from "./hooks/useLogout.js";
+
 const App = () => {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const { isLoading, authUser } = useAuthUser();
+  const { logoutMutation } = useLogout();
   const { theme } = useThemeStore();
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
 
@@ -65,13 +73,13 @@ const App = () => {
 
   // Keep-alive ping immediately & every 2 minutes
   useEffect(() => {
-    if (!isAuthenticated) return;
-    import("./lib/api").then(({ sendPing }) => sendPing().catch(console.error));
+    if (!isAuthenticated || authUser?.isSuspended) return;
+    import("./lib/api").then(({ sendPing }) => sendPing().catch(() => {}));
     const interval = setInterval(() => {
-      import("./lib/api").then(({ sendPing }) => sendPing().catch(console.error));
+      import("./lib/api").then(({ sendPing }) => sendPing().catch(() => {}));
     }, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authUser]);
 
   // AxiosClerkInterceptor always renders so it's ready before the first fetch.
   // PageLoader is shown as a sibling until auth resolves AND timer finish.
@@ -96,8 +104,10 @@ const App = () => {
               element={
                 !isAuthenticated ? (
                   <LandingPage />
+                ) : authUser?.role === "admin" ? (
+                  <Navigate to="/admin" replace />
                 ) : authUser?.isOnboarded ? (
-                  <Layout showSidebar><HomePage /></Layout>
+                  <ProtectedRoute allowSuspended={false} element={<Layout showSidebar><HomePage /></Layout>} />
                 ) : (
                   <Navigate to="/onboarding" replace />
                 )
@@ -109,8 +119,37 @@ const App = () => {
               path="/sign-in/*"
               element={
                 !isAuthenticated ? (
-                  <div className="min-h-screen flex items-center justify-center bg-base-200">
-                    <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/" />
+                  <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-base-200 font-minimal selection:bg-primary selection:text-primary-content">
+                    <div className="mb-6 text-center space-y-1">
+                      <div className="inline-flex items-center gap-2 mb-2">
+                        <AnvaLogo className="h-8 w-8 object-cover rounded-xl shadow-sm text-primary" />
+                        <span className="text-xl font-bold tracking-tight text-base-content font-minimal">Anva</span>
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">
+                        Welcome back to <span className="font-curly italic text-primary font-bold tracking-wide">Anva</span>
+                      </h1>
+                      <p className="text-xs text-base-content/60 font-medium">
+                        Sign in to access your study network, compiler, and language assistant.
+                      </p>
+                    </div>
+                    <SignIn
+                      routing="path"
+                      path="/sign-in"
+                      signUpUrl="/sign-up"
+                      fallbackRedirectUrl="/"
+                      appearance={{
+                        elements: {
+                          card: "bg-base-100 shadow-xl rounded-3xl border border-base-content/10 font-minimal p-6 sm:p-8",
+                          headerTitle: "hidden",
+                          headerSubtitle: "hidden",
+                          socialButtonsBlockButton: "rounded-2xl border border-base-content/15 bg-base-200 hover:bg-base-300 font-bold text-xs text-base-content transition-all py-3 font-minimal cursor-pointer",
+                          formButtonPrimary: "bg-primary text-primary-content hover:opacity-90 rounded-2xl font-bold uppercase text-xs shadow-md font-minimal py-3 cursor-pointer",
+                          formFieldInput: "rounded-2xl border border-base-content/10 bg-base-200 text-xs font-bold font-minimal focus:ring-1 focus:ring-primary py-3",
+                          footerActionLink: "text-primary font-bold hover:underline font-minimal",
+                          formFieldLabel: "text-xs font-bold uppercase text-base-content/60 font-minimal",
+                        },
+                      }}
+                    />
                   </div>
                 ) : (
                   <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
@@ -121,8 +160,38 @@ const App = () => {
               path="/sign-up/*"
               element={
                 !isAuthenticated ? (
-                  <div className="min-h-screen flex items-center justify-center bg-base-200">
-                    <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" fallbackRedirectUrl="/onboarding" forceRedirectUrl="/onboarding" />
+                  <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-base-200 font-minimal selection:bg-primary selection:text-primary-content">
+                    <div className="mb-6 text-center space-y-1">
+                      <div className="inline-flex items-center gap-2 mb-2">
+                        <AnvaLogo className="h-8 w-8 object-cover rounded-xl shadow-sm text-primary" />
+                        <span className="text-xl font-bold tracking-tight text-base-content font-minimal">Anva</span>
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">
+                        Start your journey with <span className="font-curly italic text-primary font-bold tracking-wide">Anva</span>
+                      </h1>
+                      <p className="text-xs text-base-content/60 font-medium">
+                        Create an account to connect with language learners worldwide.
+                      </p>
+                    </div>
+                    <SignUp
+                      routing="path"
+                      path="/sign-up"
+                      signInUrl="/sign-in"
+                      fallbackRedirectUrl="/onboarding"
+                      forceRedirectUrl="/onboarding"
+                      appearance={{
+                        elements: {
+                          card: "bg-base-100 shadow-xl rounded-3xl border border-base-content/10 font-minimal p-6 sm:p-8",
+                          headerTitle: "hidden",
+                          headerSubtitle: "hidden",
+                          socialButtonsBlockButton: "rounded-2xl border border-base-content/15 bg-base-200 hover:bg-base-300 font-bold text-xs text-base-content transition-all py-3 font-minimal cursor-pointer",
+                          formButtonPrimary: "bg-primary text-primary-content hover:opacity-90 rounded-2xl font-bold uppercase text-xs shadow-md font-minimal py-3 cursor-pointer",
+                          formFieldInput: "rounded-2xl border border-base-content/10 bg-base-200 text-xs font-bold font-minimal focus:ring-1 focus:ring-primary py-3",
+                          footerActionLink: "text-primary font-bold hover:underline font-minimal",
+                          formFieldLabel: "text-xs font-bold uppercase text-base-content/60 font-minimal",
+                        },
+                      }}
+                    />
                   </div>
                 ) : (
                   <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
@@ -131,8 +200,8 @@ const App = () => {
             />
 
             {/* ── Legacy login pages ── */}
-            <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
-            <Route path="/signup" element={!isAuthenticated ? <Navigate to="/sign-up" replace /> : <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
+            <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
+            <Route path="/signup" element={!isAuthenticated ? <Navigate to="/sign-up" replace /> : <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
             <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
             <Route path="/reset-password/:token" element={!isAuthenticated ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
 
@@ -154,6 +223,8 @@ const App = () => {
             <Route path="/assistant"     element={<ProtectedRoute element={<Layout showSidebar><AssistantPage /></Layout>} />} />
             <Route path="/notifications" element={<ProtectedRoute element={<Layout showSidebar><NotificationsPage /></Layout>} />} />
             <Route path="/profile"       element={<ProtectedRoute element={<Layout showSidebar><ProfilePage /></Layout>} />} />
+            <Route path="/support"       element={<ProtectedRoute allowSuspended={true} element={<Layout showSidebar><SupportPage /></Layout>} />} />
+            <Route path="/admin"        element={<AdminRoute element={<AdminPage />} />} />
             <Route path="/blocked-users" element={<ProtectedRoute element={<Layout showSidebar><BlockedUsersPage /></Layout>} />} />
             <Route path="/compiler"      element={<ProtectedRoute element={<Layout showSidebar><CompilerPage /></Layout>} />} />
             <Route path="/user/:id"      element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />

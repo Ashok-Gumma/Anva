@@ -6,21 +6,29 @@ import {
   BrainCircuit, 
   Code,
   Settings,
-  Bell
+  LifeBuoy,
+  ShieldAlert
 } from "lucide-react";
 import { motion } from "framer-motion";
+import useAuthUser from "../hooks/useAuthUser";
 
-const navLinks = [
+const baseNavLinks = [
   { to: "/", icon: HomeIcon, label: "Home" },
   { to: "/friends", icon: UsersIcon, label: "Friends" },
   { to: "/flashcards", icon: BookOpenIcon, label: "Study" },
   { to: "/assistant", icon: BrainCircuit, label: "AI" },
-  { to: "/compiler", icon: Code, label: "Code" },
+  { to: "/support", icon: LifeBuoy, label: "Support" },
   { to: "/profile", icon: Settings, label: "Profile" },
 ];
 
 const BottomNav = () => {
   const { pathname } = useLocation();
+  const { authUser } = useAuthUser();
+  const isAdmin = authUser?.role === "admin";
+
+  const navLinks = isAdmin
+    ? [...baseNavLinks.slice(0, 4), { to: "/admin", icon: ShieldAlert, label: "Admin" }, ...baseNavLinks.slice(4)]
+    : baseNavLinks;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-base-100/90 backdrop-blur-xl border-t border-base-content/10 px-1 pb-safe pt-1 flex items-center justify-around md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
