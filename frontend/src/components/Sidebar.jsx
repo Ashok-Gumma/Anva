@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   ShieldAlert,
   UserIcon,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getFriendRequests } from "../lib/api";
@@ -18,6 +19,7 @@ import { motion } from "framer-motion";
 
 const baseNavLinks = [
   { to: "/", icon: HomeIcon, label: "Home" },
+  { to: "/feed", icon: ImageIcon, label: "EduFeed" },
   { to: "/friends", icon: UsersIcon, label: "Friends" },
   { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards" },
   { to: "/compiler", icon: Code, label: "Compiler" },

@@ -14,6 +14,7 @@ import clerkWebhookRoutes from "./routes/clerk.route.js";
 import supportRoutes from "./routes/support.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import notificationRoutes from "./routes/notification.route.js";
+import postRoutes from "./routes/post.route.js";
 
 import { connectDB } from "./lib/db.js";
 import { ensureDefaultAdmin } from "./lib/seedAdmin.js";
@@ -75,6 +76,7 @@ app.use("/api/compiler", compilerRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/posts", postRoutes);
 
 // ✅ Serve frontend in production
 if (process.env.NODE_ENV === "production") {

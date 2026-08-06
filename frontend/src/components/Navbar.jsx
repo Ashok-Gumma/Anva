@@ -11,7 +11,8 @@ import {
   Code,
   LifeBuoy,
   ShieldAlert,
-  UserIcon
+  UserIcon,
+  Image as ImageIcon
 } from "lucide-react";
 import useLogout from "../hooks/useLogout";
 import ThemeSelector from "./ThemeSelector";
@@ -20,6 +21,7 @@ import { UserButton, useAuth } from "@clerk/clerk-react";
 
 const navLinks = [
   { to: "/", icon: HomeIcon, label: "Home" },
+  { to: "/feed", icon: ImageIcon, label: "EduFeed" },
   { to: "/friends", icon: UsersIcon, label: "Friends" },
   { to: "/flashcards", icon: BookOpenIcon, label: "Decks" },
   { to: "/compiler", icon: Code, label: "Compiler" },

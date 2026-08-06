@@ -228,4 +228,30 @@ export async function deleteNotification(id) {
   return response.data;
 }
 
+/* ── Educational Community Feed (EduFeed) API ── */
+export async function getPosts(subject = "All") {
+  const response = await axiosInstance.get("/posts", { params: { subject } });
+  return response.data;
+}
+
+export async function createPost(postData) {
+  const response = await axiosInstance.post("/posts", postData);
+  return response.data;
+}
+
+export async function toggleLikePost(id) {
+  const response = await axiosInstance.post(`/posts/${id}/like`);
+  return response.data;
+}
+
+export async function addCommentPost({ id, text }) {
+  const response = await axiosInstance.post(`/posts/${id}/comment`, { text });
+  return response.data;
+}
+
+export async function deletePost(id) {
+  const response = await axiosInstance.delete(`/posts/${id}`);
+  return response.data;
+}
+
 

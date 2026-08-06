@@ -31,6 +31,7 @@ import SupportPage from "./pages/SupportPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import PrivacyPage from "./pages/PrivacyPage.jsx";
 import TermsPage from "./pages/TermsPage.jsx";
+import EduFeedPage from "./pages/EduFeedPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
@@ -218,6 +219,7 @@ const App = () => {
             />
 
             {/* ── Protected routes ── */}
+            <Route path="/feed"          element={<ProtectedRoute element={<Layout showSidebar><EduFeedPage /></Layout>} />} />
             <Route path="/friends"       element={<ProtectedRoute element={<Layout showSidebar><FriendsPage /></Layout>} />} />
             <Route path="/flashcards"    element={<ProtectedRoute element={<Layout showSidebar><FlashcardsPage /></Layout>} />} />
             <Route path="/assistant"     element={<ProtectedRoute element={<Layout showSidebar><AssistantPage /></Layout>} />} />
