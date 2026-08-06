@@ -326,7 +326,7 @@ const EduFeedPage = () => {
         ) : (
           posts.map((post) => {
             const isLiked = post.likes?.some(
-              (id) => id === authUser?._id || id?._id === authUser?._id
+              (id) => (id?._id || id)?.toString() === authUser?._id?.toString()
             );
             const isAuthor = post.user?._id === authUser?._id;
             const isAdmin = authUser?.role === "admin";
