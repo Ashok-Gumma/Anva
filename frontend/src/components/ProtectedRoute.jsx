@@ -5,6 +5,8 @@ import PageLoader from "./PageLoader";
 import { Lock, ShieldAlert, LifeBuoy, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
+import ErrorBoundary from "./ErrorBoundary";
+
 /**
  * Handles auth-guarded routes safely for both Clerk and legacy JWT users.
  *
@@ -91,7 +93,7 @@ const ProtectedRoute = ({ element, requireOnboarding = true, allowSuspended = fa
     );
   }
 
-  return element;
+  return <ErrorBoundary>{element}</ErrorBoundary>;
 };
 
 export default ProtectedRoute;

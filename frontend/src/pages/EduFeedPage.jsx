@@ -6,6 +6,7 @@ import {
   createPost,
   toggleLikePost,
   addCommentPost,
+  updateCommentPost,
   deleteCommentPost,
   deletePost,
   updatePost,
@@ -21,6 +22,7 @@ import {
   MessageSquare,
   Trash2,
   Pencil,
+  Check,
   Send,
   Sparkles,
   BookOpen,
@@ -87,10 +89,11 @@ const EduFeedPage = () => {
   const [editCaption, setEditCaption] = useState("");
   const [editSubject, setEditSubject] = useState("General");
 
-  // Fetch community feed posts
+  // Fetch community feed posts with dynamic background updates
   const { data, isLoading } = useQuery({
     queryKey: ["posts"],
     queryFn: () => getPosts("All"),
+    refetchInterval: 15_000,
   });
 
   const posts = data?.posts || [];
@@ -119,15 +122,60 @@ const EduFeedPage = () => {
     },
   });
 
-  // Toggle save post mutation
+  // Toggle save post mutation with optimistic & dynamic cache updates across all pages
   const saveMutation = useMutation({
     mutationFn: toggleSavePost,
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["authUser"] });
+      const previousAuthData = queryClient.getQueryData(["authUser"]);
+
+      if (previousAuthData?.user) {
+        const currentSaved = previousAuthData.user.savedPosts || [];
+        const isCurrentlySaved = currentSaved.some(
+          (id) => (id?._id || id)?.toString() === postId?.toString()
+        );
+
+        const newSaved = isCurrentlySaved
+          ? currentSaved.filter((id) => (id?._id || id)?.toString() !== postId?.toString())
+          : [...currentSaved, postId];
+
+        queryClient.setQueryData(["authUser"], {
+          ...previousAuthData,
+          user: {
+            ...previousAuthData.user,
+            savedPosts: newSaved,
+          },
+        });
+      }
+
+      return { previousAuthData };
+    },
     onSuccess: (resData) => {
       toast.success(resData.message || "Bookmark updated.");
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      if (resData?.savedPosts) {
+        queryClient.setQueryData(["authUser"], (oldData) => {
+          if (!oldData?.user) return oldData;
+          return {
+            ...oldData,
+            user: {
+              ...oldData.user,
+              savedPosts: resData.savedPosts,
+            },
+          };
+        });
+      }
     },
-    onError: (err) => {
+    onError: (err, postId, context) => {
+      if (context?.previousAuthData) {
+        queryClient.setQueryData(["authUser"], context.previousAuthData);
+      }
       toast.error(err.response?.data?.message || "Failed to save post.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
     },
   });
 
@@ -149,6 +197,24 @@ const EduFeedPage = () => {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Failed to delete comment.");
+    },
+  });
+
+  // Edit comment state & mutation
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+
+  const updateCommentMutation = useMutation({
+    mutationFn: updateCommentPost,
+    onSuccess: () => {
+      toast.success("Comment updated!");
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update comment.");
     },
   });
 
@@ -737,6 +803,7 @@ const EduFeedPage = () => {
                           const isCommentAuthor = c.user?._id === authUser?._id;
                           const isPostOwner = post.user?._id === authUser?._id;
                           const canDelete = isCommentAuthor || isPostOwner;
+                          const isEditingThisComment = editingCommentId === c._id;
 
                           return (
                             <div key={c._id || c.text} className="group p-3 bg-base-200/60 rounded-xl text-xs space-y-0.5">
@@ -762,24 +829,87 @@ const EduFeedPage = () => {
                                       </span>
                                     )}
 
-                                    {/* Delete Button — visible to comment author or post owner */}
-                                    {canDelete && (
+                                    {/* Action Buttons: Edit (author) & Delete (author / owner) */}
+                                    <div className="flex items-center gap-1 ml-auto">
+                                      {isCommentAuthor && !isEditingThisComment && (
+                                        <button
+                                          onClick={() => {
+                                            setEditingCommentId(c._id);
+                                            setEditingCommentText(c.text);
+                                          }}
+                                          className="p-1 rounded-lg text-base-content/40 hover:text-primary hover:bg-primary/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
+                                          title="Edit comment"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                      )}
+
+                                      {canDelete && !isEditingThisComment && (
+                                        <button
+                                          onClick={() =>
+                                            deleteCommentMutation.mutate({
+                                              postId: post._id,
+                                              commentId: c._id,
+                                            })
+                                          }
+                                          disabled={deleteCommentMutation.isPending}
+                                          className="p-1 rounded-lg text-base-content/30 hover:text-error hover:bg-error/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
+                                          title="Delete comment"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Comment Text or Inline Edit Form */}
+                                  {isEditingThisComment ? (
+                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                      <input
+                                        type="text"
+                                        value={editingCommentText}
+                                        onChange={(e) => setEditingCommentText(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            if (!editingCommentText.trim()) return;
+                                            updateCommentMutation.mutate({
+                                              postId: post._id,
+                                              commentId: c._id,
+                                              text: editingCommentText,
+                                            });
+                                          } else if (e.key === "Escape") {
+                                            setEditingCommentId(null);
+                                          }
+                                        }}
+                                        className="flex-1 px-2.5 py-1 bg-base-100 text-base-content border border-primary/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                                        autoFocus
+                                      />
                                       <button
-                                        onClick={() =>
-                                          deleteCommentMutation.mutate({
+                                        onClick={() => {
+                                          if (!editingCommentText.trim()) return;
+                                          updateCommentMutation.mutate({
                                             postId: post._id,
                                             commentId: c._id,
-                                          })
-                                        }
-                                        disabled={deleteCommentMutation.isPending}
-                                        className="ml-auto p-1 rounded-lg text-base-content/30 hover:text-error hover:bg-error/10 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
-                                        title="Delete comment"
+                                            text: editingCommentText,
+                                          });
+                                        }}
+                                        disabled={updateCommentMutation.isPending}
+                                        className="p-1 rounded-lg bg-primary text-primary-content hover:bg-primary/90 transition-all cursor-pointer"
+                                        title="Save comment"
                                       >
-                                        <Trash2 className="w-3 h-3" />
+                                        <Check className="w-3 h-3" />
                                       </button>
-                                    )}
-                                  </div>
-                                  <p className="text-base-content/80 font-medium break-words mt-0.5">{c.text}</p>
+                                      <button
+                                        onClick={() => setEditingCommentId(null)}
+                                        className="p-1 rounded-lg text-base-content/50 hover:text-base-content hover:bg-base-200 transition-all cursor-pointer"
+                                        title="Cancel"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <p className="text-base-content/80 font-medium break-words mt-0.5">{c.text}</p>
+                                  )}
                                 </div>
                               </div>
                             </div>

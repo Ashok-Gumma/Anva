@@ -10,7 +10,8 @@ import {
   User, 
   Search, 
   MessageSquare,
-  UsersIcon
+  UsersIcon,
+  ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { capitalize } from "../lib/utils";
@@ -277,7 +278,7 @@ const ChatPage = () => {
   return (
     <div className="flex h-[calc(100dvh-4rem-4.25rem)] md:h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
       {/* Desktop Sidebar */}
-      <aside className="w-72 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
+      <aside className="w-80 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}
       </aside>
 
@@ -288,8 +289,8 @@ const ChatPage = () => {
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 left-0 z-[60] bg-base-100 flex flex-col md:hidden w-72 border-r border-base-content/10 shadow-2xl"
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed inset-y-0 left-0 z-[110] bg-base-100 flex flex-col md:hidden w-80 sm:w-80 max-w-[85vw] border-r border-base-content/10 shadow-2xl"
           >
             {renderSidebarContent()}
           </motion.div>
@@ -304,7 +305,7 @@ const ChatPage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 z-[55] bg-black/40 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[105] bg-black/50 backdrop-blur-sm md:hidden"
           />
         )}
       </AnimatePresence>
@@ -312,14 +313,27 @@ const ChatPage = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative chat-wallpaper w-full overflow-hidden">
         {/* Custom Header Bar */}
-        <header className="px-4 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-20 flex items-center justify-between shrink-0 shadow-sm min-h-[64px]">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2 text-base-content hover:bg-base-content/10 rounded-xl transition-colors cursor-pointer"
-            >
-              <Menu className="size-5" />
-            </button>
+        <header className="px-3 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-20 flex items-center justify-between shrink-0 shadow-sm min-h-[64px] gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Mobile Controls: Back button & Peers list trigger */}
+            <div className="flex items-center gap-1 md:hidden shrink-0">
+              <Link
+                to="/friends"
+                className="p-2 text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-xl transition-colors cursor-pointer"
+                title="Back to Friends"
+              >
+                <ArrowLeft className="size-5" />
+              </Link>
+
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-extrabold tracking-wide transition-all cursor-pointer shadow-2xs"
+                title="Open Peers Sidebar"
+              >
+                <UsersIcon className="size-4" />
+                <span className="hidden sm:inline">Peers</span>
+              </button>
+            </div>
 
             {/* Target User Info */}
             {currentFriend && (

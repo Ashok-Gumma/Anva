@@ -212,6 +212,54 @@ export async function deleteCommentPost(req, res) {
   }
 }
 
+// Update a comment — allowed for: comment author OR admin
+export async function updateCommentPost(req, res) {
+  try {
+    const { id, commentId } = req.params;
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: "Comment text cannot be empty." });
+    }
+
+    const commentSafety = await checkTextSafetyAI(text);
+    if (!commentSafety.isValid) {
+      return res.status(400).json({ message: commentSafety.reason });
+    }
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found." });
+    }
+
+    const comment = post.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found." });
+    }
+
+    const isCommentAuthor = comment.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isCommentAuthor && !isAdmin) {
+      return res.status(403).json({ message: "Not authorized to edit this comment." });
+    }
+
+    comment.text = text.trim();
+    await post.save();
+    await post.populate("user", "fullName email profilePic role");
+    await post.populate("comments.user", "fullName email profilePic");
+
+    res.status(200).json({
+      success: true,
+      message: "Comment updated!",
+      post,
+    });
+  } catch (error) {
+    console.error("Error updating comment:", error);
+    res.status(500).json({ message: "Failed to update comment." });
+  }
+}
+
 // Delete a post (author or admin)
 export async function deletePost(req, res) {
   try {

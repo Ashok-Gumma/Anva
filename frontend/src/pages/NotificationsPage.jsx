@@ -30,12 +30,14 @@ const NotificationsPage = () => {
   const { data: friendRequests, isLoading: isLoadingFriends } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: getFriendRequests,
+    refetchInterval: 10_000,
   });
 
   /* ---------------- FETCH SYSTEM & SUPPORT NOTIFICATIONS ---------------- */
   const { data: notifData, isLoading: isLoadingNotifs } = useQuery({
     queryKey: ["userNotifications"],
     queryFn: getUserNotifications,
+    refetchInterval: 10_000,
   });
 
   /* ---------------- ACCEPT FRIEND REQUEST ---------------- */

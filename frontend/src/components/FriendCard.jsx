@@ -1,99 +1,125 @@
 import { Link } from "react-router";
 import { LANGUAGE_TO_FLAG, LANGUAGE_TO_ICON } from "../constants";
-import { MapPinIcon } from "lucide-react";
+import { MapPinIcon, MessageSquare, User } from "lucide-react";
 import { capitalize } from "../lib/utils";
 
 const FriendCard = ({ friend }) => {
   if (!friend) return null;
 
-  const isOnline = friend.lastActive && (new Date() - new Date(friend.lastActive)) <= 5 * 60 * 1000;
+  const isOnline =
+    friend.lastActive && new Date() - new Date(friend.lastActive) <= 5 * 60 * 1000;
 
   return (
-    <div className="bg-base-100 rounded-2xl sm:rounded-[2rem] shadow-sm border border-base-content/10 hover:shadow-md transition-shadow overflow-hidden group">
-      <div className="p-4 sm:p-6">
-        {/* USER INFO */}
-        <div className="flex items-center gap-4 mb-3">
-          {/* Avatar with letter fallback */}
-          <Link to={`/user/${friend._id}`} className={`relative z-10 ${isOnline ? 'online' : ''} hover:scale-105 transition-transform`}>
-            {isOnline && <span className="absolute -bottom-1 -right-1 z-20 size-3.5 rounded-full bg-info border-2 border-base-100 shadow-sm" />}
-            <div className="relative size-14 rounded-2xl bg-primary text-primary-content flex items-center justify-center font-bold text-xl overflow-hidden shadow-sm">
-              {/* Letter fallback */}
-              <span className="absolute inset-0 flex items-center justify-center">
-                {friend.fullName?.charAt(0)?.toUpperCase()}
-              </span>
+    <div className="bg-base-100 rounded-3xl border border-base-content/10 hover:border-primary/30 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between h-full overflow-hidden group font-minimal select-none">
+      <div className="p-5 flex flex-col justify-between h-full space-y-4">
+        {/* ── USER HEADER ── */}
+        <div className="flex items-center gap-3.5 h-14">
+          <Link
+            to={`/user/${friend._id}`}
+            className="relative shrink-0 group-hover:scale-105 transition-transform duration-300"
+          >
+            <div className="size-14 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent p-0.5 shadow-sm">
+              <div className="size-full rounded-[0.85rem] bg-base-100 text-base-content flex items-center justify-center font-black text-lg overflow-hidden relative">
+                <span className="absolute inset-0 flex items-center justify-center font-bold text-primary">
+                  {friend.fullName?.charAt(0)?.toUpperCase() || "U"}
+                </span>
 
-              {/* Profile image */}
-              {friend.profilePic && (
-                <img
-                  src={friend.profilePic}
-                  alt={friend.fullName}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              )}
+                {friend.profilePic && (
+                  <img
+                    src={friend.profilePic}
+                    alt={friend.fullName}
+                    loading="lazy"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
+              </div>
             </div>
+            {isOnline && (
+              <span
+                className="absolute -bottom-0.5 -right-0.5 z-10 size-3.5 rounded-full bg-emerald-500 ring-2 ring-base-100 shadow-sm animate-pulse"
+                title="Online"
+              />
+            )}
           </Link>
 
           <div className="flex-1 min-w-0">
-            <Link to={`/user/${friend._id}`} className="font-bold text-lg text-base-content tracking-tight truncate hover:underline transition-colors block">
+            <Link
+              to={`/user/${friend._id}`}
+              className="font-extrabold text-base text-base-content tracking-tight group-hover:text-primary transition-colors truncate block"
+            >
               {friend.fullName}
             </Link>
 
-            {/* CITY */}
-            {friend.location && (
-              <div className="flex items-center text-xs font-medium text-base-content/60 mt-0.5">
-                <MapPinIcon className="size-3.5 mr-1" />
-                {friend.location}
+            {friend.location ? (
+              <div className="flex items-center text-xs font-medium text-base-content/60 gap-1 mt-0.5 truncate">
+                <MapPinIcon className="size-3.5 text-primary shrink-0 opacity-80" />
+                <span className="truncate">{friend.location}</span>
+              </div>
+            ) : (
+              <div className="text-[11px] font-semibold text-base-content/40 mt-0.5">
+                Connected Peer
               </div>
             )}
           </div>
         </div>
 
-        {/* LANGUAGES */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {friend.nativeLanguage && (
-            <span className="px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-lg flex items-center gap-1.5 border border-secondary/20">
+        {/* ── LANGUAGES TAGS (FIXED MIN HEIGHT FOR ALIGNMENT) ── */}
+        <div className="min-h-[38px] flex flex-wrap items-center gap-1.5">
+          {friend.nativeLanguage ? (
+            <span className="px-2.5 py-1 bg-secondary/10 text-secondary border border-secondary/20 text-[10px] font-extrabold rounded-xl flex items-center gap-1 shadow-2xs">
               {getLanguageIcon(friend.nativeLanguage)}
               Native: {capitalize(friend.nativeLanguage)}
             </span>
-          )}
-          {friend.learningLanguage && (
-             <span className="px-3 py-1 bg-accent/10 text-accent text-xs font-bold rounded-lg flex items-center gap-1.5 border border-accent/20">
+          ) : null}
+
+          {friend.learningLanguage ? (
+            <span className="px-2.5 py-1 bg-accent/10 text-accent border border-accent/20 text-[10px] font-extrabold rounded-xl flex items-center gap-1 shadow-2xs">
               {getLanguageIcon(friend.learningLanguage)}
               Learning: {capitalize(friend.learningLanguage)}
+            </span>
+          ) : null}
+
+          {!friend.nativeLanguage && !friend.learningLanguage && (
+            <span className="text-[10px] font-medium text-base-content/30 italic">
+              No language preferences set
             </span>
           )}
         </div>
 
-        {/* BIO */}
-        {friend.bio && (
-          <p className="text-sm font-medium text-base-content/70 line-clamp-2 mb-4">
-            {friend.bio}
-          </p>
-        )}
+        {/* ── BIO BOX (FIXED HEIGHT FOR ALIGNMENT) ── */}
+        <div className="h-12 flex items-center">
+          {friend.bio ? (
+            <p className="text-xs font-medium text-base-content/70 line-clamp-2 bg-base-200/50 p-2.5 rounded-xl border border-base-content/5 w-full italic">
+              "{friend.bio}"
+            </p>
+          ) : (
+            <div className="text-[11px] font-medium text-base-content/30 italic w-full">
+              No bio added.
+            </div>
+          )}
+        </div>
 
-        {/* SOCIAL LINKS */}
-        {(friend.githubUrl || friend.linkedinUrl) && (
-          <div className="flex gap-2 mb-4">
-            {friend.githubUrl && (
-              <a href={friend.githubUrl} target="_blank" rel="noreferrer" className="p-2 rounded-full hover:bg-base-200 text-base-content/70 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-github"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
-              </a>
-            )}
-            {friend.linkedinUrl && (
-              <a href={friend.linkedinUrl} target="_blank" rel="noreferrer" className="p-2 rounded-full hover:bg-info/10 text-info transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-linkedin"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
-              </a>
-            )}
-          </div>
-        )}
+        {/* ── ACTION BUTTONS ── */}
+        <div className="pt-3 border-t border-base-content/10 flex items-center gap-2 mt-auto">
+          <Link
+            to={`/chat/${friend._id}`}
+            className="flex-1 h-10 rounded-xl font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 bg-primary text-primary-content hover:bg-primary/90 shadow-sm transition-all"
+          >
+            <MessageSquare className="size-4" />
+            <span>Chat</span>
+          </Link>
 
-        <Link to={`/chat/${friend._id}`} className="w-full py-3 rounded-xl font-semibold flex items-center justify-center transition-all bg-base-100 border border-base-content/10 text-base-content shadow-sm hover:bg-base-200 hover:shadow mt-auto">
-          Message
-        </Link>
+          <Link
+            to={`/user/${friend._id}`}
+            className="h-10 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center bg-base-200 hover:bg-base-300 text-base-content border border-base-content/10 transition-all"
+            title="View Profile"
+          >
+            <User className="size-4" />
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -110,7 +136,7 @@ export function getLanguageIcon(language) {
     return (
       <img
         src={`https://flagcdn.com/24x18/${LANGUAGE_TO_FLAG[langLower]}.png`}
-        className="h-3 mr-1 inline-block"
+        className="h-3 mr-1 inline-block rounded-xs"
         alt={language}
         loading="lazy"
       />
@@ -121,7 +147,7 @@ export function getLanguageIcon(language) {
     return (
       <img
         src={LANGUAGE_TO_ICON[langLower]}
-        className="h-4 mr-1 inline-block"
+        className="h-3.5 mr-1 inline-block"
         alt={language}
         loading="lazy"
       />

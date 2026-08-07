@@ -11,13 +11,13 @@ const NotificationBadge = () => {
   const { data: friendRequests } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: getFriendRequests,
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
   });
 
   const { data: notifData } = useQuery({
     queryKey: ["userNotifications"],
     queryFn: getUserNotifications,
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
 
   const incomingCount = friendRequests?.incomingReqs?.filter((r) => r?.sender)?.length || 0;

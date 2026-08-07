@@ -12,21 +12,38 @@ import {
   ShieldAlert,
   UserIcon,
   Image as ImageIcon,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getFriendRequests } from "../lib/api";
+import { getFriendRequests, getUserNotifications } from "../lib/api";
 import { motion } from "framer-motion";
 
-const baseNavLinks = [
-  { to: "/", icon: HomeIcon, label: "Home" },
-  { to: "/feed", icon: ImageIcon, label: "EduFeed" },
-  { to: "/friends", icon: UsersIcon, label: "Friends" },
-  { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards" },
-  { to: "/compiler", icon: Code, label: "Compiler" },
-  { to: "/assistant", icon: BrainCircuit, label: "Assistant" },
-  { to: "/support", icon: LifeBuoy, label: "Support & Help" },
-  { to: "/profile", icon: UserIcon, label: "Profile Settings" },
-  { to: "/notifications", icon: BellIcon, label: "Notifications", showBadge: true },
+const navSections = [
+  {
+    title: "COMMUNITY & FEEDS",
+    links: [
+      { to: "/", icon: HomeIcon, label: "Home" },
+      { to: "/feed", icon: ImageIcon, label: "EduFeed" },
+      { to: "/friends", icon: UsersIcon, label: "Friends & Peers" },
+    ],
+  },
+  {
+    title: "STUDY WORKSPACE",
+    links: [
+      { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards" },
+      { to: "/compiler", icon: Code, label: "Code Compiler" },
+      { to: "/assistant", icon: BrainCircuit, label: "AI Study Assistant" },
+    ],
+  },
+  {
+    title: "SYSTEM & ACCOUNT",
+    links: [
+      { to: "/notifications", icon: BellIcon, label: "Notifications", showBadge: true },
+      { to: "/support", icon: LifeBuoy, label: "Support & Help" },
+      { to: "/profile", icon: UserIcon, label: "Profile Settings" },
+    ],
+  },
 ];
 
 const Sidebar = () => {
@@ -37,108 +54,152 @@ const Sidebar = () => {
   const { data: friendRequests } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: getFriendRequests,
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
   });
-  const notifCount = friendRequests?.incomingReqs?.filter((r) => r?.sender)?.length || 0;
 
-  const navLinks = isAdmin
-    ? [...baseNavLinks, { to: "/admin", icon: ShieldAlert, label: "Admin Panel", isAdminLink: true }]
-    : baseNavLinks;
+  const { data: notifData } = useQuery({
+    queryKey: ["userNotifications"],
+    queryFn: getUserNotifications,
+    refetchInterval: 10_000,
+  });
+
+  const incomingCount = friendRequests?.incomingReqs?.filter((r) => r?.sender)?.length || 0;
+  const adminUnreadCount = notifData?.unreadCount || 0;
+  const totalNotifCount = incomingCount + adminUnreadCount;
 
   return (
-    <aside className="w-64 bg-base-100 border-r border-base-content/10 hidden lg:flex flex-col h-screen sticky top-0 shadow-sm z-20">
-      {/* LOGO */}
-      <div className="p-5 border-b border-base-content/10 flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center gap-2 group shrink-0">
-          <AnvaLogo className="h-8 w-8 object-cover rounded-lg drop-shadow-sm group-hover:scale-105 transition-transform text-primary" />
-          <span className="text-base-content font-bold text-xl tracking-tight hidden sm:block">Anva</span>
+    <aside className="w-64 bg-base-100/95 backdrop-blur-2xl border-r border-base-content/10 hidden lg:flex flex-col h-screen sticky top-0 shadow-sm z-30 font-minimal select-none">
+      {/* ── BRAND HEADER ── */}
+      <div className="p-5 border-b border-base-content/10 flex items-center justify-between h-16 shrink-0 bg-base-100/50">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="relative p-1.5 rounded-xl bg-primary/10 text-primary border border-primary/20 group-hover:scale-105 transition-transform">
+            <AnvaLogo className="h-6 w-6 object-cover rounded-lg text-primary" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base-content font-extrabold text-lg tracking-tight leading-none flex items-center gap-1">
+              Anva
+              <span className="font-curly italic text-primary font-bold text-sm">Hub</span>
+            </span>
+            <span className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider">Learning Platform</span>
+          </div>
         </Link>
+
         {isAdmin && (
-          <span className="badge badge-primary text-[10px] font-extrabold uppercase">
+          <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[9px] font-extrabold uppercase tracking-wider border border-primary/25">
             Admin
           </span>
         )}
       </div>
 
-      {/* NAV */}
-      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-        {navLinks.map(({ to, icon: Icon, label, showBadge, isAdminLink }) => {
-          const isActive = pathname === to;
-          return (
+      {/* ── NAVIGATION SECTIONS ── */}
+      <nav className="flex-1 p-3.5 space-y-5 overflow-y-auto custom-scrollbar">
+        {navSections.map((section) => (
+          <div key={section.title} className="space-y-1">
+            <h4 className="px-3 text-[10px] font-black uppercase tracking-widest text-base-content/40 mb-1.5">
+              {section.title}
+            </h4>
+
+            <div className="space-y-1">
+              {section.links.map(({ to, icon: Icon, label, showBadge }) => {
+                const isActive = pathname === to;
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={`relative flex items-center justify-between w-full px-3.5 py-2.5 rounded-2xl transition-all duration-200 group text-xs ${
+                      isActive
+                        ? "bg-primary/10 text-primary font-bold shadow-sm"
+                        : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content font-medium"
+                    }`}
+                  >
+                    {/* Active Indicator Bar */}
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-active-pill"
+                        className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-primary rounded-r-full"
+                        transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                      />
+                    )}
+
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Icon
+                        className={`size-4.5 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                          isActive ? "text-primary" : "text-base-content/60 group-hover:text-base-content"
+                        }`}
+                      />
+                      <span className="truncate">{label}</span>
+                    </div>
+
+                    {showBadge && totalNotifCount > 0 ? (
+                      <span className="min-w-[18px] h-4.5 bg-error text-error-content text-[10px] font-extrabold rounded-full flex items-center justify-center px-1.5 shadow-sm">
+                        {totalNotifCount > 9 ? "9+" : totalNotifCount}
+                      </span>
+                    ) : (
+                      <ChevronRight className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-40 transition-opacity ${isActive ? "opacity-40 text-primary" : ""}`} />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Admin Link section if applicable */}
+        {isAdmin && (
+          <div className="pt-2 border-t border-base-content/10">
+            <h4 className="px-3 text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1.5">
+              MANAGEMENT
+            </h4>
             <Link
-              key={to}
-              to={to}
-              className={`relative flex items-center w-full gap-3 px-3 py-2.5 rounded-xl transition-all group ${
-                isActive
-                  ? isAdminLink
-                    ? "bg-primary text-primary-content font-bold shadow-md"
-                    : "bg-primary/10 text-primary font-semibold"
-                  : isAdminLink
-                  ? "bg-primary/10 text-primary hover:bg-primary/20 font-bold border border-primary/20"
-                  : "text-base-content/70 hover:bg-base-200 hover:text-base-content font-medium"
+              to="/admin"
+              className={`relative flex items-center justify-between w-full px-3.5 py-2.5 rounded-2xl transition-all duration-200 text-xs ${
+                pathname === "/admin"
+                  ? "bg-primary text-primary-content font-bold shadow-md"
+                  : "bg-primary/10 text-primary hover:bg-primary/20 font-bold border border-primary/20"
               }`}
             >
-              {/* Active slide-in indicator */}
-              {isActive && (
-                <motion.span
-                  layoutId="sidebar-active"
-                  className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full ${
-                    isAdminLink ? "bg-primary-content" : "bg-primary"
-                  }`}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-
-              <Icon
-                className={`size-5 transition-colors ${
-                  isActive
-                    ? isAdminLink
-                      ? "text-primary-content"
-                      : "text-primary"
-                    : "opacity-70 group-hover:opacity-100"
-                }`}
-              />
-              {label}
-
-              {/* Notification count badge for notifications link */}
-              {showBadge && notifCount > 0 && (
-                <span className="ml-auto min-w-[20px] h-5 bg-error text-error-content text-[10px] font-bold rounded-full flex items-center justify-center px-1.5">
-                  {notifCount > 9 ? "9+" : notifCount}
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="size-4.5 shrink-0" />
+                <span>Admin Panel</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 opacity-70" />
             </Link>
-          );
-        })}
+          </div>
+        )}
       </nav>
 
-      {/* USER PROFILE */}
-      <div className="p-4 border-t border-base-content/10 mt-auto bg-base-200/50">
-        <Link to="/profile" className="flex items-center gap-3 group">
-          {/* Avatar */}
-          <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden shadow-sm ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
-            <span className="absolute inset-0 flex items-center justify-center">
-              {authUser?.fullName?.charAt(0)?.toUpperCase()}
-            </span>
-            {authUser?.profilePic && (
+      {/* ── USER PROFILE FOOTER ── */}
+      <div className="p-3.5 border-t border-base-content/10 mt-auto bg-base-200/40">
+        <Link
+          to="/profile"
+          className="flex items-center gap-3 p-2 rounded-2xl hover:bg-base-100 border border-transparent hover:border-base-content/10 transition-all group"
+        >
+          {/* Avatar with status ring */}
+          <div className="relative size-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden ring-2 ring-base-content/10 group-hover:ring-primary/40 transition-all">
+            {authUser?.profilePic ? (
               <img
                 src={authUser.profilePic}
                 alt={authUser?.fullName || "User Avatar"}
                 loading="lazy"
-                className="absolute inset-0 w-full h-full object-cover"
+                className="w-full h-full object-cover"
                 onError={(e) => { e.currentTarget.style.display = "none"; }}
               />
+            ) : (
+              <span>{authUser?.fullName?.charAt(0)?.toUpperCase() || "U"}</span>
             )}
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1">
-              <p className="font-semibold text-sm text-base-content tracking-tight truncate">{authUser?.fullName}</p>
-            </div>
-            <p className="text-xs text-success font-medium flex items-center gap-1.5">
-              <span className="size-1.5 rounded-full bg-success shadow-[0_0_5px_currentColor] animate-pulse" />
-              Online
+            <p className="font-bold text-xs text-base-content truncate tracking-tight group-hover:text-primary transition-colors">
+              {authUser?.fullName || "User Account"}
+            </p>
+            <p className="text-[10px] text-success font-semibold flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-success animate-pulse shadow-[0_0_6px_currentColor]" />
+              Online & Active
             </p>
           </div>
+
+          <UserIcon className="w-4 h-4 text-base-content/40 group-hover:text-primary transition-colors shrink-0" />
         </Link>
       </div>
     </aside>

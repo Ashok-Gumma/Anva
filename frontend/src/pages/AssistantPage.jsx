@@ -521,7 +521,7 @@ const AssistantPage = () => {
   return (
     <div className="flex h-[calc(100dvh-4rem-4.25rem)] md:h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-minimal w-full">
       {/* Desktop Sidebar */}
-      <aside className="w-72 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
+      <aside className="w-80 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}
       </aside>
 
@@ -532,8 +532,8 @@ const AssistantPage = () => {
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 left-0 z-[60] bg-base-100 flex flex-col md:hidden w-72 border-r border-base-content/10 shadow-2xl"
+            transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            className="fixed inset-y-0 left-0 z-[110] bg-base-100 flex flex-col md:hidden w-80 sm:w-80 max-w-[85vw] border-r border-base-content/10 shadow-2xl"
           >
             {renderSidebarContent()}
           </motion.div>
@@ -548,7 +548,7 @@ const AssistantPage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 z-[55] bg-black/40 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[105] bg-black/50 backdrop-blur-sm md:hidden"
           />
         )}
       </AnimatePresence>
@@ -557,13 +557,15 @@ const AssistantPage = () => {
       <div className="flex-1 flex flex-col relative chat-wallpaper w-full overflow-hidden">
 
         {/* Sticky Chat Header */}
-        <header className="px-4 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-25 w-full shrink-0 flex items-center justify-between min-h-[64px] font-minimal">
-          <div className="flex items-center gap-3">
+        <header className="px-4 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-25 w-full shrink-0 flex items-center justify-between min-h-[64px] font-minimal gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2 text-base-content hover:bg-base-content/10 rounded-xl transition-colors cursor-pointer"
+              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-extrabold tracking-wide transition-all cursor-pointer shadow-2xs"
+              title="Open Doubt Sessions Sidebar"
             >
-              <Menu className="size-5" />
+              <BrainCircuit className="size-4" />
+              <span>Sessions</span>
             </button>
 
             <div className="flex items-center gap-2">

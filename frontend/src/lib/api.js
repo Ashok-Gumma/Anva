@@ -264,6 +264,11 @@ export async function deleteCommentPost({ postId, commentId }) {
   return response.data;
 }
 
+export async function updateCommentPost({ postId, commentId, text }) {
+  const response = await axiosInstance.put(`/posts/${postId}/comment/${commentId}`, { text });
+  return response.data;
+}
+
 export async function updatePost({ id, caption, subject }) {
   const response = await axiosInstance.put(`/posts/${id}`, { caption, subject });
   return response.data;

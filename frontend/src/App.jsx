@@ -233,6 +233,7 @@ const App = () => {
             <Route path="/blocked-users" element={<ProtectedRoute element={<Layout showSidebar><BlockedUsersPage /></Layout>} />} />
             <Route path="/compiler"      element={<ProtectedRoute element={<Layout showSidebar><CompilerPage /></Layout>} />} />
             <Route path="/user/:id"      element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />
+            <Route path="/chat"          element={<ProtectedRoute element={<Navigate to="/friends" replace />} />} />
             <Route path="/chat/:id"      element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
             <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
             
@@ -241,7 +242,39 @@ const App = () => {
             <Route path="/terms"         element={<TermsPage />} />
           </Routes>
 
-          <Toaster />
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              duration: 3000,
+              className: "anva-toast",
+              style: {
+                background: "rgba(15, 23, 42, 0.92)",
+                color: "#f8fafc",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                borderRadius: "14px",
+                boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.5)",
+                padding: "10px 16px",
+                fontSize: "13px",
+                fontWeight: "600",
+                letterSpacing: "-0.01em",
+                maxWidth: "380px",
+              },
+              success: {
+                iconTheme: {
+                  primary: "#10b981",
+                  secondary: "#0f172a",
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: "#ef4444",
+                  secondary: "#0f172a",
+                },
+              },
+            }}
+          />
         </div>
       )}
     </>
