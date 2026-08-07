@@ -22,16 +22,14 @@ export async function getPosts(req, res) {
       .populate("comments.user", "fullName profilePic")
       .lean();
 
-    // Strip heavy base64 blobs — replace with boolean flags so the feed
-    // response is tiny while the UI can still show image/PDF indicators.
-    const lightPosts = posts.map((p) => {
-      const hasImage = !!p.image;
-      const hasPdf = !!p.pdfUrl;
-      const { image, pdfUrl, ...rest } = p;
-      return { ...rest, hasImage, hasPdf };
-    });
+    // Enrich posts with boolean flags while retaining image and pdfUrl for immediate feed rendering
+    const enrichedPosts = posts.map((p) => ({
+      ...p,
+      hasImage: !!p.image,
+      hasPdf: !!p.pdfUrl,
+    }));
 
-    res.status(200).json({ success: true, posts: lightPosts });
+    res.status(200).json({ success: true, posts: enrichedPosts });
   } catch (error) {
     console.error("Error fetching posts:", error);
     res.status(500).json({ message: "Failed to fetch posts." });
