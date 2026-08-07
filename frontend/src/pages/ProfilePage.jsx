@@ -198,20 +198,69 @@ const ProfilePage = () => {
     },
   });
 
-  // Toggle like mutation
+  // Toggle like mutation with instant optimistic update
   const likeMutation = useMutation({
     mutationFn: toggleLikePost,
-    onSuccess: () => {
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const updatePostLikes = (oldPosts) => {
+        if (!Array.isArray(oldPosts)) return oldPosts;
+        return oldPosts.map((post) => {
+          if (post._id === postId) {
+            const userIdStr = authUser?._id?.toString();
+            const currentLikes = post.likes || [];
+            const isLiked = currentLikes.some(
+              (id) => (id?._id || id)?.toString() === userIdStr
+            );
+            const updatedLikes = isLiked
+              ? currentLikes.filter((id) => (id?._id || id)?.toString() !== userIdStr)
+              : [...currentLikes, authUser._id];
+            return { ...post, likes: updatedLikes };
+          }
+          return post;
+        });
+      };
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostLikes);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
     },
   });
 
-  // Add comment mutation
+  // Add comment mutation with instant optimistic update
   const commentMutation = useMutation({
     mutationFn: addCommentPost,
-    onSuccess: () => {
+    onMutate: async ({ postId, text }) => {
       setCommentText("");
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const tempComment = {
+        _id: `temp-${Date.now()}`,
+        user: {
+          _id: authUser._id,
+          fullName: authUser.fullName,
+          profilePic: authUser.profilePic,
+        },
+        text,
+        createdAt: new Date().toISOString(),
+      };
+      const updatePostComments = (oldPosts) => {
+        if (!Array.isArray(oldPosts)) return oldPosts;
+        return oldPosts.map((post) => {
+          if (post._id === postId) {
+            return { ...post, comments: [...(post.comments || []), tempComment] };
+          }
+          return post;
+        });
+      };
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostComments);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostComments);
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostComments);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["myPosts"] });

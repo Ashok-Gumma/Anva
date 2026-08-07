@@ -6,6 +6,7 @@ import { Lock, ShieldAlert, LifeBuoy, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 import ErrorBoundary from "./ErrorBoundary";
+import ServerErrorPage from "./ServerErrorPage";
 
 /**
  * Handles auth-guarded routes safely for both Clerk and legacy JWT users.
@@ -15,10 +16,15 @@ import ErrorBoundary from "./ErrorBoundary";
  */
 const ProtectedRoute = ({ element, requireOnboarding = true, allowSuspended = false }) => {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
-  const { isLoading, isFetching, authUser } = useAuthUser();
+  const { isLoading, isFetching, isError, error, authUser, refetch } = useAuthUser();
 
   const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
   const isOnboarded = authUser?.isOnboarded;
+
+  // Backend error (500/502/503 or offline connection error) -> show Server Error Boundary
+  if (isError) {
+    return <ServerErrorPage error={error} onRetry={refetch} />;
+  }
 
   // Still determining auth state — hold here
   const isResolving =

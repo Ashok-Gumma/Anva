@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import AdminRoute from "./components/AdminRoute.jsx";
 import Layout from "./components/Layout.jsx";
 import PageLoader from "./components/PageLoader.jsx";
+import ServerErrorPage from "./components/ServerErrorPage.jsx";
 import AnvaLogo from "./components/AnvaLogo.jsx";
 import AnvaBrandLogo from "./components/AnvaBrandLogo.jsx";
 
@@ -45,19 +46,27 @@ import useLogout from "./hooks/useLogout.js";
 const App = () => {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
   const queryClient = useQueryClient();
-  const { isLoading, authUser } = useAuthUser();
+  const { isLoading, isError, error, authUser, refetch: refetchAuth } = useAuthUser();
   const { logoutMutation } = useLogout();
   const { theme } = useThemeStore();
-  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const [minLoadingComplete, setMinLoadingComplete] = useState(() => {
+    return sessionStorage.getItem("anva_has_loaded_app") === "true";
+  });
 
   const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
 
-  // Minimum loading timer (1.5s)
+  // Minimum loading timer (only on initial login/session load)
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const hasLoadedBefore = sessionStorage.getItem("anva_has_loaded_app");
+    if (hasLoadedBefore === "true") {
       setMinLoadingComplete(true);
-    }, 1500);
-    return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        setMinLoadingComplete(true);
+        sessionStorage.setItem("anva_has_loaded_app", "true");
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Sync data-theme attribute on document element when theme changes
@@ -84,9 +93,13 @@ const App = () => {
     return () => clearInterval(interval);
   }, [isAuthenticated, authUser]);
 
-  // AxiosClerkInterceptor always renders so it's ready before the first fetch.
-  // PageLoader is shown as a sibling until auth resolves AND timer finish.
-  const isAuthResolving = !isClerkLoaded || isLoading || !minLoadingComplete;
+  // PageLoader is shown only when Clerk is initializing or initial session auth is resolving
+  const hasLoadedSession = sessionStorage.getItem("anva_has_loaded_app") === "true";
+  const isAuthResolving = !isClerkLoaded || (!hasLoadedSession && (isLoading || !minLoadingComplete));
+
+  if (isError) {
+    return <ServerErrorPage error={error} onRetry={refetchAuth} />;
+  }
 
   return (
     <>

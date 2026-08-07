@@ -114,11 +114,52 @@ const EduFeedPage = () => {
     },
   });
 
-  // Toggle like mutation
+  // Toggle like mutation with instant optimistic UI update (0ms delay)
   const likeMutation = useMutation({
     mutationFn: toggleLikePost,
-    onSuccess: () => {
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPostsData = queryClient.getQueryData(["posts"]);
+
+      // Cache stores { posts: [] } shape — updater must unwrap and re-wrap
+      const updatePostLikes = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
+          if (post._id === postId) {
+            const userIdStr = authUser?._id?.toString();
+            const currentLikes = post.likes || [];
+            const isLiked = currentLikes.some(
+              (id) => (id?._id || id)?.toString() === userIdStr
+            );
+            const updatedLikes = isLiked
+              ? currentLikes.filter((id) => (id?._id || id)?.toString() !== userIdStr)
+              : [...currentLikes, authUser._id];
+            return { ...post, likes: updatedLikes };
+          }
+          return post;
+        });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostLikes);
+
+      return { previousPostsData };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousPostsData) {
+        queryClient.setQueryData(["posts"], context.previousPostsData);
+      }
+      toast.error("Failed to update like.");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
     },
   });
 
@@ -179,24 +220,102 @@ const EduFeedPage = () => {
     },
   });
 
-  // Add comment mutation
+  // Add comment mutation with instant optimistic UI update
   const commentMutation = useMutation({
     mutationFn: addCommentPost,
-    onSuccess: () => {
-      setCommentText("");
+    onMutate: async ({ id, text }) => {
+      setCommentText(""); // Immediately clear input for instant feedback!
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPostsData = queryClient.getQueryData(["posts"]);
+
+      const tempComment = {
+        _id: `temp-${Date.now()}`,
+        user: {
+          _id: authUser._id,
+          fullName: authUser.fullName,
+          profilePic: authUser.profilePic,
+        },
+        text,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Cache stores { posts: [] } shape — updater must unwrap and re-wrap
+      const updatePostComments = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
+          if (post._id === id) {
+            return { ...post, comments: [...(post.comments || []), tempComment] };
+          }
+          return post;
+        });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostComments);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostComments);
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostComments);
+
+      return { previousPostsData };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousPostsData) {
+        queryClient.setQueryData(["posts"], context.previousPostsData);
+      }
+      toast.error("Failed to post comment.");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
     },
   });
 
-  // Delete comment mutation
+  // Delete comment mutation with instant optimistic UI update
   const deleteCommentMutation = useMutation({
     mutationFn: deleteCommentPost,
+    onMutate: async ({ postId, commentId }) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPostsData = queryClient.getQueryData(["posts"]);
+
+      // Cache stores { posts: [] } shape — updater must unwrap and re-wrap
+      const filterOutComment = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
+          if (post._id === postId) {
+            return {
+              ...post,
+              comments: (post.comments || []).filter((c) => c._id !== commentId),
+            };
+          }
+          return post;
+        });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["posts"] }, filterOutComment);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, filterOutComment);
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, filterOutComment);
+
+      return { previousPostsData };
+    },
     onSuccess: () => {
       toast.success("Comment deleted.");
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Failed to delete comment.");
+    onError: (_err, _variables, context) => {
+      if (context?.previousPostsData) {
+        queryClient.setQueryData(["posts"], context.previousPostsData);
+      }
+      toast.error("Failed to delete comment.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
     },
   });
 

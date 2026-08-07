@@ -99,20 +99,98 @@ const SavedPostsPage = () => {
     },
   });
 
-  // Toggle like mutation
+  // Toggle like mutation with instant optimistic update (0ms delay)
   const likeMutation = useMutation({
     mutationFn: toggleLikePost,
-    onSuccess: () => {
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["savedPosts"] });
+      const previousSavedData = queryClient.getQueryData(["savedPosts"]);
+
+      // Cache stores { posts: [] } shape — updater must unwrap and re-wrap
+      const updatePostLikes = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
+          if (post._id === postId) {
+            const userIdStr = authUser?._id?.toString();
+            const currentLikes = post.likes || [];
+            const isLiked = currentLikes.some(
+              (id) => (id?._id || id)?.toString() === userIdStr
+            );
+            const updatedLikes = isLiked
+              ? currentLikes.filter((id) => (id?._id || id)?.toString() !== userIdStr)
+              : [...currentLikes, authUser._id];
+            return { ...post, likes: updatedLikes };
+          }
+          return post;
+        });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostLikes);
+      return { previousSavedData };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousSavedData) {
+        queryClient.setQueryData(["savedPosts"], context.previousSavedData);
+      }
+      toast.error("Failed to update like.");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
   });
 
-  // Add comment mutation
+  // Add comment mutation with instant optimistic update
   const commentMutation = useMutation({
     mutationFn: addCommentPost,
-    onSuccess: () => {
-      setCommentText("");
+    onMutate: async ({ id, text }) => {
+      setCommentText(""); // Clear input immediately
+      await queryClient.cancelQueries({ queryKey: ["savedPosts"] });
+      const previousSavedData = queryClient.getQueryData(["savedPosts"]);
+
+      const tempComment = {
+        _id: `temp-${Date.now()}`,
+        user: {
+          _id: authUser._id,
+          fullName: authUser.fullName,
+          profilePic: authUser.profilePic,
+        },
+        text,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Cache stores { posts: [] } shape — updater must unwrap and re-wrap
+      const updatePostComments = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
+          if (post._id === id) {
+            return { ...post, comments: [...(post.comments || []), tempComment] };
+          }
+          return post;
+        });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostComments);
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostComments);
+      return { previousSavedData };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousSavedData) {
+        queryClient.setQueryData(["savedPosts"], context.previousSavedData);
+      }
+      toast.error("Failed to post comment.");
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },

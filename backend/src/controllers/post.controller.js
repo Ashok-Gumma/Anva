@@ -116,10 +116,11 @@ export async function toggleLikePost(req, res) {
       return res.status(404).json({ message: "Post not found." });
     }
 
-    const isLiked = post.likes.includes(userId);
+    const userIdStr = userId.toString();
+    const isLiked = post.likes.some((likedUserId) => likedUserId.toString() === userIdStr);
 
     if (isLiked) {
-      post.likes = post.likes.filter((likedUserId) => likedUserId.toString() !== userId.toString());
+      post.likes = post.likes.filter((likedUserId) => likedUserId.toString() !== userIdStr);
     } else {
       post.likes.push(userId);
     }

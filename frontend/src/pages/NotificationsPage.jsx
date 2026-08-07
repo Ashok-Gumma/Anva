@@ -10,8 +10,11 @@ import {
   ExternalLink,
   Sparkles,
   AlertTriangle,
+  MessageCircle,
+  ArrowRight,
 } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { StreamChat } from "stream-chat";
 
 import {
   acceptFriendRequest,
@@ -19,12 +22,16 @@ import {
   getUserNotifications,
   markNotificationRead,
   deleteNotification,
+  getStreamToken,
 } from "../lib/api";
+import useAuthUser from "../hooks/useAuthUser";
 import NoNotificationsFound from "../components/NoNotificationsFound";
 import toast from "react-hot-toast";
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { authUser } = useAuthUser();
 
   /* ---------------- FETCH FRIEND REQUESTS ---------------- */
   const { data: friendRequests, isLoading: isLoadingFriends } = useQuery({
@@ -38,6 +45,33 @@ const NotificationsPage = () => {
     queryKey: ["userNotifications"],
     queryFn: getUserNotifications,
     refetchInterval: 10_000,
+  });
+
+  /* ---------------- FETCH STREAM CHAT CHANNELS & MESSAGES ---------------- */
+  const { data: tokenData } = useQuery({
+    queryKey: ["streamToken"],
+    queryFn: getStreamToken,
+    enabled: !!authUser,
+  });
+
+  const { data: streamChannels = [], isLoading: isLoadingChannels } = useQuery({
+    queryKey: ["streamChannels"],
+    queryFn: async () => {
+      if (!tokenData?.token || !authUser) return [];
+      const client = StreamChat.getInstance(import.meta.env.VITE_STREAM_API_KEY);
+      if (client.userID !== authUser._id) {
+        if (client.userID) await client.disconnectUser();
+        await client.connectUser({ id: authUser._id, name: authUser.fullName }, tokenData.token);
+      }
+      const channels = await client.queryChannels(
+        { members: { $in: [authUser._id] } },
+        { last_message_at: -1 },
+        { watch: true, state: true, limit: 15 }
+      );
+      return channels;
+    },
+    enabled: !!authUser && !!tokenData?.token,
+    refetchInterval: 8_000,
   });
 
   /* ---------------- ACCEPT FRIEND REQUEST ---------------- */
@@ -66,6 +100,18 @@ const NotificationsPage = () => {
     },
   });
 
+  /* ---------------- MARK STREAM CHANNEL AS READ ---------------- */
+  const handleMarkChannelRead = async (channel) => {
+    try {
+      await channel.markRead();
+      toast.success("Message notification marked as read");
+      queryClient.invalidateQueries({ queryKey: ["streamChannels"] });
+      queryClient.invalidateQueries({ queryKey: ["streamUnreadCount"] });
+    } catch (err) {
+      console.error("Error marking channel read:", err);
+    }
+  };
+
   /* ---------------- SAFE DATA HANDLING ---------------- */
   const incomingRequests =
     friendRequests?.incomingReqs?.filter((req) => req?.sender) || [];
@@ -74,13 +120,20 @@ const NotificationsPage = () => {
     friendRequests?.acceptedReqs?.filter((req) => req?.recipient) || [];
 
   const adminNotifications = notifData?.notifications || [];
-  const unreadCount = notifData?.unreadCount || 0;
+  const adminUnreadCount = notifData?.unreadCount || 0;
 
-  const isLoading = isLoadingFriends || isLoadingNotifs;
+  const chatUnreadCount = streamChannels.reduce(
+    (acc, ch) => acc + (ch.state?.unreadCount || 0),
+    0
+  );
+  const totalUnreadCount = adminUnreadCount + chatUnreadCount;
+
+  const isLoading = isLoadingFriends || isLoadingNotifs || isLoadingChannels;
   const hasNoNotifications =
     incomingRequests.length === 0 &&
     acceptedRequests.length === 0 &&
-    adminNotifications.length === 0;
+    adminNotifications.length === 0 &&
+    streamChannels.length === 0;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -89,9 +142,9 @@ const NotificationsPage = () => {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Notifications
           </h1>
-          {unreadCount > 0 && (
+          {totalUnreadCount > 0 && (
             <span className="badge badge-primary font-bold px-3 py-2 text-xs">
-              {unreadCount} Unread Admin Update{unreadCount > 1 ? "s" : ""}
+              {totalUnreadCount} Unread Notification{totalUnreadCount > 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -102,6 +155,116 @@ const NotificationsPage = () => {
           </div>
         ) : (
           <>
+            {/* ---------------- DIRECT MESSAGES ---------------- */}
+            {streamChannels.length > 0 && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-black tracking-tight flex items-center gap-2 text-base-content">
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                  Direct Messages
+                  {chatUnreadCount > 0 && (
+                    <span className="badge badge-primary font-black ml-2 px-2.5">
+                      {chatUnreadCount} New
+                    </span>
+                  )}
+                </h2>
+
+                <div className="space-y-3">
+                  {streamChannels.map((ch) => {
+                    const members = Object.values(ch.state?.members || {});
+                    const peerMember = members.find(
+                      (m) => m.user_id !== authUser?._id && m.user?.id !== authUser?._id
+                    )?.user;
+                    const peerName = peerMember?.name || "Peer";
+                    const rawPeerPic = peerMember?.image || peerMember?.profilePic;
+                    const peerPic = rawPeerPic && !rawPeerPic.includes("avatar.iran.liara.run") ? rawPeerPic : null;
+                    const peerId = peerMember?.id || peerMember?.user_id;
+
+                    const messages = ch.state?.messages || [];
+                    const lastMessage = messages[messages.length - 1];
+                    const lastMessageText = lastMessage?.text || (lastMessage ? "Sent an attachment" : "No messages yet");
+                    const isUnread = (ch.state?.unreadCount || 0) > 0;
+                    const msgDate = lastMessage?.created_at ? new Date(lastMessage.created_at) : null;
+
+                    if (!peerId) return null;
+
+                    return (
+                      <div
+                        key={ch.id}
+                        className={`bg-base-100/90 backdrop-blur-md rounded-3xl p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                          isUnread
+                            ? "border-primary/40 shadow-md ring-2 ring-primary/10"
+                            : "border-base-content/10 shadow-sm opacity-95"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                          <div className="size-14 rounded-2xl bg-gradient-to-tr from-primary to-secondary p-0.5 shadow-md shrink-0">
+                            <div className="size-full rounded-[0.9rem] bg-base-100 text-base-content flex items-center justify-center font-black text-lg overflow-hidden relative">
+                              <span>{peerName.charAt(0).toUpperCase()}</span>
+                              {peerPic && (
+                                <img
+                                  src={peerPic}
+                                  alt={peerName}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-extrabold text-base text-base-content tracking-tight truncate">
+                                {peerName}
+                              </h3>
+                              {isUnread && (
+                                <span className="badge badge-primary text-[10px] font-black uppercase">
+                                  {ch.state.unreadCount} New Message{ch.state.unreadCount > 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-xs font-medium text-base-content/80 line-clamp-1 bg-base-200/50 px-3 py-1.5 rounded-xl border border-base-content/5">
+                              {lastMessageText}
+                            </p>
+
+                            {msgDate && (
+                              <p className="text-[11px] text-base-content/50 font-semibold flex items-center gap-1">
+                                <ClockIcon className="h-3 w-3" />
+                                {msgDate.toLocaleDateString()} {msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          {isUnread && (
+                            <button
+                              onClick={() => handleMarkChannelRead(ch)}
+                              className="btn btn-xs btn-ghost text-primary hover:bg-primary/10 font-bold gap-1 rounded-xl"
+                              title="Mark as Read"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Read
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              ch.markRead().catch(() => {});
+                              navigate(`/chat/${peerId}`);
+                            }}
+                            className="btn btn-xs btn-primary rounded-xl font-bold gap-1 shadow-sm"
+                          >
+                            Chat Now <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
             {/* ---------------- ADMIN & SUPPORT NOTIFICATIONS ---------------- */}
             {adminNotifications.length > 0 && (
               <section className="space-y-4">

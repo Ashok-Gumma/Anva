@@ -30,11 +30,14 @@ export const getAuthUser = async () => {
     const res = await axiosInstance.get("/auth/me");
     return res.data;
   } catch (error) {
-    // 401 is expected when the user is not logged in — don't pollute the console
-    if (error?.response?.status !== 401) {
-      console.error("Error in getAuthUser:", error);
+    const status = error?.response?.status;
+    // 401 Unauthenticated or 404 Not Found -> expected when user has no account/session
+    if (status === 401 || status === 404) {
+      return null;
     }
-    return null;
+    // Server errors (500/502/503/504) or network disconnection -> throw so UI shows Server Error Page
+    console.error("Backend error or network issue in getAuthUser:", error);
+    throw error;
   }
 };
 

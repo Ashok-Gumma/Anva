@@ -110,6 +110,15 @@ const ChatPage = () => {
           }
         }
 
+        // Mark channel read immediately when entering chat
+        await currChannel.markRead().catch(console.error);
+
+        // Listen for new messages while viewing this channel to auto-mark read
+        const handleNewMessage = () => {
+          currChannel.markRead().catch(console.error);
+        };
+        currChannel.on("message.new", handleNewMessage);
+
         setChatClient(client);
         setChannel(currChannel);
       } catch (error) {

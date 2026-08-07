@@ -16,24 +16,25 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { getFriendRequests, getUserNotifications } from "../lib/api";
+import { getFriendRequests, getUserNotifications, getStreamToken } from "../lib/api";
+import { StreamChat } from "stream-chat";
 import { motion } from "framer-motion";
 
 const navSections = [
   {
     title: "COMMUNITY & FEEDS",
     links: [
-      { to: "/", icon: HomeIcon, label: "Home" },
-      { to: "/feed", icon: ImageIcon, label: "EduFeed" },
-      { to: "/friends", icon: UsersIcon, label: "Friends & Peers" },
+      { to: "/", icon: HomeIcon, label: "Home Hub" },
+      { to: "/feed", icon: ImageIcon, label: "Community Feed" },
+      { to: "/friends", icon: UsersIcon, label: "Peers & Network", showBadge: true },
     ],
   },
   {
-    title: "STUDY WORKSPACE",
+    title: "LEARNING TOOLS",
     links: [
-      { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards" },
+      { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards Studio" },
+      { to: "/assistant", icon: BrainCircuit, label: "AI Assistant" },
       { to: "/compiler", icon: Code, label: "Code Compiler" },
-      { to: "/assistant", icon: BrainCircuit, label: "AI Study Assistant" },
     ],
   },
   {
@@ -63,9 +64,35 @@ const Sidebar = () => {
     refetchInterval: 10_000,
   });
 
+  const { data: tokenData } = useQuery({
+    queryKey: ["streamToken"],
+    queryFn: getStreamToken,
+    enabled: !!authUser,
+  });
+
+  const { data: streamChannels = [] } = useQuery({
+    queryKey: ["streamChannels"],
+    queryFn: async () => {
+      if (!tokenData?.token || !authUser) return [];
+      const client = StreamChat.getInstance(import.meta.env.VITE_STREAM_API_KEY);
+      if (client.userID !== authUser._id) {
+        if (client.userID) await client.disconnectUser();
+        await client.connectUser({ id: authUser._id, name: authUser.fullName }, tokenData.token);
+      }
+      return await client.queryChannels(
+        { members: { $in: [authUser._id] } },
+        { last_message_at: -1 },
+        { watch: true, state: true }
+      );
+    },
+    enabled: !!authUser && !!tokenData?.token,
+    refetchInterval: 10_000,
+  });
+
   const incomingCount = friendRequests?.incomingReqs?.filter((r) => r?.sender)?.length || 0;
   const adminUnreadCount = notifData?.unreadCount || 0;
-  const totalNotifCount = incomingCount + adminUnreadCount;
+  const chatUnreadCount = streamChannels.reduce((acc, ch) => acc + (ch.state?.unreadCount || 0), 0);
+  const totalNotifCount = incomingCount + adminUnreadCount + chatUnreadCount;
 
   return (
     <aside className="w-64 bg-base-100/95 backdrop-blur-2xl border-r border-base-content/10 hidden lg:flex flex-col h-screen sticky top-0 shadow-sm z-30 font-minimal select-none">

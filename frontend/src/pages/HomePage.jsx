@@ -11,7 +11,7 @@ import {
 } from "../lib/api";
 import { StreamChat } from "stream-chat";
 import useAuthUser from "../hooks/useAuthUser";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   CheckCircleIcon,
   MapPinIcon,
@@ -51,6 +51,7 @@ const itemVariants = {
 
 const HomePage = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { authUser } = useAuthUser();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -106,9 +107,42 @@ const HomePage = () => {
   const [selectedTeaserOption, setSelectedTeaserOption] = useState(null);
   const [_teaserError, setTeaserError] = useState(false);
 
+  const [challenges, setChallenges] = useState([
+    { id: 1, text: "Practice Spanish vocabulary for 5 mins", completed: false, xp: 50 },
+    { id: 2, text: "Send a friendly message to a study peer", completed: false, xp: 75 },
+    { id: 3, text: "Check grammar on 1 sentence", completed: false, xp: 40 },
+  ]);
+
+  const toggleChallenge = (id, rewardXp) => {
+    setChallenges((prev) =>
+      prev.map((c) => {
+        if (c.id === id) {
+          const nextState = !c.completed;
+          if (nextState) {
+            setXp((curr) => {
+              const updated = curr + rewardXp;
+              localStorage.setItem("anva_xp", String(updated));
+              return updated;
+            });
+            toast.success(`Challenge complete! +${rewardXp} XP 🎉`);
+          } else {
+            setXp((curr) => {
+              const updated = Math.max(0, curr - rewardXp);
+              localStorage.setItem("anva_xp", String(updated));
+              return updated;
+            });
+          }
+          return { ...c, completed: nextState };
+        }
+        return c;
+      })
+    );
+  };
+
   /* ── Random Motivational Quote ── */
   const dailyQuote = useMemo(() => {
-    return MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
   }, []);
 
   /* ── Notifications popup ── */
@@ -123,7 +157,66 @@ const HomePage = () => {
     enabled: !!authUser,
   });
 
+  /* ── Real-time StreamChat message listener on Homepage ── */
+  useEffect(() => {
+    if (!tokenData?.token || !authUser) return;
 
+    const client = StreamChat.getInstance(import.meta.env.VITE_STREAM_API_KEY);
+    let isSubscribed = true;
+
+    const connectAndListen = async () => {
+      try {
+        if (client.userID !== authUser._id) {
+          if (client.userID) await client.disconnectUser();
+          await client.connectUser({ id: authUser._id, name: authUser.fullName }, tokenData.token);
+        }
+
+        const handleMessageNew = (event) => {
+          if (!isSubscribed) return;
+          if (event.message?.user?.id === authUser._id) return;
+
+          const senderName = event.message?.user?.name || "A peer";
+          const snippet = event.message?.text || "Sent a message";
+          const senderId = event.message?.user?.id;
+
+          toast(
+            (t) => (
+              <div
+                className="flex flex-col gap-1 cursor-pointer select-none"
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  if (senderId) navigate(`/chat/${senderId}`);
+                }}
+              >
+                <div className="font-extrabold text-xs text-primary flex items-center gap-1">
+                  💬 New message from {senderName}
+                </div>
+                <p className="text-xs font-medium text-base-content/90 line-clamp-2">{snippet}</p>
+              </div>
+            ),
+            { duration: 6000 }
+          );
+
+          queryClient.invalidateQueries({ queryKey: ["streamChannels"] });
+          queryClient.invalidateQueries({ queryKey: ["streamUnreadCount"] });
+        };
+
+        client.on("message.new", handleMessageNew);
+
+        return () => {
+          client.off("message.new", handleMessageNew);
+        };
+      } catch (err) {
+        console.error("Stream notification listener error:", err);
+      }
+    };
+
+    connectAndListen();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [tokenData, authUser, navigate, queryClient]);
 
   useEffect(() => {
     if (!authUser) return;

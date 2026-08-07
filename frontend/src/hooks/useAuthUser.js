@@ -8,17 +8,19 @@ const useAuthUser = () => {
   const query = useQuery({
     queryKey: ["authUser"],
     queryFn: getAuthUser,
-    // Do NOT fire until Clerk has initialized — ensures AxiosClerkInterceptor
-    // has already set the Bearer token getter before the first request goes out
     enabled: isClerkLoaded,
-    retry: false,
+    retry: 1,
     staleTime: 60_000,
   });
 
   return {
-    isLoading: query.isPending && isClerkLoaded, // treat as loading only when enabled
+    isLoading: query.isPending && isClerkLoaded,
     isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error,
     authUser: query.data?.user,
+    refetch: query.refetch,
   };
 };
+
 export default useAuthUser;
