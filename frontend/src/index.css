@@ -432,19 +432,19 @@ a, button, input, select, textarea, label, [role="button"] {
   -webkit-touch-callout: none;
 }
 
-/* Minimum 44px touch targets for accessibility (iOS HIG) */
-button, a, [role="button"] {
+/* Minimum 44px touch targets for accessibility (iOS HIG) — only for standalone interactive elements, not inline/compact ones */
+.touch-target {
   min-height: 44px;
   min-width: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* Exception: icon-only small ghost buttons inside cards keep their actual size */
-.btn-xs {
-  min-height: 32px !important;
-  min-width: 32px !important;
+/* Bottom nav items and nav links get proper touch targets without flex override */
+.bottom-nav-item {
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Safe-area padding for notched phones (iPhone X+) */
@@ -454,11 +454,14 @@ button, a, [role="button"] {
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
 }
-
-/* Bottom nav safe-area support */
-nav.fixed.bottom-0 {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px);
+/* Tailwind-compatible safe-area utility classes */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 
 /* Prevent overscroll bounce on the page (keep momentum scrolling on lists) */
 body {

@@ -26,15 +26,15 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navLinks = [
-  { to: "/", icon: HomeIcon, label: "Home" },
-  { to: "/feed", icon: ImageIcon, label: "EduFeed" },
-  { to: "/friends", icon: UsersIcon, label: "Friends" },
-  { to: "/flashcards", icon: BookOpenIcon, label: "Decks" },
-  { to: "/compiler", icon: Code, label: "Compiler" },
-  { to: "/assistant", icon: BrainCircuit, label: "Assistant" },
-  { to: "/support", icon: LifeBuoy, label: "Support" },
-  { to: "/profile", icon: UserIcon, label: "Profile" },
-  { to: "/notifications", icon: Bell, label: "Notifications" },
+  { to: "/",            icon: HomeIcon,     label: "Home",          color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
+  { to: "/feed",        icon: ImageIcon,    label: "EduFeed",       color: "#ec4899", bg: "rgba(236,72,153,0.12)"  },
+  { to: "/friends",     icon: UsersIcon,    label: "Friends",       color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
+  { to: "/flashcards",  icon: BookOpenIcon, label: "Decks",         color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
+  { to: "/compiler",    icon: Code,         label: "Compiler",      color: "#3b82f6", bg: "rgba(59,130,246,0.12)"  },
+  { to: "/assistant",   icon: BrainCircuit, label: "AI Assistant",  color: "#8b5cf6", bg: "rgba(139,92,246,0.12)"  },
+  { to: "/support",     icon: LifeBuoy,     label: "Support",       color: "#06b6d4", bg: "rgba(6,182,212,0.15)",  isSupportLink: true },
+  { to: "/profile",     icon: UserIcon,     label: "Profile",       color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
+  { to: "/notifications",icon: Bell,        label: "Notifications", color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
 ];
 
 const Navbar = () => {
@@ -207,57 +207,87 @@ const Navbar = () => {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              className="fixed top-0 right-0 bottom-0 z-[100] w-72 bg-base-100 border-l border-base-content/10 shadow-2xl flex flex-col md:hidden"
+              style={{ backgroundColor: "#ffffff" }}
+              className="fixed top-0 right-0 bottom-0 z-[100] w-72 border-l border-gray-200 shadow-2xl flex flex-col md:hidden"
             >
               {/* Drawer Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-base-content/10 bg-base-200/50">
+              <div style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }} className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-2">
                   <AnvaLogo className="h-7 w-7 text-primary" />
-                  <span className="font-bold text-lg text-base-content">Anva</span>
+                  <span style={{ color: "#111827" }} className="font-bold text-lg">Anva</span>
                   {isAdmin && <span className="badge badge-primary text-[9px] font-extrabold uppercase">Admin</span>}
                 </div>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="p-1.5 rounded-xl text-base-content/60 hover:text-base-content hover:bg-base-300 transition-colors"
+                  style={{ color: "#6b7280" }}
+                  className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Nav Links */}
-              <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-                {allNavLinks.map(({ to, icon: Icon, label, isAdminLink }) => {
+              <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+                {allNavLinks.map(({ to, icon: Icon, label, color, bg, isAdminLink, isSupportLink }) => {
                   const isActive = pathname === to || (to !== "/" && pathname.startsWith(to));
+                  const itemColor = isAdminLink ? "#6366f1" : (color || "#6366f1");
+                  const itemBg = isAdminLink ? "rgba(99,102,241,0.12)" : (bg || "rgba(99,102,241,0.12)");
+
+                  // Add a visual separator before Support
+                  const showSeparator = isSupportLink;
+
                   return (
-                    <Link
-                      key={to}
-                      to={to}
-                      onClick={() => setDrawerOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${
-                        isActive
-                          ? isAdminLink
-                            ? "bg-primary text-primary-content"
-                            : "bg-primary/10 text-primary"
-                          : isAdminLink
-                          ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
-                          : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5 shrink-0" />
-                      {label}
-                    </Link>
+                    <div key={to}>
+                      {showSeparator && (
+                        <div className="my-2 border-t border-base-content/10" />
+                      )}
+                      <Link
+                        to={to}
+                        onClick={() => setDrawerOpen(false)}
+                        style={{
+                          backgroundColor: isActive ? itemBg : "transparent",
+                          color: isActive ? itemColor : "#374151",
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all hover:opacity-80 active:scale-[0.98]"
+                      >
+                        {/* Icon Badge */}
+                        <div
+                          style={{ backgroundColor: itemBg, color: itemColor }}
+                          className="size-9 rounded-xl flex items-center justify-center shrink-0"
+                        >
+                          <Icon className="w-[18px] h-[18px]" />
+                        </div>
+
+                        {/* Label */}
+                        <span
+                          style={{ color: isActive ? itemColor : "#1f2937", fontWeight: isActive ? 700 : 600 }}
+                          className="text-sm flex-1"
+                        >
+                          {label}
+                        </span>
+
+                        {/* Active dot */}
+                        {isActive && (
+                          <div
+                            style={{ backgroundColor: itemColor }}
+                            className="size-2 rounded-full shrink-0"
+                          />
+                        )}
+                      </Link>
+                    </div>
                   );
                 })}
               </nav>
 
               {/* Drawer Footer — User info + Logout */}
-              <div className="p-4 border-t border-base-content/10 bg-base-200/40 space-y-3">
+              <div style={{ backgroundColor: "#f9fafb", borderTop: "1px solid #e5e7eb" }} className="p-4 space-y-3">
                 <Link
                   to="/profile"
                   onClick={() => setDrawerOpen(false)}
-                  className="flex items-center gap-3 group"
+                  style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb" }}
+                  className="flex items-center gap-3 p-3 rounded-2xl transition-all hover:border-indigo-300 group"
                 >
-                  <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden shrink-0 ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
+                  <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
                     <span className="absolute inset-0 flex items-center justify-center">
                       {authUser?.fullName?.charAt(0)?.toUpperCase()}
                     </span>
@@ -271,15 +301,16 @@ const Navbar = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-bold text-sm text-base-content truncate">{authUser?.fullName}</p>
-                    <p className="text-xs text-base-content/50 truncate">{authUser?.email}</p>
+                    <p style={{ color: "#111827" }} className="font-bold text-sm truncate">{authUser?.fullName}</p>
+                    <p style={{ color: "#6b7280" }} className="text-xs truncate">{authUser?.email}</p>
                   </div>
                 </Link>
                 <button
                   onClick={() => { setDrawerOpen(false); logoutMutation(); }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-error hover:bg-error/10 transition-colors"
+                  style={{ color: "#ef4444", backgroundColor: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all hover:bg-red-50"
                 >
-                  <LogOutIcon className="w-4 h-4" />
+                  <LogOutIcon className="w-4 h-4 shrink-0" />
                   Log Out
                 </button>
               </div>

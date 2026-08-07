@@ -1,10 +1,11 @@
 import { Link } from "react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import AnvaLogo from "../components/AnvaLogo";
 import ParticleBackground from "../components/ParticleBackground";
 import {
   Users, Flame, BookOpen, Video, Code, Clock,
-  ArrowRight, MessageSquare, Globe, Zap
+  ArrowRight, MessageSquare, Globe, Zap, Menu, X
 } from "lucide-react";
 
 /* ─── Data ──────────────────────────────────────────────────────── */
@@ -110,30 +111,129 @@ const stagger = {
 };
 
 /* ─── Component ─────────────────────────────────────────────────── */
-const LandingPage = () => (
+const LandingPage = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  return (
   <div className="min-h-screen bg-[#fafaf9] text-slate-900 overflow-x-hidden font-sans selection:bg-blue-100 selection:text-blue-900" data-theme="light">
     <ParticleBackground />
 
     {/* ── Navbar Header ── */}
-    <nav className="fixed top-0 left-0 right-0 z-50 px-6 sm:px-12 py-3.5 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-2xs transition-all duration-300">
+    <nav className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-12 py-3.5 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-2xs transition-all duration-300">
       <Link to="/" className="flex items-center gap-3 group shrink-0">
         <AnvaLogo className="h-9 w-9 group-hover:scale-105 transition-transform" />
         <span className="font-extrabold text-2xl tracking-tight text-slate-900">Anva</span>
       </Link>
 
+      {/* Desktop nav links */}
       <div className="hidden sm:flex items-center gap-8">
         <a href="#features" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">Features</a>
         <a href="#how" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors">How it works</a>
         <Link to="/login" className="text-sm font-semibold text-slate-600 hover:text-blue-600 transition-colors border-l border-slate-200 pl-8">Log in</Link>
       </div>
 
-      <Link
-        to="/sign-up"
-        className="flex items-center gap-2 bg-slate-900 text-white hover:bg-blue-600 transition-all px-5 py-2 rounded-xl text-sm font-bold shadow-sm hover:scale-[1.03] active:scale-[0.97]"
-      >
-        Get Started <ArrowRight className="w-4 h-4" />
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          to="/sign-up"
+          className="hidden sm:flex items-center gap-2 bg-slate-900 text-white hover:bg-blue-600 transition-all px-5 py-2 rounded-xl text-sm font-bold shadow-sm hover:scale-[1.03] active:scale-[0.97]"
+        >
+          Get Started <ArrowRight className="w-4 h-4" />
+        </Link>
+
+        {/* Mobile: Get Started CTA (compact) + Hamburger */}
+        <Link
+          to="/sign-up"
+          className="sm:hidden flex items-center gap-1.5 bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm"
+        >
+          Get Started
+        </Link>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="sm:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+          aria-label="Open mobile menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
     </nav>
+
+    {/* ── Mobile Navigation Drawer ── */}
+    <AnimatePresence>
+      {mobileMenuOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm sm:hidden"
+          />
+          {/* Drawer */}
+          <motion.aside
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            className="fixed top-0 right-0 bottom-0 z-[100] w-72 bg-white border-l border-slate-200 shadow-2xl flex flex-col sm:hidden"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <AnvaLogo className="h-7 w-7" />
+                <span className="font-bold text-lg text-slate-900">Anva</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <nav className="flex-1 p-5 space-y-2">
+              <a
+                href="#features"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                Features
+              </a>
+              <a
+                href="#how"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                How It Works
+              </a>
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                Log In
+              </Link>
+            </nav>
+
+            <div className="p-5 border-t border-slate-200 space-y-3">
+              <Link
+                to="/sign-up"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-blue-600 transition-all px-6 py-3 rounded-full font-bold shadow-md text-sm"
+              >
+                Get Started Free <ArrowRight className="w-4 h-4" />
+              </Link>
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all px-6 py-3 rounded-full font-bold text-sm"
+              >
+                Sign In
+              </Link>
+            </div>
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
 
     {/* ── Hero Section ── */}
     <section className="relative z-10 text-center px-4 max-w-4xl mx-auto pt-32 sm:pt-40 pb-20 font-apple">
@@ -308,6 +408,8 @@ const LandingPage = () => (
       </p>
     </footer>
   </div>
-);
+  );
+};
 
 export default LandingPage;
+

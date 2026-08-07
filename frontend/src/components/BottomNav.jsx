@@ -35,7 +35,7 @@ const BottomNav = () => {
     : baseNavLinks;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-base-100/95 backdrop-blur-xl border-t border-base-content/10 px-1 py-1.5 pb-safe flex items-center justify-around md:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] bg-base-100/95 backdrop-blur-xl border-t border-base-content/10 px-1 pt-1.5 pb-safe flex items-center justify-around md:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.1)]" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)' }}>
       {navLinks.map(({ to, icon: Icon, label }) => {
         const isActive = pathname === to || (to !== "/" && pathname.startsWith(to));
 
@@ -43,7 +43,7 @@ const BottomNav = () => {
           <Link
             key={to}
             to={to}
-            className={`relative flex flex-col items-center gap-1 py-1 px-1 transition-all min-w-[44px] cursor-pointer ${
+            className={`bottom-nav-item relative flex flex-col items-center gap-1 px-2 transition-all min-w-[44px] cursor-pointer ${
               isActive ? "text-primary font-bold" : "text-base-content/60 hover:text-base-content"
             }`}
           >

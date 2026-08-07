@@ -256,7 +256,7 @@ const App = () => {
           </Routes>
 
           <Toaster
-            position="bottom-right"
+            position="top-right"
             toastOptions={{
               duration: 3000,
               className: "anva-toast",

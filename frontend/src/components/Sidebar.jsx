@@ -95,7 +95,7 @@ const Sidebar = () => {
   const totalNotifCount = incomingCount + adminUnreadCount + chatUnreadCount;
 
   return (
-    <aside className="w-64 bg-base-100/95 backdrop-blur-2xl border-r border-base-content/10 hidden lg:flex flex-col h-screen sticky top-0 shadow-sm z-30 font-minimal select-none">
+    <aside className="w-64 bg-base-100/95 backdrop-blur-2xl border-r border-base-content/10 hidden lg:flex flex-col shrink-0 shadow-sm z-20 font-minimal select-none overflow-y-auto">
       {/* ── BRAND HEADER ── */}
       <div className="p-5 border-b border-base-content/10 flex items-center justify-between h-16 shrink-0 bg-base-100/50">
         <Link to="/" className="flex items-center gap-2.5 group">

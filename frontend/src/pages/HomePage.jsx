@@ -381,7 +381,7 @@ const HomePage = () => {
   if (!authUser) return null;
 
   return (
-    <div className="p-3 sm:p-6 lg:p-8 bg-base-200 min-h-[calc(100vh-4rem)] text-base-content font-sans">
+    <div className="p-3 sm:p-6 lg:p-8 bg-base-200 min-h-[calc(100dvh-4rem)] text-base-content font-sans">
       <motion.div
         className="container mx-auto max-w-[1400px] px-2 sm:px-4 py-4 sm:py-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 auto-rows-min"
         variants={containerVariants}

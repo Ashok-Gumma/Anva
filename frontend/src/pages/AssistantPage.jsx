@@ -519,7 +519,7 @@ const AssistantPage = () => {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-4.25rem)] md:h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-minimal w-full">
+    <div className="flex h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-minimal w-full">
       {/* Desktop Sidebar */}
       <aside className="w-80 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}
@@ -691,7 +691,7 @@ const AssistantPage = () => {
         </main>
 
         {/* Floating Capsule Bottom Input Area */}
-        <footer className="w-full bg-gradient-to-t from-base-100 via-base-100/70 to-transparent pt-6 pb-6 px-4 absolute bottom-0 left-0 right-0 z-10 pointer-events-none font-minimal">
+        <footer className="w-full bg-gradient-to-t from-base-100 via-base-100/70 to-transparent pt-6 pb-safe px-4 absolute bottom-0 left-0 right-0 z-10 pointer-events-none font-minimal" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)' }}>
           <div className="max-w-3xl mx-auto pointer-events-auto relative">
             <AnimatePresence>
               {imagePreview && (
