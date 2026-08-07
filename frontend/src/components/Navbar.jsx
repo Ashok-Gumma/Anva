@@ -1,6 +1,6 @@
 import AnvaLogo from "./AnvaLogo";
 import AnvaBrandLogo from "./AnvaBrandLogo";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { 
   LogOutIcon, 
@@ -17,6 +17,8 @@ import {
   Menu,
   X,
   Bell,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import useLogout from "../hooks/useLogout";
 import ThemeSelector from "./ThemeSelector";
@@ -25,22 +27,22 @@ import { UserButton, useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const navLinks = [
-  { to: "/",            icon: HomeIcon,     label: "Home",          color: "#6366f1", bg: "rgba(99,102,241,0.12)"  },
-  { to: "/feed",        icon: ImageIcon,    label: "EduFeed",       color: "#ec4899", bg: "rgba(236,72,153,0.12)"  },
-  { to: "/friends",     icon: UsersIcon,    label: "Friends",       color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
-  { to: "/flashcards",  icon: BookOpenIcon, label: "Decks",         color: "#10b981", bg: "rgba(16,185,129,0.12)"  },
-  { to: "/compiler",    icon: Code,         label: "Compiler",      color: "#3b82f6", bg: "rgba(59,130,246,0.12)"  },
-  { to: "/assistant",   icon: BrainCircuit, label: "AI Assistant",  color: "#8b5cf6", bg: "rgba(139,92,246,0.12)"  },
-  { to: "/support",     icon: LifeBuoy,     label: "Support",       color: "#06b6d4", bg: "rgba(6,182,212,0.15)",  isSupportLink: true },
-  { to: "/profile",     icon: UserIcon,     label: "Profile",       color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
-  { to: "/notifications",icon: Bell,        label: "Notifications", color: "#ef4444", bg: "rgba(239,68,68,0.12)"   },
+const communityLinks = [
+  { to: "/feed", icon: ImageIcon, label: "Community Feed", desc: "Share updates & posts with language peers" },
+  { to: "/friends", icon: UsersIcon, label: "Peers & Network", desc: "Connect, chat & study with friends" },
+];
+
+const learningLinks = [
+  { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards Studio", desc: "Build & review custom flashcard decks" },
+  { to: "/assistant", icon: BrainCircuit, label: "AI Assistant", desc: "Get instant AI tutoring & explanation" },
+  { to: "/compiler", icon: Code, label: "Code Compiler", desc: "Run & execute code in real-time" },
 ];
 
 const Navbar = () => {
   const { authUser } = useAuthUser();
   const { isSignedIn: isClerkSignedIn } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { pathname } = location;
   const { logoutMutation } = useLogout();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -48,48 +50,170 @@ const Navbar = () => {
   const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
   const isAdmin = authUser?.role === "admin";
 
-  const allNavLinks = isAdmin
-    ? [...navLinks, { to: "/admin", icon: ShieldAlert, label: "Admin", isAdminLink: true }]
-    : navLinks;
+  const isCommunityActive = communityLinks.some(l => pathname.startsWith(l.to));
+  const isLearningActive = learningLinks.some(l => pathname.startsWith(l.to));
+
+  const handleMobileNav = (to) => {
+    navigate(to);
+    setDrawerOpen(false);
+  };
 
   return (
     <>
-      <nav className="bg-base-100/80 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-30 h-16 flex items-center shadow-sm">
+      <header className="bg-base-100/90 backdrop-blur-xl border-b border-base-content/10 sticky top-0 z-40 h-16 flex items-center shadow-xs font-minimal select-none">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between w-full gap-4">
             
-            {/* Logo Branding (Always Visible) */}
+            {/* Logo Branding */}
             <div className="shrink-0">
-              <Link to="/">
+              <Link to="/" className="flex items-center gap-2 group">
                 <AnvaBrandLogo badgeSize="size-8" textSize="text-xl sm:text-2xl" />
               </Link>
             </div>
 
-            {/* Centered Horizontal Navigation (Only on Larger screens if Authenticated) */}
+            {/* Desktop Center Dropdown Navigation Header */}
             {isAuthenticated && (
-              <div className="hidden md:flex items-center gap-1 lg:gap-2 mx-auto">
-                {allNavLinks.filter(l => l.to !== "/notifications").map(({ to, icon: Icon, label, isAdminLink }) => {
-                  const isActive = pathname === to || (to !== "/" && pathname.startsWith(to));
-                  return (
-                    <Link
-                      key={to}
-                      to={to}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border ${
-                        isActive
-                          ? isAdminLink
-                            ? "bg-primary text-primary-content border-primary"
-                            : "bg-primary/10 text-primary border-primary/20"
-                          : isAdminLink
-                          ? "bg-primary/10 text-primary hover:bg-primary/20 border-primary/30"
-                          : "text-base-content/60 hover:bg-base-200 hover:text-base-content border-transparent"
-                      }`}
-                    >
-                      <Icon className="size-3.5" />
-                      <span>{label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+              <nav className="hidden md:flex items-center gap-1.5 lg:gap-2.5 mx-auto">
+                
+                {/* 1. Home Direct Link */}
+                <Link
+                  to="/"
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+                    pathname === "/"
+                      ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
+                      : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
+                  }`}
+                >
+                  <HomeIcon className="size-4" />
+                  <span>Home</span>
+                </Link>
+
+                {/* 2. Community & Feeds Dropdown */}
+                <div className="dropdown dropdown-hover">
+                  <div
+                    tabIndex={0}
+                    role="button"
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                      isCommunityActive
+                        ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
+                        : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
+                    }`}
+                  >
+                    <UsersIcon className="size-4" />
+                    <span>Community</span>
+                    <ChevronDown className="size-3.5 opacity-60" />
+                  </div>
+                  <div
+                    tabIndex={0}
+                    className="dropdown-content z-50 pt-2 w-72"
+                  >
+                    <div className="p-2 shadow-xl bg-base-100 rounded-2xl border border-base-content/10 flex flex-col gap-1 backdrop-blur-2xl">
+                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                        Community & Network
+                      </div>
+                      {communityLinks.map(({ to, icon: Icon, label, desc }) => {
+                        const isActive = pathname === to || pathname.startsWith(to);
+                        return (
+                          <Link
+                            key={to}
+                            to={to}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl transition-colors ${
+                              isActive
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-base-200/80 text-base-content"
+                            }`}
+                          >
+                            <div className="p-2 rounded-lg bg-base-200 text-base-content shrink-0 mt-0.5">
+                              <Icon className="size-4" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-xs leading-tight">{label}</span>
+                              <span className="text-[10px] text-base-content/60 leading-tight mt-0.5 truncate">{desc}</span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Learning Tools Dropdown */}
+                <div className="dropdown dropdown-hover">
+                  <div
+                    tabIndex={0}
+                    role="button"
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                      isLearningActive
+                        ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
+                        : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
+                    }`}
+                  >
+                    <Sparkles className="size-4 text-secondary" />
+                    <span>Learning Tools</span>
+                    <ChevronDown className="size-3.5 opacity-60" />
+                  </div>
+                  <div
+                    tabIndex={0}
+                    className="dropdown-content z-50 pt-2 w-72"
+                  >
+                    <div className="p-2 shadow-xl bg-base-100 rounded-2xl border border-base-content/10 flex flex-col gap-1 backdrop-blur-2xl">
+                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/40">
+                        Interactive Studio
+                      </div>
+                      {learningLinks.map(({ to, icon: Icon, label, desc }) => {
+                        const isActive = pathname === to || pathname.startsWith(to);
+                        return (
+                          <Link
+                            key={to}
+                            to={to}
+                            className={`flex items-start gap-3 p-2.5 rounded-xl transition-colors ${
+                              isActive
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-base-200/80 text-base-content"
+                            }`}
+                          >
+                            <div className="p-2 rounded-lg bg-base-200 text-base-content shrink-0 mt-0.5">
+                              <Icon className="size-4" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-xs leading-tight">{label}</span>
+                              <span className="text-[10px] text-base-content/60 leading-tight mt-0.5 truncate">{desc}</span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Support Link */}
+                <Link
+                  to="/support"
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+                    pathname === "/support"
+                      ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
+                      : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
+                  }`}
+                >
+                  <LifeBuoy className="size-4 text-cyan-500" />
+                  <span>Support</span>
+                </Link>
+
+                {/* Admin Link if applicable */}
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+                      pathname === "/admin"
+                        ? "bg-primary text-primary-content border-primary shadow-xs"
+                        : "bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                    }`}
+                  >
+                    <ShieldAlert className="size-4" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+              </nav>
             )}
 
             {/* Right Side Settings & Profile */}
@@ -129,7 +253,7 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-md dropdown-content bg-base-100 rounded-2xl w-52 border border-base-content/10 flex flex-col gap-1">
+                  <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-md dropdown-content bg-base-100 rounded-2xl w-56 border border-base-content/10 flex flex-col gap-1">
                     <li className="px-3 py-2 border-b border-base-content/10 mb-1">
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center justify-between">
@@ -149,18 +273,18 @@ const Navbar = () => {
                     )}
                     <li>
                       <Link to="/support" className="w-full flex items-center justify-start gap-2 hover:bg-base-200 px-3 py-2.5 rounded-xl transition-colors">
-                        <LifeBuoy className="w-4 h-4 text-base-content/70" />
+                        <LifeBuoy className="w-4 h-4 text-cyan-500" />
                         <span className="font-medium text-base-content text-sm">Help & Support</span>
                       </Link>
                     </li>
                     <li>
                       <Link to="/profile" className="w-full flex items-center justify-start gap-2 hover:bg-base-200 px-3 py-2.5 rounded-xl transition-colors">
                         <Settings className="w-4 h-4 text-base-content/70" />
-                        <span className="font-medium text-base-content text-sm">Settings</span>
+                        <span className="font-medium text-base-content text-sm">Profile & Settings</span>
                       </Link>
                     </li>
                     <li>
-                      <button onClick={logoutMutation} className="w-full flex items-center justify-start gap-2 hover:bg-error/10 text-error px-3 py-2.5 rounded-xl transition-colors">
+                      <button onClick={logoutMutation} className="w-full flex items-center justify-start gap-2 hover:bg-error/10 text-error px-3 py-2.5 rounded-xl transition-colors cursor-pointer">
                         <LogOutIcon className="w-4 h-4" />
                         <span className="font-semibold text-sm">Log out</span>
                       </button>
@@ -186,7 +310,7 @@ const Navbar = () => {
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
       {/* ── Mobile Slide-in Drawer ── */}
       <AnimatePresence>
@@ -198,7 +322,7 @@ const Navbar = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-[9998] bg-black/70 md:hidden cursor-pointer"
             />
 
             {/* Drawer Panel */}
@@ -206,88 +330,128 @@ const Navbar = () => {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 260 }}
-              style={{ backgroundColor: "#ffffff" }}
-              className="fixed top-0 right-0 bottom-0 z-[100] w-72 border-l border-gray-200 shadow-2xl flex flex-col md:hidden"
+              transition={{ type: "spring", damping: 25, stiffness: 280 }}
+              className="fixed top-0 right-0 bottom-0 z-[9999] w-80 max-w-[85vw] bg-base-100 border-l border-base-content/15 shadow-2xl flex flex-col md:hidden font-minimal opacity-100"
+              style={{ backgroundColor: "var(--fallback-b1, oklch(var(--b1) / 1))" }}
             >
               {/* Drawer Header */}
-              <div style={{ backgroundColor: "#f9fafb", borderBottom: "1px solid #e5e7eb" }} className="flex items-center justify-between px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <AnvaLogo className="h-7 w-7 text-primary" />
-                  <span style={{ color: "#111827" }} className="font-bold text-lg">Anva</span>
+              <div className="flex items-center justify-between px-5 py-4 bg-base-200/80 border-b border-base-content/10 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                    <AnvaLogo className="h-6 w-6 text-primary" />
+                  </div>
+                  <span className="font-black text-lg text-base-content tracking-tight">Anva <span className="font-curly italic text-primary font-bold text-sm">Hub</span></span>
                   {isAdmin && <span className="badge badge-primary text-[9px] font-extrabold uppercase">Admin</span>}
                 </div>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  style={{ color: "#6b7280" }}
-                  className="p-1.5 rounded-xl hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-xl text-base-content/70 hover:bg-base-300 hover:text-base-content transition-colors cursor-pointer"
+                  aria-label="Close menu"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Nav Links */}
-              <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-                {allNavLinks.map(({ to, icon: Icon, label, color, bg, isAdminLink, isSupportLink }) => {
-                  const isActive = pathname === to || (to !== "/" && pathname.startsWith(to));
-                  const itemColor = isAdminLink ? "#6366f1" : (color || "#6366f1");
-                  const itemBg = isAdminLink ? "rgba(99,102,241,0.12)" : (bg || "rgba(99,102,241,0.12)");
+              {/* Nav Links Container */}
+              <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 custom-scrollbar">
+                
+                {/* 1. Home Hub */}
+                <button
+                  type="button"
+                  onClick={() => handleMobileNav("/")}
+                  className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-left ${
+                    pathname === "/"
+                      ? "bg-primary text-primary-content font-black shadow-md"
+                      : "text-base-content/90 hover:bg-base-200/90 hover:text-base-content font-bold"
+                  }`}
+                >
+                  <div className={`size-8 rounded-xl flex items-center justify-center ${pathname === "/" ? "bg-primary-content/20 text-primary-content" : "bg-primary/10 text-primary"}`}>
+                    <HomeIcon className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm flex-1">Home Hub</span>
+                </button>
 
-                  // Add a visual separator before Support
-                  const showSeparator = isSupportLink;
-
-                  return (
-                    <div key={to}>
-                      {showSeparator && (
-                        <div className="my-2 border-t border-base-content/10" />
-                      )}
-                      <Link
-                        to={to}
-                        onClick={() => setDrawerOpen(false)}
-                        style={{
-                          backgroundColor: isActive ? itemBg : "transparent",
-                          color: isActive ? itemColor : "#374151",
-                        }}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all hover:opacity-80 active:scale-[0.98]"
+                {/* 2. Community Section */}
+                <div className="space-y-1.5">
+                  <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
+                    Community & Feeds
+                  </div>
+                  {communityLinks.map(({ to, icon: Icon, label }) => {
+                    const isActive = pathname === to || pathname.startsWith(to);
+                    return (
+                      <button
+                        key={to}
+                        type="button"
+                        onClick={() => handleMobileNav(to)}
+                        className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                          isActive
+                            ? "bg-primary/15 text-primary border border-primary/20 shadow-xs"
+                            : "text-base-content/80 hover:bg-base-200 hover:text-base-content"
+                        }`}
                       >
-                        {/* Icon Badge */}
-                        <div
-                          style={{ backgroundColor: itemBg, color: itemColor }}
-                          className="size-9 rounded-xl flex items-center justify-center shrink-0"
-                        >
-                          <Icon className="w-[18px] h-[18px]" />
+                        <div className={`size-7 rounded-lg flex items-center justify-center ${isActive ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"}`}>
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
+                        <span className="flex-1">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                        {/* Label */}
-                        <span
-                          style={{ color: isActive ? itemColor : "#1f2937", fontWeight: isActive ? 700 : 600 }}
-                          className="text-sm flex-1"
-                        >
-                          {label}
-                        </span>
+                {/* 3. Learning Tools Section */}
+                <div className="space-y-1.5">
+                  <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
+                    Learning Tools
+                  </div>
+                  {learningLinks.map(({ to, icon: Icon, label }) => {
+                    const isActive = pathname === to || pathname.startsWith(to);
+                    return (
+                      <button
+                        key={to}
+                        type="button"
+                        onClick={() => handleMobileNav(to)}
+                        className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                          isActive
+                            ? "bg-primary/15 text-primary border border-primary/20 shadow-xs"
+                            : "text-base-content/80 hover:bg-base-200 hover:text-base-content"
+                        }`}
+                      >
+                        <div className={`size-7 rounded-lg flex items-center justify-center ${isActive ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="flex-1">{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                        {/* Active dot */}
-                        {isActive && (
-                          <div
-                            style={{ backgroundColor: itemColor }}
-                            className="size-2 rounded-full shrink-0"
-                          />
-                        )}
-                      </Link>
+                {/* 4. Support */}
+                <div className="pt-3 border-t border-base-content/10">
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav("/support")}
+                    className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                      pathname === "/support"
+                        ? "bg-cyan-500/15 text-cyan-600 border border-cyan-500/30"
+                        : "text-base-content/85 hover:bg-base-200"
+                    }`}
+                  >
+                    <div className="size-7 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
+                      <LifeBuoy className="w-4 h-4" />
                     </div>
-                  );
-                })}
+                    <span className="flex-1">Help & Support</span>
+                  </button>
+                </div>
               </nav>
 
               {/* Drawer Footer — User info + Logout */}
-              <div style={{ backgroundColor: "#f9fafb", borderTop: "1px solid #e5e7eb" }} className="p-4 space-y-3">
-                <Link
-                  to="/profile"
-                  onClick={() => setDrawerOpen(false)}
-                  style={{ backgroundColor: "#ffffff", border: "1px solid #e5e7eb" }}
-                  className="flex items-center gap-3 p-3 rounded-2xl transition-all hover:border-indigo-300 group"
+              <div className="p-4 space-y-3 bg-base-200/80 border-t border-base-content/10 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleMobileNav("/profile")}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-base-100 border border-base-content/10 transition-all hover:border-primary/40 group cursor-pointer text-left"
                 >
-                  <div className="relative w-10 h-10 rounded-full bg-primary text-primary-content flex items-center justify-center font-bold text-sm overflow-hidden shrink-0">
+                  <div className="relative size-9 rounded-xl bg-primary text-primary-content flex items-center justify-center font-bold text-xs overflow-hidden shrink-0">
                     <span className="absolute inset-0 flex items-center justify-center">
                       {authUser?.fullName?.charAt(0)?.toUpperCase()}
                     </span>
@@ -301,14 +465,13 @@ const Navbar = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p style={{ color: "#111827" }} className="font-bold text-sm truncate">{authUser?.fullName}</p>
-                    <p style={{ color: "#6b7280" }} className="text-xs truncate">{authUser?.email}</p>
+                    <p className="font-bold text-xs text-base-content truncate">{authUser?.fullName}</p>
+                    <p className="text-[10px] text-base-content/60 truncate">{authUser?.email}</p>
                   </div>
-                </Link>
+                </button>
                 <button
                   onClick={() => { setDrawerOpen(false); logoutMutation(); }}
-                  style={{ color: "#ef4444", backgroundColor: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)" }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all hover:bg-red-50"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-error/10 text-error hover:bg-error/20 border border-error/20 cursor-pointer"
                 >
                   <LogOutIcon className="w-4 h-4 shrink-0" />
                   Log Out

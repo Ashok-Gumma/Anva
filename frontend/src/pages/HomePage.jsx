@@ -25,7 +25,8 @@ import {
   Flame,
   Zap,
   Undo2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  LifeBuoy,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
@@ -412,13 +413,14 @@ const HomePage = () => {
           </div>
 
           {/* Clean Quick Shortcuts */}
-          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="relative z-10 grid grid-cols-3 sm:grid-cols-6 gap-2">
             {[
               { to: "/feed", icon: ImageIcon, label: "EduFeed", color: "text-rose-500", bg: "bg-rose-500/10" },
               { to: "/compiler", icon: Terminal, label: "Compiler", color: "text-blue-500", bg: "bg-blue-500/10" },
               { to: "/assistant", icon: Brain, label: "AI Chat", color: "text-purple-500", bg: "bg-purple-500/10" },
               { to: "/flashcards", icon: BookOpen, label: "Decks", color: "text-green-500", bg: "bg-green-500/10" },
-              { to: "/friends", icon: UsersIcon, label: "Peers", color: "text-orange-500", bg: "bg-orange-500/10" }
+              { to: "/friends", icon: UsersIcon, label: "Peers", color: "text-orange-500", bg: "bg-orange-500/10" },
+              { to: "/support", icon: LifeBuoy, label: "Support", color: "text-cyan-500", bg: "bg-cyan-500/10" },
             ].map((shortcut, idx) => (
               <Link 
                 key={idx}
