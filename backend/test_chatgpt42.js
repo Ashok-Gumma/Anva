@@ -5,7 +5,7 @@ const options = {
   method: 'POST',
   url: 'https://chatgpt-42.p.rapidapi.com/gpt4',
   headers: {
-    'x-rapidapi-key': process.env.RAPIDAPI_KEY || "6d6cfcb952msh87708b71b0cfd82p134488jsndee66c154e09",
+    'x-rapidapi-key': process.env.RAPIDAPI_KEY,
     'x-rapidapi-host': "chatgpt-42.p.rapidapi.com",
     'Content-Type': 'application/json'
   },
