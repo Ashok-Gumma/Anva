@@ -25,7 +25,9 @@ import ThemeSelector from "./ThemeSelector";
 import NotificationBadge from "./NotificationBadge";
 import { UserButton, useAuth } from "@clerk/clerk-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useThemeStore } from "../store/useThemeStore";
 
 const communityLinks = [
   { to: "/feed", icon: ImageIcon, label: "Community Feed", desc: "Share updates & posts with language peers" },
@@ -46,6 +48,7 @@ const Navbar = () => {
   const { pathname } = location;
   const { logoutMutation } = useLogout();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { theme } = useThemeStore();
 
   const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
   const isAdmin = authUser?.role === "admin";
@@ -312,175 +315,180 @@ const Navbar = () => {
         </div>
       </header>
 
-      {/* ── Mobile Slide-in Drawer ── */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawerOpen(false)}
-              className="fixed inset-0 z-[9998] bg-black/70 md:hidden cursor-pointer"
-            />
+      {/* ── Mobile Slide-in Drawer — rendered via Portal to escape stacking contexts ── */}
+      {createPortal(
+        <AnimatePresence>
+          {drawerOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setDrawerOpen(false)}
+                className="fixed bg-black/70 cursor-pointer"
+                style={{ zIndex: 99998, inset: 0 }}
+              />
 
-            {/* Drawer Panel */}
-            <motion.aside
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 280 }}
-              className="fixed top-0 right-0 bottom-0 z-[9999] w-80 max-w-[85vw] bg-base-100 border-l border-base-content/15 shadow-2xl flex flex-col md:hidden font-minimal opacity-100"
-              style={{ backgroundColor: "var(--fallback-b1, oklch(var(--b1) / 1))" }}
-            >
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between px-5 py-4 bg-base-200/80 border-b border-base-content/10 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                    <AnvaLogo className="h-6 w-6 text-primary" />
-                  </div>
-                  <span className="font-black text-lg text-base-content tracking-tight">Anva <span className="font-curly italic text-primary font-bold text-sm">Hub</span></span>
-                  {isAdmin && <span className="badge badge-primary text-[9px] font-extrabold uppercase">Admin</span>}
-                </div>
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  className="p-2 rounded-xl text-base-content/70 hover:bg-base-300 hover:text-base-content transition-colors cursor-pointer"
-                  aria-label="Close menu"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Nav Links Container */}
-              <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 custom-scrollbar">
-                
-                {/* 1. Home Hub */}
-                <button
-                  type="button"
-                  onClick={() => handleMobileNav("/")}
-                  className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-left ${
-                    pathname === "/"
-                      ? "bg-primary text-primary-content font-black shadow-md"
-                      : "text-base-content/90 hover:bg-base-200/90 hover:text-base-content font-bold"
-                  }`}
-                >
-                  <div className={`size-8 rounded-xl flex items-center justify-center ${pathname === "/" ? "bg-primary-content/20 text-primary-content" : "bg-primary/10 text-primary"}`}>
-                    <HomeIcon className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm flex-1">Home Hub</span>
-                </button>
-
-                {/* 2. Community Section */}
-                <div className="space-y-1.5">
-                  <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
-                    Community & Feeds
-                  </div>
-                  {communityLinks.map(({ to, icon: Icon, label }) => {
-                    const isActive = pathname === to || pathname.startsWith(to);
-                    return (
-                      <button
-                        key={to}
-                        type="button"
-                        onClick={() => handleMobileNav(to)}
-                        className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
-                          isActive
-                            ? "bg-primary/15 text-primary border border-primary/20 shadow-xs"
-                            : "text-base-content/80 hover:bg-base-200 hover:text-base-content"
-                        }`}
-                      >
-                        <div className={`size-7 rounded-lg flex items-center justify-center ${isActive ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="flex-1">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* 3. Learning Tools Section */}
-                <div className="space-y-1.5">
-                  <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
-                    Learning Tools
-                  </div>
-                  {learningLinks.map(({ to, icon: Icon, label }) => {
-                    const isActive = pathname === to || pathname.startsWith(to);
-                    return (
-                      <button
-                        key={to}
-                        type="button"
-                        onClick={() => handleMobileNav(to)}
-                        className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
-                          isActive
-                            ? "bg-primary/15 text-primary border border-primary/20 shadow-xs"
-                            : "text-base-content/80 hover:bg-base-200 hover:text-base-content"
-                        }`}
-                      >
-                        <div className={`size-7 rounded-lg flex items-center justify-center ${isActive ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="flex-1">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* 4. Support */}
-                <div className="pt-3 border-t border-base-content/10">
-                  <button
-                    type="button"
-                    onClick={() => handleMobileNav("/support")}
-                    className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
-                      pathname === "/support"
-                        ? "bg-cyan-500/15 text-cyan-600 border border-cyan-500/30"
-                        : "text-base-content/85 hover:bg-base-200"
-                    }`}
-                  >
-                    <div className="size-7 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
-                      <LifeBuoy className="w-4 h-4" />
+              {/* Drawer Panel */}
+              <motion.aside
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 280 }}
+                data-theme={theme}
+                className="fixed w-80 max-w-[85vw] bg-base-100 border-l border-base-content/15 shadow-2xl flex flex-col font-minimal"
+                style={{ zIndex: 99999, top: 0, right: 0, bottom: 0 }}
+              >
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between px-5 py-4 bg-base-200/80 border-b border-base-content/10 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                      <AnvaLogo className="h-6 w-6 text-primary" />
                     </div>
-                    <span className="flex-1">Help & Support</span>
+                    <span className="font-black text-lg text-base-content tracking-tight">Anva <span className="font-curly italic text-primary font-bold text-sm">Hub</span></span>
+                    {isAdmin && <span className="badge badge-primary text-[9px] font-extrabold uppercase">Admin</span>}
+                  </div>
+                  <button
+                    onClick={() => setDrawerOpen(false)}
+                    className="p-2 rounded-xl text-base-content/70 hover:bg-base-300 hover:text-base-content transition-colors cursor-pointer"
+                    aria-label="Close menu"
+                  >
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
-              </nav>
 
-              {/* Drawer Footer — User info + Logout */}
-              <div className="p-4 space-y-3 bg-base-200/80 border-t border-base-content/10 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleMobileNav("/profile")}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-base-100 border border-base-content/10 transition-all hover:border-primary/40 group cursor-pointer text-left"
-                >
-                  <div className="relative size-9 rounded-xl bg-primary text-primary-content flex items-center justify-center font-bold text-xs overflow-hidden shrink-0">
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      {authUser?.fullName?.charAt(0)?.toUpperCase()}
-                    </span>
-                    {authUser?.profilePic && (
-                      <img
-                        src={authUser.profilePic}
-                        alt={authUser?.fullName}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
-                      />
-                    )}
+                {/* Nav Links Container */}
+                <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 custom-scrollbar">
+                  
+                  {/* 1. Home Hub */}
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav("/")}
+                    className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-left ${
+                      pathname === "/"
+                        ? "bg-primary text-primary-content font-black shadow-md"
+                        : "text-base-content/90 hover:bg-base-200/90 hover:text-base-content font-bold"
+                    }`}
+                  >
+                    <div className={`size-8 rounded-xl flex items-center justify-center ${pathname === "/" ? "bg-primary-content/20 text-primary-content" : "bg-primary/10 text-primary"}`}>
+                      <HomeIcon className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm flex-1">Home Hub</span>
+                  </button>
+
+                  {/* 2. Community Section */}
+                  <div className="space-y-1.5">
+                    <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
+                      Community &amp; Feeds
+                    </div>
+                    {communityLinks.map(({ to, icon: Icon, label }) => {
+                      const isActive = pathname === to || pathname.startsWith(to);
+                      return (
+                        <button
+                          key={to}
+                          type="button"
+                          onClick={() => handleMobileNav(to)}
+                          className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                            isActive
+                              ? "bg-primary/15 text-primary border border-primary/20 shadow-xs"
+                              : "text-base-content/80 hover:bg-base-200 hover:text-base-content"
+                          }`}
+                        >
+                          <div className={`size-7 rounded-lg flex items-center justify-center ${isActive ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"}`}>
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="flex-1">{label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-xs text-base-content truncate">{authUser?.fullName}</p>
-                    <p className="text-[10px] text-base-content/60 truncate">{authUser?.email}</p>
+
+                  {/* 3. Learning Tools Section */}
+                  <div className="space-y-1.5">
+                    <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
+                      Learning Tools
+                    </div>
+                    {learningLinks.map(({ to, icon: Icon, label }) => {
+                      const isActive = pathname === to || pathname.startsWith(to);
+                      return (
+                        <button
+                          key={to}
+                          type="button"
+                          onClick={() => handleMobileNav(to)}
+                          className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                            isActive
+                              ? "bg-primary/15 text-primary border border-primary/20 shadow-xs"
+                              : "text-base-content/80 hover:bg-base-200 hover:text-base-content"
+                          }`}
+                        >
+                          <div className={`size-7 rounded-lg flex items-center justify-center ${isActive ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"}`}>
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="flex-1">{label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                </button>
-                <button
-                  onClick={() => { setDrawerOpen(false); logoutMutation(); }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-error/10 text-error hover:bg-error/20 border border-error/20 cursor-pointer"
-                >
-                  <LogOutIcon className="w-4 h-4 shrink-0" />
-                  Log Out
-                </button>
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+
+                  {/* 4. Support */}
+                  <div className="pt-3 border-t border-base-content/10">
+                    <button
+                      type="button"
+                      onClick={() => handleMobileNav("/support")}
+                      className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                        pathname === "/support"
+                          ? "bg-cyan-500/15 text-cyan-600 border border-cyan-500/30"
+                          : "text-base-content/85 hover:bg-base-200"
+                      }`}
+                    >
+                      <div className="size-7 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
+                        <LifeBuoy className="w-4 h-4" />
+                      </div>
+                      <span className="flex-1">Help &amp; Support</span>
+                    </button>
+                  </div>
+                </nav>
+
+                {/* Drawer Footer — User info + Logout */}
+                <div className="p-4 space-y-3 bg-base-200/80 border-t border-base-content/10 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav("/profile")}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-base-100 border border-base-content/10 transition-all hover:border-primary/40 group cursor-pointer text-left"
+                  >
+                    <div className="relative size-9 rounded-xl bg-primary text-primary-content flex items-center justify-center font-bold text-xs overflow-hidden shrink-0">
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        {authUser?.fullName?.charAt(0)?.toUpperCase()}
+                      </span>
+                      {authUser?.profilePic && (
+                        <img
+                          src={authUser.profilePic}
+                          alt={authUser?.fullName}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-xs text-base-content truncate">{authUser?.fullName}</p>
+                      <p className="text-[10px] text-base-content/60 truncate">{authUser?.email}</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setDrawerOpen(false); logoutMutation(); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-error/10 text-error hover:bg-error/20 border border-error/20 cursor-pointer"
+                  >
+                    <LogOutIcon className="w-4 h-4 shrink-0" />
+                    Log Out
+                  </button>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 };

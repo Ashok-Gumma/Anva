@@ -93,9 +93,14 @@ const App = () => {
     return () => clearInterval(interval);
   }, [isAuthenticated, authUser]);
 
-  // PageLoader is shown only when Clerk is initializing or initial session auth is resolving
+  // PageLoader is shown only when Clerk is initializing or initial session auth is resolving.
+  // Also block when Clerk confirms sign-in but authUser hasn't finished loading yet —
+  // this prevents the onboarding page from flashing on page refresh.
   const hasLoadedSession = sessionStorage.getItem("anva_has_loaded_app") === "true";
-  const isAuthResolving = !isClerkLoaded || (!hasLoadedSession && (isLoading || !minLoadingComplete));
+  const isAuthResolving =
+    !isClerkLoaded ||
+    (!hasLoadedSession && (isLoading || !minLoadingComplete)) ||
+    (isClerkSignedIn && isLoading);
 
   if (isError) {
     return <ServerErrorPage error={error} onRetry={refetchAuth} />;

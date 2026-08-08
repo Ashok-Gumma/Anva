@@ -26,7 +26,7 @@ import {
   Zap,
   Undo2,
   Image as ImageIcon,
-  LifeBuoy,
+  User,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
@@ -420,7 +420,7 @@ const HomePage = () => {
               { to: "/assistant", icon: Brain, label: "AI Chat", color: "text-purple-500", bg: "bg-purple-500/10" },
               { to: "/flashcards", icon: BookOpen, label: "Decks", color: "text-green-500", bg: "bg-green-500/10" },
               { to: "/friends", icon: UsersIcon, label: "Peers", color: "text-orange-500", bg: "bg-orange-500/10" },
-              { to: "/support", icon: LifeBuoy, label: "Support", color: "text-cyan-500", bg: "bg-cyan-500/10" },
+              { to: "/profile", icon: User, label: "Profile", color: "text-pink-500", bg: "bg-pink-500/10" },
             ].map((shortcut, idx) => (
               <Link 
                 key={idx}
@@ -448,7 +448,53 @@ const HomePage = () => {
         >
           {/* Decorative Glow */}
           <div className="absolute -top-12 -right-12 size-32 bg-secondary/10 rounded-full blur-[40px] z-0 group-hover:bg-secondary/20 transition-colors duration-500 pointer-events-none" />
-          
+
+          {/* ✅ Full-tile Celebration Overlay — shown when answer is correct */}
+          {challengeSolved && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[2rem] bg-success/10 backdrop-blur-sm border border-success/30 pointer-events-none"
+            >
+              {/* Pulsing ring */}
+              <motion.div
+                animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.9, 0.5] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute size-40 rounded-full bg-success/20 blur-[30px]"
+              />
+              {/* Trophy + confetti */}
+              <motion.div
+                initial={{ y: 30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+                className="relative z-10 flex flex-col items-center gap-3 text-center px-4"
+              >
+                <motion.span
+                  animate={{ rotate: [0, -10, 10, -10, 0] }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="text-5xl"
+                >
+                  🏆
+                </motion.span>
+                <div className="text-success font-black text-lg tracking-tight">
+                  Correct!
+                </div>
+                <div className="text-base-content/70 text-xs font-semibold leading-relaxed max-w-[180px]">
+                  {todayTeaser.explanation}
+                </div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.4, type: "spring", stiffness: 350, damping: 15 }}
+                  className="mt-1 flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-success/20 border border-success/30 text-success text-[11px] font-black uppercase tracking-widest"
+                >
+                  🎉 Challenge Complete
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+
           <div className="relative z-10 flex items-center gap-3 border-b border-base-content/10 pb-4">
             <div className="size-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center border border-secondary/20 shrink-0 shadow-inner">
               <Brain className="size-5" />
@@ -461,11 +507,6 @@ const HomePage = () => {
                 {todayTeaser.topic}
               </span>
             </div>
-            {challengeSolved && (
-              <span className="px-2 py-1 bg-success/20 text-success border border-success/30 rounded-lg font-black uppercase tracking-widest text-[9px] shrink-0">
-                +20 XP
-              </span>
-            )}
           </div>
 
           {/* Code block */}
@@ -501,6 +542,7 @@ const HomePage = () => {
             })}
           </div>
         </motion.div>
+
 
         {/* ── 4. ACTIVE CONNECTIONS TILE (Spans 3 cols to perfectly fit next to teaser) ── */}
         <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-3 bg-base-100 rounded-[2rem] border border-base-content/10 overflow-hidden shadow-lg flex flex-col group hover:border-primary/20 transition-colors h-full min-h-[200px]">
