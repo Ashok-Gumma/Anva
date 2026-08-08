@@ -3,7 +3,6 @@ import AnvaBrandLogo from "./AnvaBrandLogo";
 import { Link, useLocation, useNavigate } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { 
-  LogOutIcon, 
   Settings,
   HomeIcon, 
   UsersIcon, 
@@ -20,7 +19,7 @@ import {
   ChevronDown,
   Sparkles,
 } from "lucide-react";
-import useLogout from "../hooks/useLogout";
+
 import ThemeSelector from "./ThemeSelector";
 import NotificationBadge from "./NotificationBadge";
 import { UserButton, useAuth } from "@clerk/clerk-react";
@@ -46,7 +45,6 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { pathname } = location;
-  const { logoutMutation } = useLogout();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { theme } = useThemeStore();
 
@@ -286,12 +284,6 @@ const Navbar = () => {
                         <span className="font-medium text-base-content text-sm">Profile & Settings</span>
                       </Link>
                     </li>
-                    <li>
-                      <button onClick={logoutMutation} className="w-full flex items-center justify-start gap-2 hover:bg-error/10 text-error px-3 py-2.5 rounded-xl transition-colors cursor-pointer">
-                        <LogOutIcon className="w-4 h-4" />
-                        <span className="font-semibold text-sm">Log out</span>
-                      </button>
-                    </li>
                   </ul>
                 </div>
               ) : (
@@ -326,8 +318,16 @@ const Navbar = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setDrawerOpen(false)}
-                className="fixed bg-black/70 cursor-pointer"
-                style={{ zIndex: 99998, inset: 0 }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100dvh",
+                  backgroundColor: "rgba(0,0,0,0.7)",
+                  zIndex: 99998,
+                  cursor: "pointer",
+                }}
               />
 
               {/* Drawer Panel */}
@@ -337,8 +337,17 @@ const Navbar = () => {
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 280 }}
                 data-theme={theme}
-                className="fixed w-80 max-w-[85vw] bg-base-100 border-l border-base-content/15 shadow-2xl flex flex-col font-minimal"
-                style={{ zIndex: 99999, top: 0, right: 0, bottom: 0 }}
+                className="bg-base-100 border-l border-base-content/15 shadow-2xl flex flex-col font-minimal"
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  right: 0,
+                  width: "320px",
+                  maxWidth: "85vw",
+                  height: "100dvh",
+                  zIndex: 99999,
+                  overflowY: "auto",
+                }}
               >
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between px-5 py-4 bg-base-200/80 border-b border-base-content/10 shrink-0">
@@ -450,8 +459,8 @@ const Navbar = () => {
                   </div>
                 </nav>
 
-                {/* Drawer Footer — User info + Logout */}
-                <div className="p-4 space-y-3 bg-base-200/80 border-t border-base-content/10 shrink-0">
+                {/* Drawer Footer — User info */}
+                <div className="p-4 bg-base-200/80 border-t border-base-content/10 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleMobileNav("/profile")}
@@ -474,13 +483,6 @@ const Navbar = () => {
                       <p className="font-bold text-xs text-base-content truncate">{authUser?.fullName}</p>
                       <p className="text-[10px] text-base-content/60 truncate">{authUser?.email}</p>
                     </div>
-                  </button>
-                  <button
-                    onClick={() => { setDrawerOpen(false); logoutMutation(); }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all bg-error/10 text-error hover:bg-error/20 border border-error/20 cursor-pointer"
-                  >
-                    <LogOutIcon className="w-4 h-4 shrink-0" />
-                    Log Out
                   </button>
                 </div>
               </motion.aside>
