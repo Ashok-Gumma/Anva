@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { axiosInstance } from "../lib/axios";
 import {
   Send,
@@ -8,7 +9,6 @@ import {
   Mic,
   Plus,
   Paperclip,
-  Menu,
   Database,
   GitBranch,
   Code,
@@ -116,6 +116,7 @@ const formatMessageContent = (text) => {
             <div className="bg-base-300 px-4 py-2 text-[10px] font-extrabold text-base-content/70 uppercase border-b border-base-content/10 flex justify-between items-center tracking-wider">
               <span>{language}</span>
               <button
+                type="button"
                 onClick={() => {
                   navigator.clipboard.writeText(code.trim());
                   toast.success("Code copied to clipboard!");
@@ -357,6 +358,11 @@ const AssistantPage = () => {
     }
   };
 
+  const handleSelectSession = (sessionId) => {
+    setSelectedSessionId(sessionId);
+    setMobileMenuOpen(false);
+  };
+
   const deleteSession = async (id, e) => {
     e.stopPropagation();
     if (id === "active") {
@@ -391,7 +397,7 @@ const AssistantPage = () => {
     return sessions.filter((s) => s.title?.toLowerCase().includes(q));
   }, [sessions, searchQuery]);
 
-  // Clean User Avatar (No robot icons anywhere!)
+  // Clean User Avatar
   const UserAvatar = () => {
     const initials = authUser?.fullName ? authUser.fullName.charAt(0).toUpperCase() : "U";
     return (
@@ -405,7 +411,7 @@ const AssistantPage = () => {
     );
   };
 
-  // Modern AI Assistant Badge (Pristine Sparkles / Brain Circuit design)
+  // Modern AI Assistant Badge
   const AssistantAvatar = () => {
     return (
       <div className="size-9 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent text-white flex items-center justify-center shadow-md border border-white/20 shrink-0">
@@ -422,21 +428,26 @@ const AssistantPage = () => {
   const isNewChat = selectedSessionId === "active" && dbMessages.length <= 1;
 
   const renderSidebarContent = () => (
-    <>
+    <div className="flex flex-col h-full bg-base-100 w-full select-none">
       {/* Brand Header */}
-      <div className="p-5 border-b border-base-content/10 bg-base-100/50 backdrop-blur-md shrink-0 font-minimal">
-        <div className="flex items-center justify-between mb-4">
+      <div className="p-4 sm:p-5 border-b border-base-content/10 bg-base-100 shrink-0 font-minimal">
+        <div className="flex items-center justify-between mb-3.5">
           <AnvaBrandLogo badgeSize="size-9" textSize="text-xl" />
-          <button
-            onClick={() => setMobileMenuOpen(false)}
-            className="md:hidden p-2 text-base-content/60 hover:text-base-content hover:bg-base-content/5 rounded-xl transition-colors cursor-pointer"
-          >
-            <X className="size-5" />
-          </button>
+          {mobileMenuOpen && (
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 text-base-content/60 hover:text-base-content hover:bg-base-200 rounded-xl transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="size-5" />
+            </button>
+          )}
         </div>
 
         {/* New Doubt Button */}
         <button
+          type="button"
           onClick={handleNewDoubt}
           className="w-full py-2.5 bg-primary text-primary-content text-xs font-bold uppercase tracking-wider rounded-2xl hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer mb-3"
         >
@@ -459,9 +470,12 @@ const AssistantPage = () => {
 
       {/* Threads List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar font-minimal">
-        <h2 className="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em] px-2 mb-2">
-          Doubt Sessions
-        </h2>
+        <div className="flex items-center justify-between px-2 mb-2">
+          <h2 className="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em]">
+            Doubt Sessions
+          </h2>
+          <span className="text-[10px] font-mono text-base-content/40">{filteredSessions.length}</span>
+        </div>
 
         {filteredSessions.length === 0 ? (
           <p className="text-xs text-base-content/40 text-center py-6 font-medium">No sessions found</p>
@@ -471,21 +485,19 @@ const AssistantPage = () => {
             const SessIcon = sess.icon || Code;
 
             return (
-              <div
+              <button
                 key={sess.id}
-                onClick={() => {
-                  setSelectedSessionId(sess.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between group relative ${
+                type="button"
+                onClick={() => handleSelectSession(sess.id)}
+                className={`w-full p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between text-left group relative ${
                   isSelected
-                    ? "bg-primary/10 border-primary/30 text-primary shadow-sm"
-                    : "bg-base-100/50 border-base-content/5 text-base-content hover:bg-base-200/80"
+                    ? "bg-primary/10 border-primary/30 text-primary shadow-xs"
+                    : "bg-base-100 border-base-content/5 text-base-content hover:bg-base-200/70 hover:border-base-content/10 active:scale-[0.98]"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <div
-                    className={`size-7 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    className={`size-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
                       isSelected
                         ? "bg-primary text-primary-content"
                         : "bg-base-200 text-base-content/60 group-hover:text-base-content"
@@ -504,18 +516,19 @@ const AssistantPage = () => {
                 </div>
 
                 <button
+                  type="button"
                   onClick={(e) => deleteSession(sess.id, e)}
-                  className="p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded-md transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer ml-1 shrink-0"
+                  className="p-1.5 text-base-content/40 hover:text-error hover:bg-error/10 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer ml-1 shrink-0"
                   title="Remove session"
                 >
                   <Trash2 className="size-3.5" />
                 </button>
-              </div>
+              </button>
             );
           })
         )}
       </div>
-    </>
+    </div>
   );
 
   return (
@@ -525,41 +538,65 @@ const AssistantPage = () => {
         {renderSidebarContent()}
       </aside>
 
-      {/* Mobile Drawer */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="fixed inset-y-0 left-0 z-[110] bg-base-100 flex flex-col md:hidden w-80 sm:w-80 max-w-[85vw] border-r border-base-content/10 shadow-2xl"
-          >
-            {renderSidebarContent()}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile Slide-in Drawer via Portal (escapes all stacking/overflow constraints) */}
+      {createPortal(
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100dvh",
+                  backgroundColor: "rgba(0,0,0,0.65)",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 99998,
+                  cursor: "pointer",
+                }}
+              />
 
-      {/* Mobile Overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 z-[105] bg-black/50 backdrop-blur-sm md:hidden"
-          />
-        )}
-      </AnimatePresence>
+              {/* Drawer Sheet */}
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: "320px",
+                  maxWidth: "85vw",
+                  height: "100dvh",
+                  zIndex: 99999,
+                  overflowY: "auto",
+                }}
+                className="bg-base-100 border-r border-base-content/15 shadow-2xl flex flex-col"
+              >
+                {renderSidebarContent()}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative chat-wallpaper w-full overflow-hidden">
 
         {/* Sticky Chat Header */}
-        <header className="px-4 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-25 w-full shrink-0 flex items-center justify-between min-h-[64px] font-minimal gap-2">
+        <header className="px-3 sm:px-6 py-3 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-25 w-full shrink-0 flex items-center justify-between min-h-[64px] font-minimal gap-2">
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setMobileMenuOpen(true)}
               className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-extrabold tracking-wide transition-all cursor-pointer shadow-2xs"
               title="Open Doubt Sessions Sidebar"
@@ -578,12 +615,13 @@ const AssistantPage = () => {
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={clearHistory}
               className="px-3 py-1.5 bg-base-200 hover:bg-error/10 hover:text-error hover:border-error/30 border border-base-content/10 rounded-xl text-xs font-bold text-base-content transition-all cursor-pointer flex items-center gap-1.5"
               title="Clear Active Chat"
             >
               <Trash2 className="size-3.5" />
-              <span>Clear Chat</span>
+              <span className="hidden sm:inline">Clear Chat</span>
             </button>
           </div>
         </header>
@@ -614,6 +652,7 @@ const AssistantPage = () => {
                     return (
                       <button
                         key={idx}
+                        type="button"
                         onClick={() => handleSuggestionClick(sug.prompt)}
                         className="p-4 rounded-2xl bg-base-100 border border-base-content/10 hover:border-primary/40 hover:bg-base-200/60 hover:-translate-y-0.5 hover:shadow-md transition-all text-left flex gap-3 group cursor-pointer"
                       >
@@ -703,6 +742,7 @@ const AssistantPage = () => {
                 >
                   <img src={imagePreview} alt="Preview" className="size-12 object-cover rounded-xl" />
                   <button
+                    type="button"
                     onClick={removeImage}
                     className="p-1 bg-error text-white rounded-full hover:scale-105 cursor-pointer"
                   >

@@ -53,7 +53,9 @@ export async function getUserTickets(req, res) {
   try {
     const tickets = await SupportTicket.find({ user: req.user._id })
       .sort({ createdAt: -1 })
-      .populate("user", "fullName email profilePic");
+      .populate("user", "fullName email profilePic")
+      .lean()
+      .exec();
 
     res.status(200).json({ success: true, tickets });
   } catch (error) {
@@ -61,3 +63,4 @@ export async function getUserTickets(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+

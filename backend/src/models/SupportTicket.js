@@ -67,6 +67,13 @@ const supportTicketSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// ── Performance Indexes ──
+supportTicketSchema.index({ status: 1, createdAt: -1 });
+supportTicketSchema.index({ category: 1, createdAt: -1 });
+supportTicketSchema.index({ user: 1, createdAt: -1 });
+supportTicketSchema.index({ createdAt: -1 });
+
 const SupportTicket = mongoose.model("SupportTicket", supportTicketSchema);
 
 export default SupportTicket;
+

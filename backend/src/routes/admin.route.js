@@ -15,6 +15,9 @@ import {
   toggleSuspendUser,
   deleteUser,
   promoteToAdmin,
+  broadcastAnnouncement,
+  getAdminPosts,
+  deleteAdminPost,
 } from "../controllers/admin.controller.js";
 
 const router = express.Router();
@@ -25,6 +28,8 @@ router.post("/promote", protectRoute, promoteToAdmin);
 router.use(protectRoute, protectAdminRoute);
 
 router.get("/stats", getAdminStats);
+router.post("/broadcast", broadcastAnnouncement);
+
 router.get("/complaints", getComplaints);
 router.patch("/complaints/:id", updateComplaint);
 router.delete("/complaints/:id", deleteComplaint);
@@ -39,4 +44,8 @@ router.patch("/users/:id/role", updateUserRole);
 router.patch("/users/:id/suspend", toggleSuspendUser);
 router.delete("/users/:id", deleteUser);
 
+router.get("/posts", getAdminPosts);
+router.delete("/posts/:id", deleteAdminPost);
+
 export default router;
+

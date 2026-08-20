@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
@@ -6,12 +7,12 @@ import { getStreamToken, checkGrammar, getUserFriends, getUserProfile } from "..
 import { 
   Wand2, 
   X, 
-  Menu, 
   User, 
   Search, 
   MessageSquare,
   UsersIcon,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { capitalize } from "../lib/utils";
@@ -72,11 +73,21 @@ const ChatPage = () => {
   });
 
   useEffect(() => {
+    // If no target user is specified (e.g. /chat route), we don't connect to a channel
+    if (!targetUserId) {
+      setChannel(null);
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
     const initChat = async () => {
       if (!tokenData?.token || !authUser || !targetUserId) return;
+      setLoading(true);
+      setChannel(null);
 
       try {
-        // Use a longer timeout (15s) — default 3s is too short on slow/first connections
         const client = StreamChat.getInstance(STREAM_API_KEY, {
           timeout: 15000,
         });
@@ -119,19 +130,26 @@ const ChatPage = () => {
         };
         currChannel.on("message.new", handleNewMessage);
 
-        setChatClient(client);
-        setChannel(currChannel);
+        if (isMounted) {
+          setChatClient(client);
+          setChannel(currChannel);
+        }
       } catch (error) {
         console.error("Error initializing chat:", error);
         toast.error("Could not connect to chat. Please try again.");
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     initChat();
-  }, [tokenData, authUser, targetUserId]);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [tokenData, authUser, targetUserId]);
 
   const handleVideoCall = () => {
     if (channel) {
@@ -178,28 +196,39 @@ const ChatPage = () => {
     return new Date() - new Date(currentFriend.lastActive) <= 5 * 60 * 1000;
   }, [currentFriend]);
 
-  if (loading || !chatClient || !channel) return <ChatLoader />;
+  // Peer Selection Handler (navigates and closes any active drawer)
+  const handleSelectPeer = (friendId) => {
+    setMobileMenuOpen(false);
+    navigate(`/chat/${friendId}`);
+  };
 
+  // Reusable Sidebar & List Content
   const renderSidebarContent = () => (
-    <>
-      {/* Brand & Title Header */}
-      <div className="p-5 border-b border-base-content/10 bg-base-100/50 backdrop-blur-md shrink-0">
-        <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col h-full bg-base-100 w-full select-none">
+      {/* Header */}
+      <div className="p-4 sm:p-5 border-b border-base-content/10 bg-base-100 shrink-0">
+        <div className="flex items-center justify-between mb-3.5">
           <div className="flex items-center gap-3">
             <div className="size-9 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-inner text-primary">
               <MessageSquare className="size-5" />
             </div>
             <div>
               <h1 className="text-sm font-black tracking-widest uppercase text-base-content">Peers Chat</h1>
-              <span className="text-[9px] text-base-content/40 font-bold uppercase tracking-wider">Language Network</span>
+              <span className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider">
+                {friends.length} {friends.length === 1 ? "Peer" : "Peers"} Connected
+              </span>
             </div>
           </div>
-          <button 
-            onClick={() => setMobileMenuOpen(false)} 
-            className="md:hidden p-2 text-base-content/60 hover:text-base-content hover:bg-base-content/5 rounded-xl transition-colors cursor-pointer"
-          >
-            <X className="size-5" />
-          </button>
+          {mobileMenuOpen && (
+            <button 
+              type="button"
+              onClick={() => setMobileMenuOpen(false)} 
+              className="p-2 text-base-content/60 hover:text-base-content hover:bg-base-200 rounded-xl transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="size-5" />
+            </button>
+          )}
         </div>
 
         {/* Search Input */}
@@ -217,7 +246,10 @@ const ChatPage = () => {
 
       {/* Friends List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
-        <h2 className="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em] px-2 mb-2">Active Conversations</h2>
+        <div className="flex items-center justify-between px-2 mb-2">
+          <h2 className="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em]">Active Conversations</h2>
+          <span className="text-[10px] font-mono text-base-content/40">{filteredFriends.length}</span>
+        </div>
 
         {loadingFriends ? (
           <div className="space-y-2 p-2">
@@ -226,7 +258,24 @@ const ChatPage = () => {
             ))}
           </div>
         ) : filteredFriends.length === 0 ? (
-          <p className="text-xs text-base-content/40 text-center py-6 font-medium">No peers found</p>
+          <div className="text-center py-12 px-4 space-y-3">
+            <div className="size-12 rounded-2xl bg-base-200 mx-auto flex items-center justify-center text-base-content/30">
+              <UsersIcon className="size-6" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-base-content/70">No peers found</p>
+              <p className="text-[11px] text-base-content/40 mt-0.5">
+                {searchQuery ? "Try searching another name or language" : "Connect with learners to start messaging"}
+              </p>
+            </div>
+            <Link
+              to="/friends"
+              onClick={() => setMobileMenuOpen(false)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-content text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+            >
+              <UsersIcon className="size-3.5" /> Find Peers
+            </Link>
+          </div>
         ) : (
           filteredFriends.map((friend) => {
             const isSelected = friend._id === targetUserId;
@@ -235,33 +284,36 @@ const ChatPage = () => {
             return (
               <button
                 key={friend._id}
-                onClick={() => {
-                  navigate(`/chat/${friend._id}`);
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full p-3 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between text-left group relative ${
+                type="button"
+                onClick={() => handleSelectPeer(friend._id)}
+                className={`w-full p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between text-left group relative ${
                   isSelected
-                    ? "bg-primary/10 border-primary/30 text-primary shadow-sm"
-                    : "bg-base-100/50 border-base-content/5 text-base-content hover:bg-base-200/80 hover:border-base-content/10"
+                    ? "bg-primary/10 border-primary/30 text-primary shadow-xs"
+                    : "bg-base-100 border-base-content/5 text-base-content hover:bg-base-200/70 hover:border-base-content/10 active:scale-[0.98]"
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="relative size-10 rounded-xl bg-primary text-primary-content flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-sm">
+                  <div className="relative size-11 rounded-xl bg-primary text-primary-content flex items-center justify-center font-black text-sm overflow-hidden shrink-0 shadow-sm">
                     <span>{friend.fullName?.charAt(0)?.toUpperCase()}</span>
                     {friend.profilePic && (
                       <img src={friend.profilePic} alt={friend.fullName} className="absolute inset-0 w-full h-full object-cover" />
                     )}
                     {friendOnline && (
-                      <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-success border border-base-100" />
+                      <span className="absolute bottom-0.5 right-0.5 size-2.5 rounded-full bg-success border-2 border-base-100" />
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-black truncate ${isSelected ? "text-primary" : "text-base-content"}`}>
-                      {friend.fullName}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-base-content/50 mt-0.5 truncate uppercase">
-                      <span>{getLanguageIcon(friend.learningLanguage)} {capitalize(friend.learningLanguage)}</span>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className={`text-xs font-bold truncate ${isSelected ? "text-primary" : "text-base-content"}`}>
+                        {friend.fullName}
+                      </p>
+                      {friendOnline && (
+                        <span className="text-[9px] font-bold text-success uppercase tracking-wider shrink-0">Online</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-base-content/50 mt-0.5 truncate">
+                      <span>{getLanguageIcon(friend.learningLanguage)} Learning {capitalize(friend.learningLanguage || "Language")}</span>
                     </div>
                   </div>
                 </div>
@@ -272,81 +324,141 @@ const ChatPage = () => {
       </div>
 
       {/* Footer Navigation Back to Friends */}
-      <div className="p-4 border-t border-base-content/10 bg-base-100/30 shrink-0">
+      <div className="p-3.5 border-t border-base-content/10 bg-base-100 shrink-0">
         <Link
           to="/friends"
+          onClick={() => setMobileMenuOpen(false)}
           className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider text-base-content/70 hover:text-base-content p-2.5 rounded-xl border border-base-content/10 hover:bg-base-200 transition-all w-full"
         >
           <UsersIcon className="size-4" />
           Find More Peers
         </Link>
       </div>
-    </>
+    </div>
   );
 
+  // 1. Mobile Full-Screen Peers List / Desktop Blank State (when no target peer selected)
+  if (!targetUserId) {
+    return (
+      <div className="flex h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
+        {/* Full-width on Mobile, Left Sidebar on Desktop */}
+        <aside className="w-full md:w-80 border-r border-base-content/10 bg-base-100 flex flex-col shrink-0 h-full">
+          {renderSidebarContent()}
+        </aside>
+
+        {/* Desktop Blank State */}
+        <div className="hidden md:flex flex-1 flex-col items-center justify-center p-8 text-center bg-base-200/50 space-y-4">
+          <div className="size-20 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+            <MessageCircle className="size-10" />
+          </div>
+          <div className="max-w-md space-y-1.5">
+            <h3 className="text-xl font-black tracking-tight text-base-content">Select a Peer to Chat</h3>
+            <p className="text-xs text-base-content/60 leading-relaxed">
+              Choose a study partner from your active conversations on the left to practice languages and collaborate in real-time.
+            </p>
+          </div>
+          <Link
+            to="/friends"
+            className="btn btn-primary btn-sm rounded-full font-bold px-6 shadow-sm uppercase tracking-wider text-xs"
+          >
+            <UsersIcon className="size-4 mr-1" /> Discover New Peers
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Active Chat Loading Screen
+  if (loading || !chatClient || !channel) return <ChatLoader />;
+
+  // 3. Active Conversation View
   return (
     <div className="flex h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-sans selection:bg-primary/20 w-full">
-      {/* Desktop Sidebar */}
+      {/* Desktop Left Sidebar */}
       <aside className="w-80 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}
       </aside>
 
-      {/* Mobile Drawer */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 220 }}
-            className="fixed inset-y-0 left-0 z-[110] bg-base-100 flex flex-col md:hidden w-80 sm:w-80 max-w-[85vw] border-r border-base-content/10 shadow-2xl"
-          >
-            {renderSidebarContent()}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile Slide-in Drawer via Portal (escapes all stacking/overflow constraints) */}
+      {createPortal(
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: "100vw",
+                  height: "100dvh",
+                  backgroundColor: "rgba(0,0,0,0.65)",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 99998,
+                  cursor: "pointer",
+                }}
+              />
 
-      {/* Mobile Overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 z-[105] bg-black/50 backdrop-blur-sm md:hidden"
-          />
-        )}
-      </AnimatePresence>
+              {/* Drawer Sheet */}
+              <motion.div
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 220 }}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: "320px",
+                  maxWidth: "85vw",
+                  height: "100dvh",
+                  zIndex: 99999,
+                  overflowY: "auto",
+                }}
+                className="bg-base-100 border-r border-base-content/15 shadow-2xl flex flex-col"
+              >
+                {renderSidebarContent()}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative chat-wallpaper w-full overflow-hidden">
         {/* Custom Header Bar */}
-        <header className="px-3 sm:px-6 py-3 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-20 flex items-center justify-between shrink-0 shadow-sm min-h-[64px] gap-2">
+        <header className="px-3 sm:px-6 py-3 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-20 flex items-center justify-between shrink-0 shadow-2xs min-h-[64px] gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            {/* Mobile Controls: Back button & Peers list trigger */}
-            <div className="flex items-center gap-1 md:hidden shrink-0">
+            {/* Mobile Controls: Back button to Peers List & Quick Drawer trigger */}
+            <div className="flex items-center gap-1.5 md:hidden shrink-0">
               <Link
-                to="/friends"
-                className="p-2 text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-xl transition-colors cursor-pointer"
-                title="Back to Friends"
+                to="/chat"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-base-200 hover:bg-base-300 text-base-content text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                title="Back to Peers List"
               >
-                <ArrowLeft className="size-5" />
+                <ArrowLeft className="size-4" />
+                <span>Peers</span>
               </Link>
 
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-extrabold tracking-wide transition-all cursor-pointer shadow-2xs"
-                title="Open Peers Sidebar"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-extrabold tracking-wide transition-all cursor-pointer shadow-2xs"
+                title="Open Peers Drawer"
               >
                 <UsersIcon className="size-4" />
-                <span className="hidden sm:inline">Peers</span>
               </button>
             </div>
 
-            {/* Target User Info */}
+            {/* Target User Profile Info */}
             {currentFriend && (
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <Link to={`/user/${targetUserId}`} className="relative shrink-0 group">
                   <div className="size-10 rounded-xl bg-primary text-primary-content flex items-center justify-center font-black text-sm overflow-hidden shadow-sm border border-base-content/10 group-hover:scale-105 transition-transform">
                     <span>{currentFriend.fullName?.charAt(0)?.toUpperCase()}</span>
@@ -393,6 +505,7 @@ const ChatPage = () => {
             <CallButton handleVideoCall={handleVideoCall} />
 
             <button
+              type="button"
               onClick={() => setIsGrammarModalOpen(true)}
               className="px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary text-primary hover:text-primary-content border border-primary/20 transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-1.5 cursor-pointer text-xs font-bold"
               title="AI Grammar Assistant"
@@ -429,7 +542,7 @@ const ChatPage = () => {
 
       {/* Grammar Modal */}
       {isGrammarModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-base-100 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-base-content/10 animate-in slide-in-from-bottom-5 fade-in duration-300">
             <div className="p-5 border-b border-base-content/10 flex justify-between items-center bg-primary/10">
               <h3 className="font-black flex items-center gap-2 text-base text-base-content uppercase tracking-wider">

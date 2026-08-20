@@ -41,10 +41,18 @@ html {
   font-family: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif !important;
 }
 
+/* Authentic Apple SF Pro Font System */
+.font-sf,
+.font-apple-system {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Inter", system-ui, -apple-system, sans-serif !important;
+  letter-spacing: -0.015em;
+}
+
 /* Monospace fonts for editor and snippets */
 code, pre, .font-mono, .monaco-editor {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
+
 
 /* ─── Glassmorphism ─────────────────────────────────────────── */
 .glass-panel {

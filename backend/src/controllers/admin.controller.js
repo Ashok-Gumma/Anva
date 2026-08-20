@@ -1,7 +1,9 @@
 import SupportTicket from "../models/SupportTicket.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
+import Post from "../models/Post.js";
 import mongoose from "mongoose";
+
 
 // Helper to resolve user by ID, email, or name flexibly
 async function findUserByIdentifier(identifier) {
@@ -52,21 +54,19 @@ export async function getComplaints(req, res) {
       filter.category = category;
     }
 
-    let tickets = await SupportTicket.find(filter)
-      .sort({ createdAt: -1 })
-      .populate("user", "fullName email profilePic role createdAt friends");
-
     if (search) {
-      const s = search.toLowerCase();
-      tickets = tickets.filter(
-        (t) =>
-          t.subject?.toLowerCase().includes(s) ||
-          t.message?.toLowerCase().includes(s) ||
-          t.user?.fullName?.toLowerCase().includes(s) ||
-          t.user?.email?.toLowerCase().includes(s) ||
-          t.reportedUserAccount?.toLowerCase().includes(s)
-      );
+      filter.$or = [
+        { subject: { $regex: search, $options: "i" } },
+        { message: { $regex: search, $options: "i" } },
+        { reportedUserAccount: { $regex: search, $options: "i" } },
+      ];
     }
+
+    const tickets = await SupportTicket.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("user", "fullName email profilePic role createdAt friends")
+      .lean()
+      .exec();
 
     res.status(200).json({ success: true, tickets });
   } catch (error) {
@@ -74,6 +74,7 @@ export async function getComplaints(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
 
 // Update complaint status, priority, or admin notes & send notification to user
 export async function updateComplaint(req, res) {
@@ -257,20 +258,42 @@ export async function deleteComplaint(req, res) {
 // Get admin stats overview
 export async function getAdminStats(req, res) {
   try {
-    const totalUsers = await User.countDocuments();
-    const totalComplaints = await SupportTicket.countDocuments();
-    const pendingComplaints = await SupportTicket.countDocuments({ status: "Pending" });
-    const inProgressComplaints = await SupportTicket.countDocuments({ status: "In Progress" });
-    const resolvedComplaints = await SupportTicket.countDocuments({ status: "Resolved" });
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [
+      totalUsers,
+      suspendedUsers,
+      adminUsers,
+      totalComplaints,
+      pendingComplaints,
+      inProgressComplaints,
+      resolvedComplaints,
+      totalPosts,
+      activeToday,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ isSuspended: true }),
+      User.countDocuments({ role: "admin" }),
+      SupportTicket.countDocuments(),
+      SupportTicket.countDocuments({ status: "Pending" }),
+      SupportTicket.countDocuments({ status: "In Progress" }),
+      SupportTicket.countDocuments({ status: "Resolved" }),
+      Post.countDocuments(),
+      User.countDocuments({ lastActive: { $gte: oneDayAgo } }),
+    ]);
 
     res.status(200).json({
       success: true,
       stats: {
         totalUsers,
+        suspendedUsers,
+        adminUsers,
         totalComplaints,
         pendingComplaints,
         inProgressComplaints,
         resolvedComplaints,
+        totalPosts,
+        activeToday,
       },
     });
   } catch (error) {
@@ -294,7 +317,11 @@ export async function getUsers(req, res) {
       };
     }
 
-    const users = await User.find(query).select("-password").sort({ createdAt: -1 });
+    const users = await User.find(query)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
 
     res.status(200).json({ success: true, users });
   } catch (error) {
@@ -302,6 +329,7 @@ export async function getUsers(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
 
 // Update any user's profile details by Admin
 export async function updateUserDetails(req, res) {
@@ -447,3 +475,89 @@ export async function promoteToAdmin(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+// Broadcast announcement to users
+export async function broadcastAnnouncement(req, res) {
+  try {
+    const { title, message, targetRole = "all" } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ message: "Title and message are required." });
+    }
+
+    const filter = targetRole === "all" ? {} : { role: targetRole };
+    const users = await User.find(filter).select("_id");
+
+    if (users.length === 0) {
+      return res.status(400).json({ message: "No target users found." });
+    }
+
+    const notifications = users.map((u) => ({
+      recipient: u._id,
+      sender: req.user._id,
+      type: "system",
+      title: `📢 ${title}`,
+      message,
+      isRead: false,
+    }));
+
+    await Notification.insertMany(notifications);
+
+    res.status(200).json({
+      success: true,
+      message: `System announcement broadcasted to ${users.length} users!`,
+      count: users.length,
+    });
+  } catch (error) {
+    console.error("Error broadcasting announcement:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+// Get all posts for admin moderation
+export async function getAdminPosts(req, res) {
+  try {
+    const { subject, search } = req.query;
+
+    let query = {};
+    if (subject && subject !== "All") {
+      query.subject = subject;
+    }
+
+    if (search) {
+      query.caption = { $regex: search, $options: "i" };
+    }
+
+    const posts = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .populate("user", "fullName email profilePic role")
+      .lean()
+      .exec();
+
+    res.status(200).json({ success: true, posts });
+  } catch (error) {
+    console.error("Error fetching admin posts:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+
+// Delete post by admin
+export async function deleteAdminPost(req, res) {
+  try {
+    const { id } = req.params;
+    const post = await Post.findByIdAndDelete(id);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found." });
+    }
+
+    // Pull from savedPosts of any user
+    await User.updateMany({ savedPosts: id }, { $pull: { savedPosts: id } });
+
+    res.status(200).json({ success: true, message: "Post removed by Admin successfully." });
+  } catch (error) {
+    console.error("Error deleting post by admin:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+

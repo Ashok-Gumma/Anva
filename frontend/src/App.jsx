@@ -219,9 +219,9 @@ const App = () => {
             <Route path="/admin"        element={<AdminRoute element={<AdminPage />} />} />
             <Route path="/blocked-users" element={<ProtectedRoute element={<Layout showSidebar><BlockedUsersPage /></Layout>} />} />
             <Route path="/compiler"      element={<ProtectedRoute element={<Layout showSidebar><CompilerPage /></Layout>} />} />
-            <Route path="/user/:id"      element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />
-            <Route path="/chat"          element={<ProtectedRoute element={<Navigate to="/friends" replace />} />} />
+            <Route path="/chat"          element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
             <Route path="/chat/:id"      element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
+
             <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
             
             {/* ── Legal ── */}

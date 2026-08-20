@@ -18,7 +18,9 @@ import {
   Bell,
   ChevronDown,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
+
 
 import ThemeSelector from "./ThemeSelector";
 import NotificationBadge from "./NotificationBadge";
@@ -30,8 +32,10 @@ import { useThemeStore } from "../store/useThemeStore";
 
 const communityLinks = [
   { to: "/feed", icon: ImageIcon, label: "Community Feed", desc: "Share updates & posts with language peers" },
-  { to: "/friends", icon: UsersIcon, label: "Peers & Network", desc: "Connect, chat & study with friends" },
+  { to: "/friends", icon: UsersIcon, label: "Peers & Network", desc: "Connect & discover new peers" },
+  { to: "/chat", icon: MessageSquare, label: "Peers Chat", desc: "Active conversations & direct messaging" },
 ];
+
 
 const learningLinks = [
   { to: "/flashcards", icon: BookOpenIcon, label: "Flashcards Studio", desc: "Build & review custom flashcard decks" },

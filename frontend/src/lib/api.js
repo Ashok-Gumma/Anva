@@ -215,6 +215,21 @@ export async function promoteToAdmin(email) {
   return response.data;
 }
 
+export async function broadcastAnnouncement(data) {
+  const response = await axiosInstance.post("/admin/broadcast", data);
+  return response.data;
+}
+
+export async function getAdminPosts(params = {}) {
+  const response = await axiosInstance.get("/admin/posts", { params });
+  return response.data;
+}
+
+export async function deleteAdminPost(id) {
+  const response = await axiosInstance.delete(`/admin/posts/${id}`);
+  return response.data;
+}
+
 /* ── Notifications API ── */
 export async function getUserNotifications() {
   const response = await axiosInstance.get("/notifications");
@@ -226,10 +241,21 @@ export async function markNotificationRead(id) {
   return response.data;
 }
 
+export async function markAllNotificationsRead() {
+  const response = await axiosInstance.patch("/notifications/read-all");
+  return response.data;
+}
+
 export async function deleteNotification(id) {
   const response = await axiosInstance.delete(`/notifications/${id}`);
   return response.data;
 }
+
+export async function clearAllNotifications() {
+  const response = await axiosInstance.delete("/notifications/clear-all");
+  return response.data;
+}
+
 
 /* ── Educational Community Feed (EduFeed) API ── */
 export async function getPosts(subject = "All") {

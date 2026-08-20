@@ -133,6 +133,13 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return isPasswordCorrect;
 };
 
+// ── Performance Indexes ──
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ isSuspended: 1 });
+userSchema.index({ lastActive: -1 });
+userSchema.index({ createdAt: -1 });
+
 const User = mongoose.model("User", userSchema);
 
 export default User;
+

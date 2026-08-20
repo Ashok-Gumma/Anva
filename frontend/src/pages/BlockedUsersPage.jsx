@@ -21,7 +21,10 @@ const BlockedUsersPage = () => {
       toast.success("User unblocked successfully");
       queryClient.invalidateQueries({ queryKey: ["blockedUsers"] });
       queryClient.invalidateQueries({ queryKey: ["authUser"] });
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
     },
+
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to unblock user");
     },
