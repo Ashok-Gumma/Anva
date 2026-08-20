@@ -20,20 +20,35 @@ export async function signup(req, res) {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
     if (!emailRegex.test(email)) {
       return res.status(400).json({ message: "Invalid email format" });
     }
 
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check case-insensitively if account already exists
+    const existingUser = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { email: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      ]
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: "Email already exists, please use a diffrent one" });
+      if (existingUser.clerkId) {
+        return res.status(400).json({
+          message: "An account with this email already exists via Google / Clerk login. Please sign in using 'Continue with Google'."
+        });
+      }
+      return res.status(400).json({
+        message: "An account with this email address already exists. Please log in instead."
+      });
     }
 
     const randomAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
 
     const newUser = await User.create({
-      email,
+      email: normalizedEmail,
       fullName,
       password,
       profilePic: randomAvatar,
@@ -78,13 +93,26 @@ export async function login(req, res) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { email: new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      ]
+    });
+
     if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
     if (user.isSuspended) {
       return res.status(403).json({
         message: "Your account has been suspended by an administrator.",
         isSuspended: true,
+      });
+    }
+
+    if (user.clerkId && !user.password) {
+      return res.status(400).json({
+        message: "This account was created via Google / Clerk login. Please sign in using 'Continue with Google'."
       });
     }
 

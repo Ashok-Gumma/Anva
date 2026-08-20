@@ -12,6 +12,7 @@ import PageLoader from "./components/PageLoader.jsx";
 import ServerErrorPage from "./components/ServerErrorPage.jsx";
 import AnvaLogo from "./components/AnvaLogo.jsx";
 import AnvaBrandLogo from "./components/AnvaBrandLogo.jsx";
+import AuthCardWrapper, { buildClerkAppearance } from "./components/AuthCardWrapper.jsx";
 
 import HomePage from "./pages/HomePage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
@@ -142,37 +143,21 @@ const App = () => {
               path="/sign-in/*"
               element={
                 !isAuthenticated ? (
-                  <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-base-200 font-minimal selection:bg-primary selection:text-primary-content">
-                    <div className="mb-6 text-center space-y-1">
-                      <div className="inline-flex items-center gap-2 mb-2">
-                        <AnvaBrandLogo badgeSize="size-9" textSize="text-2xl" />
-                      </div>
-                      <h1 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">
-                        Welcome back to <span className="font-curly italic text-primary font-bold tracking-wide">Anva</span>
-                      </h1>
-                      <p className="text-xs text-base-content/60 font-medium">
-                        Sign in to access your study network, compiler, and language assistant.
-                      </p>
-                    </div>
+                  <AuthCardWrapper
+                    title={<>Welcome back to <span className="font-curly font-bold">Anva</span></>}
+                    subtitle="Sign in to access your study network, compiler, and AI language assistant."
+                    illustrationBadge="Real-time Connections"
+                    illustrationTitle="Practice with friends worldwide"
+                    illustrationDesc="Engage in live voice calls, shared coding sessions, and interactive flashcard decks anytime."
+                  >
                     <SignIn
                       routing="path"
                       path="/sign-in"
                       signUpUrl="/sign-up"
                       fallbackRedirectUrl="/"
-                      appearance={{
-                        elements: {
-                          card: "bg-base-100 shadow-xl rounded-3xl border border-base-content/10 font-minimal p-6 sm:p-8",
-                          headerTitle: "hidden",
-                          headerSubtitle: "hidden",
-                          socialButtonsBlockButton: "rounded-2xl border border-base-content/15 bg-base-200 hover:bg-base-300 font-bold text-xs text-base-content transition-all py-3 font-minimal cursor-pointer",
-                          formButtonPrimary: "bg-primary text-primary-content hover:opacity-90 rounded-2xl font-bold uppercase text-xs shadow-md font-minimal py-3 cursor-pointer",
-                          formFieldInput: "rounded-2xl border border-base-content/10 bg-base-200 text-xs font-bold font-minimal focus:ring-1 focus:ring-primary py-3",
-                          footerActionLink: "text-primary font-bold hover:underline font-minimal",
-                          formFieldLabel: "text-xs font-bold uppercase text-base-content/60 font-minimal",
-                        },
-                      }}
+                      appearance={buildClerkAppearance()}
                     />
-                  </div>
+                  </AuthCardWrapper>
                 ) : (
                   <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
                 )
@@ -182,38 +167,22 @@ const App = () => {
               path="/sign-up/*"
               element={
                 !isAuthenticated ? (
-                  <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-base-200 font-minimal selection:bg-primary selection:text-primary-content">
-                    <div className="mb-6 text-center space-y-1">
-                      <div className="inline-flex items-center gap-2 mb-2">
-                        <AnvaBrandLogo badgeSize="size-9" textSize="text-2xl" />
-                      </div>
-                      <h1 className="text-2xl sm:text-3xl font-extrabold text-base-content tracking-tight">
-                        Start your journey with <span className="font-curly italic text-primary font-bold tracking-wide">Anva</span>
-                      </h1>
-                      <p className="text-xs text-base-content/60 font-medium">
-                        Create an account to connect with language learners worldwide.
-                      </p>
-                    </div>
+                  <AuthCardWrapper
+                    title={<>Start your journey on <span className="font-curly font-bold">Anva</span></>}
+                    subtitle="Create your free account and connect with learners worldwide."
+                    illustrationBadge="Global Study Hub"
+                    illustrationTitle="Unlock seamless collaboration"
+                    illustrationDesc="Join community chats, track your progress, and master new skills together."
+                  >
                     <SignUp
                       routing="path"
                       path="/sign-up"
                       signInUrl="/sign-in"
                       fallbackRedirectUrl="/onboarding"
                       forceRedirectUrl="/onboarding"
-                      appearance={{
-                        elements: {
-                          card: "bg-base-100 shadow-xl rounded-3xl border border-base-content/10 font-minimal p-6 sm:p-8",
-                          headerTitle: "hidden",
-                          headerSubtitle: "hidden",
-                          socialButtonsBlockButton: "rounded-2xl border border-base-content/15 bg-base-200 hover:bg-base-300 font-bold text-xs text-base-content transition-all py-3 font-minimal cursor-pointer",
-                          formButtonPrimary: "bg-primary text-primary-content hover:opacity-90 rounded-2xl font-bold uppercase text-xs shadow-md font-minimal py-3 cursor-pointer",
-                          formFieldInput: "rounded-2xl border border-base-content/10 bg-base-200 text-xs font-bold font-minimal focus:ring-1 focus:ring-primary py-3",
-                          footerActionLink: "text-primary font-bold hover:underline font-minimal",
-                          formFieldLabel: "text-xs font-bold uppercase text-base-content/60 font-minimal",
-                        },
-                      }}
+                      appearance={buildClerkAppearance()}
                     />
-                  </div>
+                  </AuthCardWrapper>
                 ) : (
                   <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
                 )

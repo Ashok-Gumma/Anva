@@ -34,7 +34,8 @@ export const protectRoute = async (req, res, next) => {
           try {
             // Preferred: fetch rich user data from Clerk API
             const clerkUser = await clerkClient.users.getUser(clerkId);
-            email = clerkUser.emailAddresses?.[0]?.emailAddress;
+            const rawEmail = clerkUser.emailAddresses?.[0]?.emailAddress;
+            email = rawEmail ? rawEmail.toLowerCase().trim() : "";
             fullName =
               [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
               email?.split("@")[0] ||
@@ -44,19 +45,22 @@ export const protectRoute = async (req, res, next) => {
               `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
           } catch {
             // Fallback: create minimal user from JWT claims
-            // This happens when CLERK_SECRET_KEY is missing from backend/.env
             console.warn("⚠️  Clerk API call failed — creating minimal user from JWT.");
-            console.warn("    Add CLERK_SECRET_KEY to backend/.env for full user data sync.");
             email = `${clerkId}@clerk.local`;
             fullName = decoded.name || decoded.username || "Anva User";
             profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName)}`;
           }
 
           try {
-            // Link to existing account if email matches (e.g. Google OAuth user)
+            // Link to existing account if email matches (case-insensitively)
             const existingByEmail =
               email && !email.endsWith("@clerk.local")
-                ? await User.findOne({ email })
+                ? await User.findOne({
+                    $or: [
+                      { email },
+                      { email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+                    ]
+                  })
                 : null;
 
             if (existingByEmail) {
@@ -91,7 +95,13 @@ export const protectRoute = async (req, res, next) => {
           } catch (createErr) {
             // Handle duplicate key race condition (E11000) when parallel requests attempt auto-creation
             if (createErr.code === 11000) {
-              user = await User.findOne({ $or: [{ clerkId }, { email }] }).select("-password");
+              user = await User.findOne({
+                $or: [
+                  { clerkId },
+                  { email },
+                  { email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+                ]
+              }).select("-password");
               if (user) {
                 if (!user.clerkId) {
                   user.clerkId = clerkId;

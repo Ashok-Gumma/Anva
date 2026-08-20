@@ -43,12 +43,15 @@ import {
   Pencil,
   Check,
   Image as ImageIcon,
+  LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import useLogout from "../hooks/useLogout";
 
 const ProfilePage = () => {
   const { authUser } = useAuthUser();
   const queryClient = useQueryClient();
+  const { logoutMutation, isPending: isLoggingOut } = useLogout();
 
   // Active Tab State: "details" | "saved"
   const [activeTab, setActiveTab] = useState("details");
@@ -491,11 +494,24 @@ const ProfilePage = () => {
             </div>
           </div>
 
-          {/* Banner Progress Pill Badge */}
-          <div className="flex items-center gap-2 mb-1">
+          {/* Banner Progress Pill Badge & Sign Out */}
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="px-3.5 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs font-extrabold text-primary flex items-center gap-1.5 shadow-sm">
               <TrendingUp className="w-3.5 h-3.5" /> Profile {completenessScore}% Complete
             </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Are you sure you want to sign out?")) {
+                  logoutMutation();
+                }
+              }}
+              disabled={isLoggingOut}
+              className="px-3.5 py-1.5 bg-error/10 hover:bg-error/20 border border-error/20 rounded-xl text-xs font-bold text-error flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-50"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
+            </button>
           </div>
         </div>
 
@@ -670,7 +686,7 @@ const ProfilePage = () => {
           </div>
 
           {/* Account & Security Card */}
-          <div className="bg-base-100 p-6 rounded-3xl border border-base-content/10 shadow-sm space-y-3">
+          <div className="bg-base-100 p-6 rounded-3xl border border-base-content/10 shadow-sm space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-primary" />
@@ -686,6 +702,24 @@ const ProfilePage = () => {
             <p className="text-xs text-base-content/60 font-medium leading-relaxed">
               Authentication and security settings are safely synchronized via Clerk Account Management.
             </p>
+            <div className="pt-2 border-t border-base-content/5 flex items-center justify-between gap-3">
+              <div className="text-xs font-medium text-base-content/70">
+                Sign out of this device
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to sign out?")) {
+                    logoutMutation();
+                  }
+                }}
+                disabled={isLoggingOut}
+                className="px-4 py-2 bg-error/10 hover:bg-error text-error hover:text-error-content rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
+              </button>
+            </div>
           </div>
         </motion.div>
       )}

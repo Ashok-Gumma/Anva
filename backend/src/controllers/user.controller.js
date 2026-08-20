@@ -4,7 +4,7 @@ import { upsertStreamUser, blockStreamUser, unblockStreamUser } from "../lib/str
 
 export async function updateProfile(req, res) {
   try {
-    const { profilePic, bannerPic, githubUrl, linkedinUrl } = req.body;
+    const { profilePic, bannerPic, githubUrl, linkedinUrl, bio, headline, nativeLanguage, learningLanguage, location, fullName } = req.body;
     const userId = req.user._id || req.user.id;
 
     // Build update object dynamically
@@ -13,6 +13,12 @@ export async function updateProfile(req, res) {
     if (bannerPic !== undefined) updateData.bannerPic = bannerPic;
     if (githubUrl !== undefined) updateData.githubUrl = githubUrl;
     if (linkedinUrl !== undefined) updateData.linkedinUrl = linkedinUrl;
+    if (bio !== undefined) updateData.bio = bio;
+    if (headline !== undefined) updateData.headline = headline;
+    if (nativeLanguage !== undefined) updateData.nativeLanguage = nativeLanguage;
+    if (learningLanguage !== undefined) updateData.learningLanguage = learningLanguage;
+    if (location !== undefined) updateData.location = location;
+    if (fullName !== undefined && fullName.trim()) updateData.fullName = fullName.trim();
 
     if (Object.keys(updateData).length === 0) {
       return res.status(200).json(req.user);

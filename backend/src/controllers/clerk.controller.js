@@ -37,11 +37,17 @@ export async function handleClerkWebhook(req, res) {
   try {
     if (type === "user.created") {
       const { id: clerkId, email_addresses, first_name, last_name, image_url } = data;
-      const email = email_addresses?.[0]?.email_address;
+      const rawEmail = email_addresses?.[0]?.email_address;
+      const email = rawEmail ? rawEmail.toLowerCase().trim() : "";
       const fullName = [first_name, last_name].filter(Boolean).join(" ") || email;
 
-      // Check if user already exists (e.g. via Google OAuth earlier)
-      let user = await User.findOne({ email });
+      // Check if user already exists (case-insensitively)
+      let user = await User.findOne({
+        $or: [
+          { email },
+          { email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        ]
+      });
 
       if (!user) {
         // Create new MongoDB user for Clerk-signed-up user

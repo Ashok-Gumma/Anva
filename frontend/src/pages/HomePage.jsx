@@ -27,6 +27,8 @@ import {
   Undo2,
   Image as ImageIcon,
   User,
+  Sparkles,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
@@ -36,6 +38,7 @@ import { motion } from "framer-motion";
 import ProgressDashboard from "../components/ProgressDashboard";
 import SkeletonCard from "../components/SkeletonCard";
 import { MOTIVATIONAL_QUOTES } from "../lib/quotes";
+import CommunityFeedSection from "../components/CommunityFeedSection";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -389,12 +392,12 @@ const HomePage = () => {
         initial="hidden"
         animate="show"
       >
-        {/* ── 1. HERO TILE (Spans 2 cols) ── */}
+        {/* ── 1. HERO TILE (Spans 3 cols) ── */}
         <motion.div 
           variants={itemVariants}
-          className="md:col-span-2 relative bg-base-100 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-base-content/10 overflow-hidden flex flex-col justify-between shadow-lg text-base-content group h-full min-h-[280px]"
+          className="md:col-span-2 lg:col-span-3 relative bg-base-100 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-base-content/10 overflow-hidden flex flex-col justify-between shadow-lg text-base-content group h-full min-h-[280px]"
         >
-          {/* Subtle Decorative Elements instead of heavy gradient */}
+          {/* Subtle Decorative Elements */}
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-primary/5 blur-[60px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full bg-secondary/5 blur-[50px] pointer-events-none" />
           
@@ -436,116 +439,13 @@ const HomePage = () => {
           </div>
         </motion.div>
 
-        {/* ── 2. PROGRESS TILE (Spans 1 col) ── */}
-        <motion.div variants={itemVariants} className="md:col-span-1 h-full min-h-[300px]">
+        {/* ── 2. PROGRESS TILE (Spans 1 col — fills right top corner) ── */}
+        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-1 h-full min-h-[300px]">
           <ProgressDashboard />
         </motion.div>
 
-        {/* ── 3. DAILY BRAIN TEASER TILE (Spans 1 col, 2 rows) ── */}
-        <motion.div 
-          variants={itemVariants}
-          className="md:col-span-1 lg:row-span-2 relative bg-base-100 rounded-[2rem] border border-base-content/10 p-6 shadow-xl flex flex-col justify-between overflow-hidden group min-h-[400px] h-full transition-all duration-300 hover:border-secondary/20"
-        >
-          {/* Decorative Glow */}
-          <div className="absolute -top-12 -right-12 size-32 bg-secondary/10 rounded-full blur-[40px] z-0 group-hover:bg-secondary/20 transition-colors duration-500 pointer-events-none" />
-
-          {/* ✅ Full-tile Celebration Overlay — shown when answer is correct */}
-          {challengeSolved && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 18 }}
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[2rem] bg-success/10 backdrop-blur-sm border border-success/30 pointer-events-none"
-            >
-              {/* Pulsing ring */}
-              <motion.div
-                animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.9, 0.5] }}
-                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute size-40 rounded-full bg-success/20 blur-[30px]"
-              />
-              {/* Trophy + confetti */}
-              <motion.div
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
-                className="relative z-10 flex flex-col items-center gap-3 text-center px-4"
-              >
-                <motion.span
-                  animate={{ rotate: [0, -10, 10, -10, 0] }}
-                  transition={{ delay: 0.3, duration: 0.6 }}
-                  className="text-5xl"
-                >
-                  🏆
-                </motion.span>
-                <div className="text-success font-black text-lg tracking-tight">
-                  Correct!
-                </div>
-                <div className="text-base-content/70 text-xs font-semibold leading-relaxed max-w-[180px]">
-                  {todayTeaser.explanation}
-                </div>
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.4, type: "spring", stiffness: 350, damping: 15 }}
-                  className="mt-1 flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-success/20 border border-success/30 text-success text-[11px] font-black uppercase tracking-widest"
-                >
-                  🎉 Challenge Complete
-                </motion.div>
-              </motion.div>
-            </motion.div>
-          )}
-
-          <div className="relative z-10 flex items-center gap-3 border-b border-base-content/10 pb-4">
-            <div className="size-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center border border-secondary/20 shrink-0 shadow-inner">
-              <Brain className="size-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-xs font-black uppercase tracking-widest text-base-content truncate">
-                Daily Brain Teaser
-              </h3>
-              <span className="text-[10px] text-base-content/50 font-bold uppercase tracking-wider block truncate">
-                {todayTeaser.topic}
-              </span>
-            </div>
-          </div>
-
-          {/* Code block */}
-          <div className="relative z-10 bg-base-200/80 p-4 rounded-2xl border border-base-content/10 mt-4 text-[11px] font-mono leading-relaxed text-base-content overflow-x-auto text-left whitespace-pre shadow-inner">
-            {todayTeaser.code}
-          </div>
-
-          {/* Multiple choices */}
-          <div className="relative z-10 space-y-2.5 mt-6 pt-2">
-            {todayTeaser.options.map((option, index) => {
-              const isSelected = selectedTeaserOption === index;
-              const isCorrectAnswer = index === todayTeaser.answerIndex;
-              let btnStyle = "bg-base-200/50 hover:bg-base-200 border-base-content/10 text-base-content/80 hover:text-base-content";
-              
-              if (challengeSolved && isCorrectAnswer) {
-                btnStyle = "bg-success/20 border-success/40 text-success font-bold shadow-sm";
-              } else if (isSelected && !isCorrectAnswer) {
-                btnStyle = "bg-error/20 border-error/40 text-error font-bold";
-              }
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => handleTeaserOptionClick(index)}
-                  disabled={challengeSolved}
-                  className={`w-full p-3.5 rounded-xl border text-xs text-left transition-all duration-300 flex items-center justify-between cursor-pointer ${btnStyle} hover:-translate-y-0.5`}
-                >
-                  <span className="truncate pr-2 font-medium">{option}</span>
-                  {challengeSolved && isCorrectAnswer && <span className="text-[10px] font-black shrink-0 text-success">✓</span>}
-                  {isSelected && !isCorrectAnswer && <span className="text-[10px] font-black shrink-0 text-error">✗</span>}
-                </button>
-              );
-            })}
-          </div>
-        </motion.div>
-
-
-        {/* ── 4. ACTIVE CONNECTIONS TILE (Spans 3 cols to perfectly fit next to teaser) ── */}
-        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-3 bg-base-100 rounded-[2rem] border border-base-content/10 overflow-hidden shadow-lg flex flex-col group hover:border-primary/20 transition-colors h-full min-h-[200px]">
+        {/* ── 4. ACTIVE CONNECTIONS TILE (Spans full width 4 cols) ── */}
+        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-4 bg-base-100 rounded-[2rem] border border-base-content/10 overflow-hidden shadow-lg flex flex-col group hover:border-primary/20 transition-colors h-full min-h-[200px]">
           <div className="p-6 border-b border-base-content/5 flex items-center justify-between bg-base-200/30">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
@@ -776,6 +676,14 @@ const HomePage = () => {
               </div>
             )}
           </div>
+        </motion.div>
+
+        {/* ── 6. COMMUNITY POSTS & FEED SECTION (Spans full width right below Discover Partners) ── */}
+        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-4 mt-4">
+          <CommunityFeedSection
+            title="Community Posts & Feed"
+            subtitle="Share notes, ask questions, and engage directly from your homepage"
+          />
         </motion.div>
       </motion.div>
     </div>

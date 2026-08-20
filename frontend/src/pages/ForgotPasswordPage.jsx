@@ -1,10 +1,11 @@
 import { useState } from "react";
-import AnvaLogo from "../components/AnvaLogo";
+import AnvaBrandLogo from "../components/AnvaBrandLogo";
 import { Link } from "react-router";
 import { useMutation } from "@tanstack/react-query";
 import { forgotPassword } from "../lib/api";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { Mail, ArrowLeft, KeyRound } from "lucide-react";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -15,8 +16,14 @@ const ForgotPasswordPage = () => {
       if (data.resetToken) {
         toast.success(
           <div className="text-center">
-            Reset link generated! <br/>
-            Since there's no email service, <a href={`/reset-password/${data.resetToken}`} className="underline font-bold text-primary">click here</a> to reset.
+            Reset link generated! <br />
+            <a
+              href={`/reset-password/${data.resetToken}`}
+              className="underline font-bold text-primary"
+            >
+              Click here
+            </a>{" "}
+            to reset your password.
           </div>,
           { duration: 8000 }
         );
@@ -27,7 +34,7 @@ const ForgotPasswordPage = () => {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Failed to send reset link.");
-    }
+    },
   });
 
   const handleSubmit = (e) => {
@@ -36,59 +43,70 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8 bg-base-200">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 md:p-8 bg-base-200/90 relative selection:bg-primary selection:text-primary-content">
+      <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[480px] h-[480px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col w-full max-w-lg mx-auto bg-base-100 rounded-[2rem] shadow-xl border border-base-content/10 overflow-hidden p-8 sm:p-12"
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="w-full max-w-md mx-auto rounded-3xl bg-base-100 border border-base-content/10 shadow-xl shadow-base-content/5 p-6 sm:p-10 relative z-10"
       >
-        <div className="mb-8 flex flex-col items-center text-center gap-3">
-          <Link to="/" className="flex items-center gap-2 group mb-2 inline-flex">
-            <AnvaLogo className="h-10 w-10 object-cover rounded-xl shadow-sm group-hover:scale-105 transition-transform text-primary" />
-            <span className="text-2xl font-bold tracking-tight text-base-content">Anva</span>
+        <div className="mb-6 space-y-2 text-center flex flex-col items-center">
+          <Link to="/" className="inline-flex items-center gap-2 group transition-transform active:scale-95 mb-1">
+            <AnvaBrandLogo badgeSize="size-8" textSize="text-xl" />
           </Link>
-          <h2 className="text-3xl font-bold text-base-content tracking-tight">Forgot Password</h2>
-          <p className="text-base-content/60 font-medium">
-            Enter your email address and we'll help you reset your password.
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mt-2">
+            <KeyRound className="w-6 h-6" />
+          </div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-base-content">
+            Forgot Password
+          </h2>
+          <p className="text-xs text-base-content/60 font-medium leading-relaxed max-w-xs">
+            Enter your account email and we'll help you generate a secure reset link.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1.5 flex flex-col items-start w-full">
-            <label className="text-sm font-semibold text-base-content/80 ml-1">Email</label>
-            <input
-              type="email"
-              placeholder="hello@example.com"
-              className="w-full px-5 py-3.5 bg-base-200 text-base-content border border-base-content/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-base-content/40 font-medium"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-base-content/70">
+              Email Address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40 pointer-events-none" />
+              <input
+                type="email"
+                placeholder="user@example.com"
+                className="w-full pl-10 pr-4 py-3 rounded-2xl text-xs font-semibold bg-base-200 border border-base-content/10 text-base-content focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
-          <button 
-            type="submit" 
-            className="w-full bg-primary text-primary-content font-semibold py-3.5 rounded-full shadow-md hover:opacity-90 hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-70 disabled:hover:scale-100 flex items-center justify-center gap-2 mt-2" 
+          <button
+            type="submit"
+            className="w-full font-bold py-3.5 rounded-2xl text-xs uppercase tracking-wider cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2 transition-all bg-primary text-primary-content hover:opacity-90 active:scale-[0.98] shadow-md mt-2"
             disabled={isPending}
           >
             {isPending ? (
               <>
-                <span className="w-4 h-4 border-2 border-primary-content/30 border-t-primary-content rounded-full animate-spin"></span>
-                Sending...
+                <span className="w-3.5 h-3.5 border-2 border-primary-content/30 border-t-primary-content rounded-full animate-spin" />
+                Sending Link...
               </>
             ) : (
               "Send Reset Link"
             )}
           </button>
 
-          <div className="text-center mt-8">
-            <p className="text-sm font-medium text-base-content/70">
-              Remembered your password?{" "}
-              <Link to="/login" className="text-base-content font-bold hover:underline">
-                Back to Login
-              </Link>
-            </p>
+          <div className="text-center pt-2">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-base-content/70 hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
+            </Link>
           </div>
         </form>
       </motion.div>

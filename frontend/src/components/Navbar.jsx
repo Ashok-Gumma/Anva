@@ -200,6 +200,19 @@ const Navbar = () => {
                   <span>Support</span>
                 </Link>
 
+                {/* 5. Profile Link in Header Ribbon */}
+                <Link
+                  to="/profile"
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+                    pathname === "/profile"
+                      ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
+                      : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
+                  }`}
+                >
+                  <UserIcon className="size-4 text-pink-500" />
+                  <span>Profile</span>
+                </Link>
+
                 {/* Admin Link if applicable */}
                 {isAdmin && (
                   <Link
@@ -233,7 +246,15 @@ const Navbar = () => {
                         userButtonPopoverCard: "shadow-xl border border-base-content/10 rounded-2xl",
                       },
                     }}
-                  />
+                  >
+                    <UserButton.MenuItems>
+                      <UserButton.Link
+                        label="View Profile & Settings"
+                        labelIcon={<UserIcon className="w-4 h-4 text-pink-500" />}
+                        href="/profile"
+                      />
+                    </UserButton.MenuItems>
+                  </UserButton>
                 </div>
               ) : isAuthenticated ? (
                 <div className="dropdown dropdown-end ml-1">
@@ -352,10 +373,7 @@ const Navbar = () => {
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between px-5 py-4 bg-base-200/80 border-b border-base-content/10 shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                      <AnvaLogo className="h-6 w-6 text-primary" />
-                    </div>
-                    <span className="font-black text-lg text-base-content tracking-tight">Anva <span className="font-curly italic text-primary font-bold text-sm">Hub</span></span>
+                    <span className="font-extrabold text-xl text-base-content tracking-tight">An<span className="font-curly font-bold ml-0.5">va</span> <span className="font-curly text-primary font-bold text-sm">Hub</span></span>
                     {isAdmin && <span className="badge badge-primary text-[9px] font-extrabold uppercase">Admin</span>}
                   </div>
                   <button
@@ -440,19 +458,38 @@ const Navbar = () => {
                     })}
                   </div>
 
-                  {/* 4. Support */}
-                  <div className="pt-3 border-t border-base-content/10">
+                                {/* 4. Account & Profile Section */}
+                  <div className="pt-3 border-t border-base-content/10 space-y-1.5">
+                    <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
+                      Account &amp; Settings
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleMobileNav("/profile")}
+                      className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                        pathname === "/profile"
+                          ? "bg-pink-500/15 text-pink-600 border border-pink-500/30 shadow-xs"
+                          : "text-base-content/85 hover:bg-base-200"
+                      }`}
+                    >
+                      <div className={`size-7 rounded-lg flex items-center justify-center ${pathname === "/profile" ? "bg-pink-500 text-white" : "bg-pink-500/10 text-pink-500"}`}>
+                        <UserIcon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="flex-1">Profile &amp; Settings</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleMobileNav("/support")}
-                      className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
+                      className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-xs font-bold text-left ${
                         pathname === "/support"
                           ? "bg-cyan-500/15 text-cyan-600 border border-cyan-500/30"
                           : "text-base-content/85 hover:bg-base-200"
                       }`}
                     >
-                      <div className="size-7 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
-                        <LifeBuoy className="w-4 h-4" />
+                      <div className={`size-7 rounded-lg flex items-center justify-center ${pathname === "/support" ? "bg-cyan-500 text-white" : "bg-cyan-500/10 text-cyan-600"}`}>
+                        <LifeBuoy className="w-3.5 h-3.5" />
                       </div>
                       <span className="flex-1">Help &amp; Support</span>
                     </button>

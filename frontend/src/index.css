@@ -2,19 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, input, textarea, select, button {
-  font-family: "Plus Jakarta Sans", "Quicksand", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  @apply antialiased selection:bg-primary selection:text-primary-content;
+/* ── Typography Design System ── */
+:root,
+[data-theme] {
+  --font-sans: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: "Young Serif", "Lora", Georgia, serif;
+}
+
+@layer base {
+  *, *::before, *::after {
+    font-family: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+  code, pre, .font-mono, kbd, samp {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  }
+}
+
+html, body, button, input, select, textarea {
+  font-family: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif;
+  @apply antialiased;
   scroll-behavior: smooth;
 }
 
-/* Custom Typography */
-.font-apple, .font-minimal {
-  font-family: "Inter", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+html {
+  @apply selection:bg-primary selection:text-primary-content;
 }
 
-.font-curly {
-  font-family: "Dancing Script", "Caveat", "Playfair Display", Georgia, cursive, serif !important;
+/* Quincy-style warm serif for headlines, brand text & curly accents */
+.font-curly,
+.font-serif,
+.font-quincy {
+  font-family: "Young Serif", "Lora", Georgia, serif !important;
+}
+
+.font-apple,
+.font-minimal,
+.font-sans {
+  font-family: "Nunito", "Plus Jakarta Sans", system-ui, sans-serif !important;
 }
 
 /* Monospace fonts for editor and snippets */
@@ -113,6 +137,13 @@ code, pre, .font-mono, .monaco-editor {
 }
 .animate-fade-in {
   animation: fadeIn 0.3s ease both;
+}
+
+/* Hide background chat doodle image on Landing Page */
+.landing-page-container ~ .anva-whatsapp-bg,
+.landing-page-container .anva-whatsapp-bg,
+body:has(.landing-page-container) .anva-whatsapp-bg {
+  display: none !important;
 }
 
 /* ─── WhatsApp Minimal Doodle Background Pattern ────────────── */
@@ -516,3 +547,172 @@ body {
   letter-spacing: -0.01em !important;
   line-height: 1.4 !important;
 }
+
+/* ─── Clerk Auth — Black & White palette ────────────────────────
+   Hardcoded monochrome values. No blue, no indigo, no color.
+   These are safety-net overrides; the main config is in
+   buildClerkAppearance() inside AuthCardWrapper.jsx.
+──────────────────────────────────────────────────────────────── */
+
+/* Card reset — both cl-card AND cl-cardBox (Clerk's outer wrapper) */
+.cl-rootBox { width: 100% !important; min-width: 0 !important; }
+.cl-card,
+.cl-cardBox {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}
+.cl-main { width: 100% !important; min-width: 0 !important; }
+
+/* Hide Clerk's header & "Secured by Clerk" bar */
+.cl-header,
+.cl-headerTitle,
+.cl-headerSubtitle,
+.cl-footer,
+.cl-footerPages,
+.cl-footer__pages,
+[class*="cl-powerButton"],
+[class*="cl-secured"],
+[data-localization-key*="branded"] { display: none !important; }
+
+/* Footer action — "Don't have an account? Sign up" */
+.cl-footerAction {
+  background: transparent !important;
+  border: none !important;
+  padding: 0.75rem 0 0 !important;
+}
+.cl-footerActionText {
+  color: #6b6b6b !important;
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+}
+.cl-footerActionLink {
+  color: #000000 !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+}
+.cl-footerActionLink:hover { text-decoration: underline !important; }
+
+/* Social buttons */
+.cl-socialButtonsBlockButton {
+  background-color: #ffffff !important;
+  border: 1.5px solid #e0e0e0 !important;
+  color: #111111 !important;
+  border-radius: 0.75rem !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  padding: 0.7rem 1rem !important;
+  transition: background 0.12s, border-color 0.12s !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+.cl-socialButtonsBlockButton:hover {
+  background-color: #f5f5f5 !important;
+  border-color: #c0c0c0 !important;
+}
+
+/* Divider */
+.cl-dividerLine { background-color: #e0e0e0 !important; }
+.cl-dividerText {
+  color: #aaaaaa !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+
+/* Field labels */
+.cl-formFieldLabel {
+  color: #666666 !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+/* Inputs */
+.cl-formFieldInput {
+  background-color: #f7f7f7 !important;
+  border: 1.5px solid #e0e0e0 !important;
+  color: #111111 !important;
+  border-radius: 0.75rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  padding: 0.7rem 1rem !important;
+  transition: border-color 0.12s, box-shadow 0.12s !important;
+  box-shadow: none !important;
+}
+.cl-formFieldInput:focus {
+  border-color: #000000 !important;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08) !important;
+  outline: none !important;
+  background-color: #ffffff !important;
+}
+.cl-formFieldInput::placeholder { color: #aaaaaa !important; }
+
+/* Primary CTA button */
+.cl-formButtonPrimary {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 0.75rem !important;
+  font-weight: 700 !important;
+  font-size: 0.8125rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: 0.8rem 1rem !important;
+  box-shadow: none !important;
+  transition: background 0.12s, transform 0.1s !important;
+  cursor: pointer !important;
+}
+.cl-formButtonPrimary:hover { background: #222222 !important; }
+.cl-formButtonPrimary:active { transform: scale(0.98) !important; }
+
+/* Error / success text */
+.cl-formFieldErrorText {
+  color: #cc0000 !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+}
+
+/* Identity preview (step 2) */
+.cl-identityPreview {
+  background: #f7f7f7 !important;
+  border: 1.5px solid #e0e0e0 !important;
+  border-radius: 0.75rem !important;
+}
+.cl-identityPreviewText { color: #111111 !important; font-weight: 600 !important; }
+.cl-identityPreviewEditButton { color: #000000 !important; font-weight: 700 !important; }
+
+/* OTP inputs */
+.cl-otpCodeFieldInput {
+  background: #f7f7f7 !important;
+  border: 1.5px solid #e0e0e0 !important;
+  border-radius: 0.75rem !important;
+  color: #111111 !important;
+  font-weight: 700 !important;
+}
+.cl-otpCodeFieldInput:focus {
+  border-color: #000000 !important;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08) !important;
+}
+
+/* Alternative method buttons */
+.cl-alternativeMethodsBlockButton {
+  background: #f7f7f7 !important;
+  border: 1.5px solid #e0e0e0 !important;
+  border-radius: 0.75rem !important;
+  color: #333333 !important;
+  font-weight: 600 !important;
+}
+.cl-alternativeMethodsBlockButton:hover { background: #eeeeee !important; }
+
+/* Alert box */
+.cl-alert     { border-radius: 0.75rem !important; }
+.cl-alertText { font-size: 0.8125rem !important; font-weight: 600 !important; }

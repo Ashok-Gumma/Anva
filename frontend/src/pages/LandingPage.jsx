@@ -115,14 +115,15 @@ const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-  <div className="min-h-screen bg-[#fafaf9] text-slate-900 overflow-x-hidden font-sans selection:bg-blue-100 selection:text-blue-900" data-theme="light">
+  <div className="landing-page-container min-h-screen bg-[#fafaf9] text-slate-900 overflow-x-hidden font-sans selection:bg-blue-100 selection:text-blue-900 relative z-10">
     <ParticleBackground />
 
     {/* ── Navbar Header ── */}
     <nav className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-12 py-3.5 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-2xs transition-all duration-300">
-      <Link to="/" className="flex items-center gap-3 group shrink-0">
-        <AnvaLogo className="h-9 w-9 group-hover:scale-105 transition-transform" />
-        <span className="font-extrabold text-2xl tracking-tight text-slate-900">Anva</span>
+      <Link to="/" className="flex items-center shrink-0">
+        <span className="font-extrabold text-2xl sm:text-3xl tracking-tight text-slate-900">
+          An<span className="font-curly font-bold ml-0.5">va</span>
+        </span>
       </Link>
 
       {/* Desktop nav links */}
@@ -178,9 +179,10 @@ const LandingPage = () => {
             className="fixed top-0 right-0 bottom-0 z-[100] w-72 bg-white border-l border-slate-200 shadow-2xl flex flex-col sm:hidden"
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
-              <div className="flex items-center gap-2">
-                <AnvaLogo className="h-7 w-7" />
-                <span className="font-bold text-lg text-slate-900">Anva</span>
+              <div className="flex items-center">
+                <span className="font-bold text-xl text-slate-900">
+                  An<span className="font-curly font-bold ml-0.5">va</span>
+                </span>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
@@ -393,9 +395,10 @@ const LandingPage = () => {
 
     {/* ── Footer ── */}
     <footer className="relative z-10 bg-slate-950 py-16 px-4 text-center border-t border-slate-900">
-      <div className="flex items-center justify-center gap-3 mb-6">
-        <AnvaLogo className="h-8 w-8" />
-        <span className="text-white font-extrabold text-xl tracking-tight">Anva</span>
+      <div className="flex items-center justify-center mb-6">
+        <span className="text-white font-extrabold text-2xl tracking-tight">
+          An<span className="font-curly font-bold ml-0.5">va</span>
+        </span>
       </div>
       <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 mb-8 text-slate-400 font-medium text-xs">
         <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>

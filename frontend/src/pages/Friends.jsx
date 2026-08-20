@@ -19,10 +19,13 @@ import {
   Compass,
   X,
   User,
+  SlidersHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
+import { LANGUAGES, LANGUAGE_TO_FLAG, LANGUAGE_TO_ICON } from "../constants";
 import { Link, useSearchParams } from "react-router";
 
 const containerVariants = {
@@ -72,6 +75,11 @@ const Friends = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [loadingIds, setLoadingIds] = useState(new Set());
+
+  // Language multi-select filters (explore tab only)
+  const [filterLearning, setFilterLearning] = useState([]);  // learning language filter
+  const [filterNative, setFilterNative] = useState([]);      // native/known language filter
+  const [filterOpen, setFilterOpen] = useState(false);       // filter panel open/close
 
   /* ── 1. Fetch Friends ── */
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
@@ -219,9 +227,19 @@ const Friends = () => {
         user.lastActive && new Date() - new Date(user.lastActive) <= 5 * 60 * 1000;
       const matchesOnline = !onlineOnly || isOnline;
 
-      return matchesSearch && matchesOnline;
+      // Multi-select language filters
+      const userLearning = (user.learningLanguage || "").toLowerCase();
+      const userNative = (user.nativeLanguage || "").toLowerCase();
+      const matchesLearning =
+        filterLearning.length === 0 ||
+        filterLearning.some((l) => l.toLowerCase() === userLearning);
+      const matchesNative =
+        filterNative.length === 0 ||
+        filterNative.some((l) => l.toLowerCase() === userNative);
+
+      return matchesSearch && matchesOnline && matchesLearning && matchesNative;
     });
-  }, [recommendedUsers, searchQuery, onlineOnly]);
+  }, [recommendedUsers, searchQuery, onlineOnly, filterLearning, filterNative]);
 
   const filteredSentUsers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -411,6 +429,32 @@ const Friends = () => {
               <span>Online Only</span>
             </button>
 
+            {/* Language Filter Toggle — only on explore tab */}
+            {activeTab === "explore" && (
+              <button
+                type="button"
+                onClick={() => setFilterOpen((p) => !p)}
+                className={`h-10 px-4 rounded-xl border transition-all flex items-center gap-2 text-xs font-bold tracking-wide cursor-pointer select-none shrink-0 ${
+                  filterOpen || filterLearning.length > 0 || filterNative.length > 0
+                    ? "bg-primary/10 text-primary border-primary/30 shadow-2xs"
+                    : "bg-base-200/60 hover:bg-base-200 border-base-content/10 text-base-content/70"
+                }`}
+              >
+                <SlidersHorizontal className="size-3.5" />
+                <span>Filters</span>
+                {(filterLearning.length + filterNative.length) > 0 && (
+                  <span className="flex items-center justify-center size-4 rounded-full bg-primary text-primary-content text-[9px] font-black">
+                    {filterLearning.length + filterNative.length}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`size-3 transition-transform duration-200 ${
+                    filterOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            )}
+
             {/* Search Input Box */}
             <div className="relative w-full md:w-64 h-10">
               <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-base-content/40" />
@@ -438,6 +482,161 @@ const Friends = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* ── LANGUAGE FILTER PANEL (explore tab only) ── */}
+        <AnimatePresence>
+          {activeTab === "explore" && filterOpen && (
+            <motion.div
+              key="filter-panel"
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="bg-base-100/90 backdrop-blur-xl p-5 rounded-[2rem] border border-base-content/10 shadow-sm space-y-4 relative z-10">
+                {/* Header row */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="size-4 text-primary" />
+                    <span className="text-xs font-black uppercase tracking-widest text-base-content/70">Language Filters</span>
+                  </div>
+                  {(filterLearning.length > 0 || filterNative.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={() => { setFilterLearning([]); setFilterNative([]); }}
+                      className="text-[10px] font-bold text-error/70 hover:text-error flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="size-3" /> Clear all
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Learning Language multi-select */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-accent">
+                      🎯 Learning Language
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+                      {LANGUAGES.map((lang) => {
+                        const selected = filterLearning.includes(lang);
+                        const key = lang.toLowerCase();
+                        const flag = LANGUAGE_TO_FLAG[key];
+                        const icon = LANGUAGE_TO_ICON[key];
+                        return (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() =>
+                              setFilterLearning((prev) =>
+                                selected
+                                  ? prev.filter((l) => l !== lang)
+                                  : [...prev, lang]
+                              )
+                            }
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                              selected
+                                ? "bg-accent text-accent-content border-accent shadow-sm"
+                                : "bg-base-200/70 text-base-content/70 border-base-content/10 hover:border-accent/40 hover:text-accent"
+                            }`}
+                          >
+                            {flag ? (
+                              <img
+                                src={`https://flagcdn.com/16x12/${flag}.png`}
+                                alt={lang}
+                                className="rounded-[2px] shrink-0"
+                                width={14}
+                                height={10}
+                              />
+                            ) : icon ? (
+                              <img src={icon} alt={lang} className="size-3 shrink-0" />
+                            ) : null}
+                            {lang}
+                            {selected && <X className="size-2.5 ml-0.5 opacity-70" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Native/Known Language multi-select */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-secondary">
+                      💬 Known Language
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+                      {LANGUAGES.map((lang) => {
+                        const selected = filterNative.includes(lang);
+                        const key = lang.toLowerCase();
+                        const flag = LANGUAGE_TO_FLAG[key];
+                        const icon = LANGUAGE_TO_ICON[key];
+                        return (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() =>
+                              setFilterNative((prev) =>
+                                selected
+                                  ? prev.filter((l) => l !== lang)
+                                  : [...prev, lang]
+                              )
+                            }
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
+                              selected
+                                ? "bg-secondary text-secondary-content border-secondary shadow-sm"
+                                : "bg-base-200/70 text-base-content/70 border-base-content/10 hover:border-secondary/40 hover:text-secondary"
+                            }`}
+                          >
+                            {flag ? (
+                              <img
+                                src={`https://flagcdn.com/16x12/${flag}.png`}
+                                alt={lang}
+                                className="rounded-[2px] shrink-0"
+                                width={14}
+                                height={10}
+                              />
+                            ) : icon ? (
+                              <img src={icon} alt={lang} className="size-3 shrink-0" />
+                            ) : null}
+                            {lang}
+                            {selected && <X className="size-2.5 ml-0.5 opacity-70" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active filter summary chips */}
+                {(filterLearning.length > 0 || filterNative.length > 0) && (
+                  <div className="pt-3 border-t border-base-content/10 flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-base-content/50 mr-1">Active:</span>
+                    {filterLearning.map((l) => (
+                      <span key={`l-${l}`} className="flex items-center gap-1 px-2.5 py-1 bg-accent/15 text-accent border border-accent/25 rounded-xl text-[10px] font-bold">
+                        🎯 {l}
+                        <button onClick={() => setFilterLearning((p) => p.filter((x) => x !== l))} className="cursor-pointer opacity-60 hover:opacity-100">
+                          <X className="size-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                    {filterNative.map((l) => (
+                      <span key={`n-${l}`} className="flex items-center gap-1 px-2.5 py-1 bg-secondary/15 text-secondary border border-secondary/25 rounded-xl text-[10px] font-bold">
+                        💬 {l}
+                        <button onClick={() => setFilterNative((p) => p.filter((x) => x !== l))} className="cursor-pointer opacity-60 hover:opacity-100">
+                          <X className="size-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                    <span className="text-[10px] text-base-content/50 ml-auto font-semibold">
+                      {filteredExploreUsers.length} result{filteredExploreUsers.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── 3. PERFECTLY ALIGNED MONOCHROME GRID ── */}
         <AnimatePresence mode="wait">
