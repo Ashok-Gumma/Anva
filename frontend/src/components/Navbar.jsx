@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Sparkles,
   MessageSquare,
+  Target,
 } from "lucide-react";
 
 
@@ -191,7 +192,20 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                {/* 4. Support Link */}
+                {/* 4. Placement Hub Direct Link (After Learning Tools) */}
+                <Link
+                  to="/placement"
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+                    pathname.startsWith("/placement")
+                      ? "bg-primary text-primary-content border-primary shadow-xs font-black"
+                      : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
+                  }`}
+                >
+                  <Target className="size-4" />
+                  <span>Placement Hub</span>
+                </Link>
+
+                {/* 5. Support Link */}
                 <Link
                   to="/support"
                   className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
@@ -461,6 +475,22 @@ const Navbar = () => {
                       );
                     })}
                   </div>
+
+                  {/* 4. Placement Hub (After Learning Tools) */}
+                  <button
+                    type="button"
+                    onClick={() => handleMobileNav("/placement")}
+                    className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl transition-all cursor-pointer text-left ${
+                      pathname.startsWith("/placement")
+                        ? "bg-primary text-primary-content font-black shadow-md"
+                        : "text-base-content/90 hover:bg-base-200/90 hover:text-base-content font-bold"
+                    }`}
+                  >
+                    <div className={`size-8 rounded-xl flex items-center justify-center ${pathname.startsWith("/placement") ? "bg-primary-content/20 text-primary-content" : "bg-primary/10 text-primary"}`}>
+                      <Target className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm flex-1">Placement Hub</span>
+                  </button>
 
                                 {/* 4. Account & Profile Section */}
                   <div className="pt-3 border-t border-base-content/10 space-y-1.5">

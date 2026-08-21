@@ -16,9 +16,11 @@ import supportRoutes from "./routes/support.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import notificationRoutes from "./routes/notification.route.js";
 import postRoutes from "./routes/post.route.js";
+import placementRoutes from "./routes/placement.route.js";
 
 import { connectDB } from "./lib/db.js";
 import { ensureDefaultAdmin } from "./lib/seedAdmin.js";
+import { seedPlacementData } from "./lib/seedPlacementData.js";
 
 import { globalLimiter, authLimiter } from "./middleware/rateLimiter.js";
 
@@ -96,6 +98,7 @@ app.use("/api/support", supportRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/placement", placementRoutes);
 
 // ✅ Serve frontend static assets (Images, Favicons, PDFs)
 const distPath = path.join(__dirname, "../dist");
@@ -125,4 +128,5 @@ app.listen(PORT, async () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   await connectDB();
   await ensureDefaultAdmin();
+  await seedPlacementData();
 }); 

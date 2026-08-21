@@ -38,6 +38,15 @@ import TermsPage from "./pages/TermsPage.jsx";
 import EduFeedPage from "./pages/EduFeedPage.jsx";
 import SavedPostsPage from "./pages/SavedPostsPage.jsx";
 import FeaturesPage from "./pages/FeaturesPage.jsx";
+import PlacementLandingPage from "./pages/placement/PlacementLandingPage.jsx";
+import CompanyDashboardPage from "./pages/placement/CompanyDashboardPage.jsx";
+import AptitudePracticePage from "./pages/placement/AptitudePracticePage.jsx";
+import EnglishPracticePage from "./pages/placement/EnglishPracticePage.jsx";
+import TechnicalPracticePage from "./pages/placement/TechnicalPracticePage.jsx";
+import CodingListPage from "./pages/placement/CodingListPage.jsx";
+import CodingProblemPage from "./pages/placement/CodingProblemPage.jsx";
+import InterviewPrepPage from "./pages/placement/InterviewPrepPage.jsx";
+import MockTestPage from "./pages/placement/MockTestPage.jsx";
 import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
 import { useThemeStore } from "./store/useThemeStore.js";
@@ -245,6 +254,17 @@ const App = () => {
             <Route path="/compiler"      element={<ProtectedRoute element={<Layout showSidebar><CompilerPage /></Layout>} />} />
             <Route path="/chat"          element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
             <Route path="/chat/:id"      element={<ProtectedRoute element={<Layout showSidebar={false}><ChatPage /></Layout>} />} />
+
+            {/* ── Placement Hub Routes ── */}
+            <Route path="/placement"                               element={<ProtectedRoute element={<Layout showSidebar><PlacementLandingPage /></Layout>} />} />
+            <Route path="/placement/:companyId"                    element={<ProtectedRoute element={<Layout showSidebar><CompanyDashboardPage /></Layout>} />} />
+            <Route path="/placement/:companyId/aptitude"           element={<ProtectedRoute element={<Layout showSidebar><AptitudePracticePage /></Layout>} />} />
+            <Route path="/placement/:companyId/english"            element={<ProtectedRoute element={<Layout showSidebar><EnglishPracticePage /></Layout>} />} />
+            <Route path="/placement/:companyId/technical"          element={<ProtectedRoute element={<Layout showSidebar><TechnicalPracticePage /></Layout>} />} />
+            <Route path="/placement/:companyId/coding"             element={<ProtectedRoute element={<Layout showSidebar><CodingListPage /></Layout>} />} />
+            <Route path="/placement/:companyId/coding/:problemId"  element={<ProtectedRoute element={<Layout showSidebar={false}><CodingProblemPage /></Layout>} />} />
+            <Route path="/placement/:companyId/interview"          element={<ProtectedRoute element={<Layout showSidebar><InterviewPrepPage /></Layout>} />} />
+            <Route path="/placement/:companyId/mock-test"          element={<ProtectedRoute element={<Layout showSidebar={false}><MockTestPage /></Layout>} />} />
 
             <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
             
