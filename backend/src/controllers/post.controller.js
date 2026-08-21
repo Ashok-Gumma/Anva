@@ -105,34 +105,37 @@ export async function createPost(req, res) {
   }
 }
 
-// Toggle like on a post
+// Toggle like on a post (Atomic toggle to prevent race conditions during rapid clicks)
 export async function toggleLikePost(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user._id;
 
-    const post = await Post.findById(id);
-    if (!post) {
+    const existingPost = await Post.findById(id);
+    if (!existingPost) {
       return res.status(404).json({ message: "Post not found." });
     }
 
     const userIdStr = userId.toString();
-    const isLiked = post.likes.some((likedUserId) => likedUserId.toString() === userIdStr);
+    const isLiked = existingPost.likes?.some(
+      (likedUserId) => (likedUserId?._id || likedUserId)?.toString() === userIdStr
+    );
 
-    if (isLiked) {
-      post.likes = post.likes.filter((likedUserId) => likedUserId.toString() !== userIdStr);
-    } else {
-      post.likes.push(userId);
-    }
+    const updateQuery = isLiked
+      ? { $pull: { likes: userId } }
+      : { $addToSet: { likes: userId } };
 
-    await post.save();
-    await post.populate("user", "fullName email profilePic role");
-    await post.populate("comments.user", "fullName email profilePic");
+    const updatedPost = await Post.findByIdAndUpdate(id, updateQuery, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("user", "fullName email profilePic role")
+      .populate("comments.user", "fullName email profilePic");
 
     res.status(200).json({
       success: true,
       message: isLiked ? "Post unliked." : "Post liked!",
-      post,
+      post: updatedPost,
     });
   } catch (error) {
     console.error("Error toggling like:", error);

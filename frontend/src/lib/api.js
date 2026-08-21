@@ -278,7 +278,16 @@ export async function toggleLikePost(id) {
   return response.data;
 }
 
-export async function addCommentPost({ id, text }) {
+export async function addCommentPost(arg1, arg2) {
+  let id;
+  let text;
+  if (typeof arg1 === "object" && arg1 !== null) {
+    id = arg1.id || arg1.postId;
+    text = arg1.text;
+  } else {
+    id = arg1;
+    text = arg2;
+  }
   const response = await axiosInstance.post(`/posts/${id}/comment`, { text });
   return response.data;
 }
@@ -288,12 +297,33 @@ export async function deletePost(id) {
   return response.data;
 }
 
-export async function deleteCommentPost({ postId, commentId }) {
+export async function deleteCommentPost(arg1, arg2) {
+  let postId;
+  let commentId;
+  if (typeof arg1 === "object" && arg1 !== null) {
+    postId = arg1.postId || arg1.id;
+    commentId = arg1.commentId;
+  } else {
+    postId = arg1;
+    commentId = arg2;
+  }
   const response = await axiosInstance.delete(`/posts/${postId}/comment/${commentId}`);
   return response.data;
 }
 
-export async function updateCommentPost({ postId, commentId, text }) {
+export async function updateCommentPost(arg1, arg2, arg3) {
+  let postId;
+  let commentId;
+  let text;
+  if (typeof arg1 === "object" && arg1 !== null) {
+    postId = arg1.postId || arg1.id;
+    commentId = arg1.commentId;
+    text = arg1.text;
+  } else {
+    postId = arg1;
+    commentId = arg2;
+    text = arg3;
+  }
   const response = await axiosInstance.put(`/posts/${postId}/comment/${commentId}`, { text });
   return response.data;
 }

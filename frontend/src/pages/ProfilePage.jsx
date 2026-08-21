@@ -214,9 +214,14 @@ const ProfilePage = () => {
     mutationFn: toggleLikePost,
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
-      const updatePostLikes = (oldPosts) => {
-        if (!Array.isArray(oldPosts)) return oldPosts;
-        return oldPosts.map((post) => {
+      await queryClient.cancelQueries({ queryKey: ["myPosts"] });
+      await queryClient.cancelQueries({ queryKey: ["savedPosts"] });
+
+      const updatePostLikes = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
           if (post._id === postId) {
             const userIdStr = authUser?._id?.toString();
             const currentLikes = post.likes || [];
@@ -230,6 +235,8 @@ const ProfilePage = () => {
           }
           return post;
         });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
       };
       queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostLikes);
       queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostLikes);
@@ -245,9 +252,14 @@ const ProfilePage = () => {
   // Add comment mutation with instant optimistic update
   const commentMutation = useMutation({
     mutationFn: addCommentPost,
-    onMutate: async ({ postId, text }) => {
+    onMutate: async (variables) => {
+      const postId = variables?.postId || variables?.id || (typeof variables === "string" ? variables : null);
+      const text = variables?.text;
       setCommentText("");
       await queryClient.cancelQueries({ queryKey: ["posts"] });
+      await queryClient.cancelQueries({ queryKey: ["myPosts"] });
+      await queryClient.cancelQueries({ queryKey: ["savedPosts"] });
+
       const tempComment = {
         _id: `temp-${Date.now()}`,
         user: {
@@ -258,14 +270,18 @@ const ProfilePage = () => {
         text,
         createdAt: new Date().toISOString(),
       };
-      const updatePostComments = (oldPosts) => {
-        if (!Array.isArray(oldPosts)) return oldPosts;
-        return oldPosts.map((post) => {
+      const updatePostComments = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
           if (post._id === postId) {
             return { ...post, comments: [...(post.comments || []), tempComment] };
           }
           return post;
         });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
       };
       queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostComments);
       queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostComments);

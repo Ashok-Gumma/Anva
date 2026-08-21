@@ -128,7 +128,49 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
 
   const likeMutation = useMutation({
     mutationFn: toggleLikePost,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["posts"] });
+      const previousPosts = queryClient.getQueryData(["posts"]);
+
+      const updatePostLikes = (oldData) => {
+        const postList = Array.isArray(oldData) ? oldData : oldData?.posts;
+        if (!Array.isArray(postList)) return oldData;
+
+        const updated = postList.map((post) => {
+          if (post._id === postId) {
+            const userIdStr = authUser?._id?.toString();
+            const currentLikes = post.likes || [];
+            const isLiked = currentLikes.some(
+              (id) => (id?._id || id)?.toString() === userIdStr
+            );
+            const updatedLikes = isLiked
+              ? currentLikes.filter((id) => (id?._id || id)?.toString() !== userIdStr)
+              : [...currentLikes, authUser._id];
+            return { ...post, likes: updatedLikes };
+          }
+          return post;
+        });
+
+        return Array.isArray(oldData) ? updated : { ...oldData, posts: updated };
+      };
+
+      queryClient.setQueriesData({ queryKey: ["posts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["myPosts"] }, updatePostLikes);
+      queryClient.setQueriesData({ queryKey: ["savedPosts"] }, updatePostLikes);
+
+      return { previousPosts };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts"], context.previousPosts);
+      }
+      toast.error("Failed to update like.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+    },
   });
 
   const saveMutation = useMutation({
@@ -140,7 +182,7 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
   });
 
   const commentMutation = useMutation({
-    mutationFn: ({ postId, text }) => addCommentPost(postId, text),
+    mutationFn: addCommentPost,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       setCommentText("");
@@ -149,7 +191,7 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
   });
 
   const deleteCommentMutation = useMutation({
-    mutationFn: ({ postId, commentId }) => deleteCommentPost(postId, commentId),
+    mutationFn: deleteCommentPost,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
   });
 
