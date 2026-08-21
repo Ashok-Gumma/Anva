@@ -47,6 +47,8 @@ import {
   PhoneOff,
   Laptop,
   ChevronsLeftRight,
+  Radio,
+  Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -396,6 +398,8 @@ const CustomCallControls = () => {
 };
 
 const CallContent = ({ callId }) => {
+  const call = useCall();
+  const { authUser } = useAuthUser();
   const { useCallCallingState } = useCallStateHooks();
   const callingState = useCallCallingState();
   const navigate = useNavigate();
@@ -417,6 +421,260 @@ const CallContent = ({ callId }) => {
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [notes, setNotes] = useState("");
+
+  // Collaboration tracking states
+  const [lastPeerActivity, setLastPeerActivity] = useState(null); // { name: string, action: string, time: number }
+  const isRemoteUpdateRef = useRef(false);
+  const codeDebounceTimerRef = useRef(null);
+  const notesDebounceTimerRef = useRef(null);
+  const stdinDebounceTimerRef = useRef(null);
+  const latestStateRef = useRef({
+    codeContent: CODE_LANGUAGES.javascript.defaultCode,
+    selectedLang: "javascript",
+    stdin: "",
+    output: "",
+    isRunning: false,
+    notes: "",
+  });
+
+  // Keep latestStateRef in sync with current state for state requests from peers
+  useEffect(() => {
+    latestStateRef.current = {
+      codeContent,
+      selectedLang,
+      stdin,
+      output,
+      isRunning,
+      notes,
+    };
+  }, [codeContent, selectedLang, stdin, output, isRunning, notes]);
+
+  // Broadcast helper function
+  const broadcastCustomEvent = async (actionType, payload = {}) => {
+    if (!call) return;
+    try {
+      await call.sendCustomEvent({
+        actionType,
+        senderId: authUser?._id,
+        senderName: authUser?.fullName || "Peer",
+        timestamp: Date.now(),
+        ...payload,
+      });
+    } catch (err) {
+      console.error("Error sending custom event:", err);
+    }
+  };
+
+  // Real-time synchronization event listener
+  useEffect(() => {
+    if (!call) return;
+
+    const unsubscribe = call.on("custom", (event) => {
+      const data = event.custom;
+      if (!data || !data.actionType) return;
+
+      // Ignore events sent by self
+      if (data.senderId && data.senderId === authUser?._id) return;
+
+      const senderName = data.senderName || "Peer";
+
+      switch (data.actionType) {
+        case "WORKSPACE_STATE_REQUEST": {
+          // Send our latest state back to the newly joined peer
+          const currentState = latestStateRef.current;
+          call.sendCustomEvent({
+            actionType: "WORKSPACE_STATE_SYNC",
+            senderId: authUser?._id,
+            senderName: authUser?.fullName || "Peer",
+            timestamp: Date.now(),
+            state: currentState,
+          }).catch(console.error);
+          break;
+        }
+
+        case "WORKSPACE_STATE_SYNC": {
+          if (data.state) {
+            isRemoteUpdateRef.current = true;
+            if (data.state.selectedLang) setSelectedLang(data.state.selectedLang);
+            if (data.state.codeContent !== undefined) setCodeContent(data.state.codeContent);
+            if (data.state.stdin !== undefined) setStdin(data.state.stdin);
+            if (data.state.output !== undefined) setOutput(data.state.output);
+            if (data.state.isRunning !== undefined) setIsRunning(data.state.isRunning);
+            if (data.state.notes !== undefined) setNotes(data.state.notes);
+
+            setLastPeerActivity({
+              name: senderName,
+              action: "Synced workspace",
+              time: Date.now(),
+            });
+            toast.success(`Connected to ${senderName}'s live workspace!`, { id: "workspace-sync" });
+          }
+          break;
+        }
+
+        case "CODE_CHANGE": {
+          if (data.code !== undefined) {
+            isRemoteUpdateRef.current = true;
+            setCodeContent(data.code);
+            setLastPeerActivity({
+              name: senderName,
+              action: "Editing code",
+              time: Date.now(),
+            });
+          }
+          break;
+        }
+
+        case "LANG_CHANGE": {
+          if (data.lang) {
+            isRemoteUpdateRef.current = true;
+            setSelectedLang(data.lang);
+            if (data.code !== undefined) setCodeContent(data.code);
+            setLastPeerActivity({
+              name: senderName,
+              action: `Switched to ${CODE_LANGUAGES[data.lang]?.label || data.lang}`,
+              time: Date.now(),
+            });
+            toast(`${senderName} switched language to ${CODE_LANGUAGES[data.lang]?.label || data.lang}`, {
+              icon: "🔀",
+            });
+          }
+          break;
+        }
+
+        case "RESET_CODE": {
+          if (data.code !== undefined) {
+            isRemoteUpdateRef.current = true;
+            setCodeContent(data.code);
+            setOutput("");
+            setLastPeerActivity({
+              name: senderName,
+              action: "Reset code",
+              time: Date.now(),
+            });
+            toast(`${senderName} reset code to template`, { icon: "🔄" });
+          }
+          break;
+        }
+
+        case "STDIN_CHANGE": {
+          if (data.stdin !== undefined) {
+            setStdin(data.stdin);
+            setLastPeerActivity({
+              name: senderName,
+              action: "Updated input",
+              time: Date.now(),
+            });
+          }
+          break;
+        }
+
+        case "RUN_START": {
+          setBottomCodeTab("terminal");
+          setIsRunning(true);
+          setOutput(`⏳ ${senderName} is executing the code...`);
+          setLastPeerActivity({
+            name: senderName,
+            action: "Running code",
+            time: Date.now(),
+          });
+          break;
+        }
+
+        case "RUN_COMPLETE": {
+          setIsRunning(false);
+          if (data.output !== undefined) {
+            setOutput(data.output);
+          }
+          setBottomCodeTab("terminal");
+          setLastPeerActivity({
+            name: senderName,
+            action: "Finished execution",
+            time: Date.now(),
+          });
+          break;
+        }
+
+        case "NOTES_CHANGE": {
+          if (data.notes !== undefined) {
+            setNotes(data.notes);
+            setLastPeerActivity({
+              name: senderName,
+              action: "Updated notes",
+              time: Date.now(),
+            });
+          }
+          break;
+        }
+
+        default:
+          break;
+      }
+    });
+
+    // Request the latest workspace state from peers when entering
+    const initialSyncTimer = setTimeout(() => {
+      broadcastCustomEvent("WORKSPACE_STATE_REQUEST");
+    }, 1000);
+
+    return () => {
+      clearTimeout(initialSyncTimer);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [call, authUser]);
+
+  // Code editor change handler
+  const handleCodeChange = (newCode) => {
+    const val = newCode || "";
+    setCodeContent(val);
+
+    // If change was triggered remotely, don't broadcast back
+    if (isRemoteUpdateRef.current) {
+      isRemoteUpdateRef.current = false;
+      return;
+    }
+
+    // Debounce code updates to avoid spamming the network on rapid keystrokes
+    if (codeDebounceTimerRef.current) clearTimeout(codeDebounceTimerRef.current);
+    codeDebounceTimerRef.current = setTimeout(() => {
+      broadcastCustomEvent("CODE_CHANGE", { code: val });
+    }, 200);
+  };
+
+  // Language change handler
+  const handleLanguageChange = (lang) => {
+    const defaultCode = CODE_LANGUAGES[lang]?.defaultCode || "";
+    setSelectedLang(lang);
+    setCodeContent(defaultCode);
+    broadcastCustomEvent("LANG_CHANGE", { lang, code: defaultCode });
+  };
+
+  // Reset code handler
+  const handleResetCode = () => {
+    const defaultCode = CODE_LANGUAGES[selectedLang]?.defaultCode || "";
+    setCodeContent(defaultCode);
+    setOutput("");
+    toast.success("Code reset to template.");
+    broadcastCustomEvent("RESET_CODE", { lang: selectedLang, code: defaultCode });
+  };
+
+  // Stdin change handler
+  const handleStdinChange = (newStdin) => {
+    setStdin(newStdin);
+    if (stdinDebounceTimerRef.current) clearTimeout(stdinDebounceTimerRef.current);
+    stdinDebounceTimerRef.current = setTimeout(() => {
+      broadcastCustomEvent("STDIN_CHANGE", { stdin: newStdin });
+    }, 200);
+  };
+
+  // Notes change handler
+  const handleNotesChange = (newNotes) => {
+    setNotes(newNotes);
+    if (notesDebounceTimerRef.current) clearTimeout(notesDebounceTimerRef.current);
+    notesDebounceTimerRef.current = setTimeout(() => {
+      broadcastCustomEvent("NOTES_CHANGE", { notes: newNotes });
+    }, 250);
+  };
 
   // Whiteboard drawing states
   const canvasRef = useRef(null);
@@ -527,7 +785,10 @@ const CallContent = ({ callId }) => {
     if (!codeContent.trim()) return;
     setBottomCodeTab("terminal");
     setIsRunning(true);
-    setOutput("⏳ Executing code on engine...");
+    const runningMsg = "⏳ Executing code on engine...";
+    setOutput(runningMsg);
+    broadcastCustomEvent("RUN_START");
+
     try {
       const data = await executeCompilerCode({
         language: selectedLang,
@@ -536,17 +797,23 @@ const CallContent = ({ callId }) => {
         stdin: stdin,
       });
 
+      let resultText = "";
       if (data?.run) {
         if (data.run.stderr) {
-          setOutput(data.run.stderr + (data.run.stdout ? "\n" + data.run.stdout : ""));
+          resultText = data.run.stderr + (data.run.stdout ? "\n" + data.run.stdout : "");
         } else {
-          setOutput(data.run.stdout || data.run.output || "Program exited with code 0 (no output).");
+          resultText = data.run.stdout || data.run.output || "Program exited with code 0 (no output).";
         }
       } else {
-        setOutput(data?.output || data?.message || "Executed successfully.");
+        resultText = data?.output || data?.message || "Executed successfully.";
       }
+
+      setOutput(resultText);
+      broadcastCustomEvent("RUN_COMPLETE", { output: resultText });
     } catch (err) {
-      setOutput(`❌ Execution error: ${err.response?.data?.message || err.message}`);
+      const errMsg = `❌ Execution error: ${err.response?.data?.message || err.message}`;
+      setOutput(errMsg);
+      broadcastCustomEvent("RUN_COMPLETE", { output: errMsg });
     } finally {
       setIsRunning(false);
     }
@@ -555,12 +822,6 @@ const CallContent = ({ callId }) => {
   const handleCopyCode = () => {
     navigator.clipboard.writeText(codeContent);
     toast.success("Code copied to clipboard!");
-  };
-
-  const handleResetCode = () => {
-    setCodeContent(CODE_LANGUAGES[selectedLang]?.defaultCode || "");
-    setOutput("");
-    toast.success("Code reset to template.");
   };
 
   // Canvas Handlers
@@ -762,14 +1023,28 @@ const CallContent = ({ callId }) => {
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setWorkspaceOpen(false)}
-                  className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
-                  title="Close Workspace"
-                >
-                  <X className="size-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {lastPeerActivity ? (
+                    <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-700/60 text-emerald-300 text-[11px] font-bold">
+                      <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{lastPeerActivity.name}: {lastPeerActivity.action}</span>
+                    </div>
+                  ) : (
+                    <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 text-[11px] font-semibold">
+                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                      <span>Shared Compiler</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceOpen(false)}
+                    className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-900 transition-colors cursor-pointer"
+                    title="Close Workspace"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
               </div>
 
               {/* ══════════════════════════════════════════════════
@@ -782,11 +1057,7 @@ const CallContent = ({ callId }) => {
                     <div className="flex items-center gap-2">
                       <select
                         value={selectedLang}
-                        onChange={(e) => {
-                          const lang = e.target.value;
-                          setSelectedLang(lang);
-                          setCodeContent(CODE_LANGUAGES[lang]?.defaultCode || "");
-                        }}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
                         className="bg-zinc-900 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-zinc-700 focus:outline-none focus:ring-1 focus:ring-white cursor-pointer"
                       >
                         {Object.entries(CODE_LANGUAGES).map(([key, val]) => (
@@ -855,7 +1126,7 @@ const CallContent = ({ callId }) => {
                       language={CODE_LANGUAGES[selectedLang]?.monacoLang || selectedLang}
                       value={codeContent}
                       onMount={handleEditorDidMount}
-                      onChange={(val) => setCodeContent(val || "")}
+                      onChange={handleCodeChange}
                       loading={
                         <div className="flex flex-col items-center justify-center h-full text-zinc-400 gap-2 font-mono text-xs">
                           <span className="loading loading-dots loading-md text-white"></span>
@@ -921,7 +1192,10 @@ const CallContent = ({ callId }) => {
                         stdin && (
                           <button
                             type="button"
-                            onClick={() => setStdin("")}
+                            onClick={() => {
+                              setStdin("");
+                              broadcastCustomEvent("STDIN_CHANGE", { stdin: "" });
+                            }}
                             className="text-zinc-400 hover:text-white text-[10px] font-bold cursor-pointer"
                           >
                             Clear Input
@@ -940,12 +1214,12 @@ const CallContent = ({ callId }) => {
                         <div className="h-full flex flex-col gap-1.5">
                           <textarea
                             value={stdin}
-                            onChange={(e) => setStdin(e.target.value)}
+                            onChange={(e) => handleStdinChange(e.target.value)}
                             placeholder="Provide program inputs here (one per line, e.g. for input(), cin >>, Scanner, scanf)..."
                             className="flex-1 min-h-0 w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white font-mono text-xs resize-none focus:outline-none focus:ring-1 focus:ring-white placeholder:text-zinc-600 leading-relaxed"
                           />
                           <span className="text-[10px] text-zinc-500 font-sans shrink-0">
-                            💡 Inputs typed here are automatically passed as standard input (<code>stdin</code>) when you click <strong>Run Code</strong>.
+                            💡 Inputs typed here are shared live and automatically passed as standard input (<code>stdin</code>) when you click <strong>Run Code</strong>.
                           </span>
                         </div>
                       )}
@@ -1051,9 +1325,14 @@ const CallContent = ({ callId }) => {
               {activeTab === "notes" && (
                 <div className="flex-1 min-h-0 flex flex-col p-4 space-y-3 overflow-hidden bg-black">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-300">
-                      Peer Meeting Notes & Vocab Scratchpad
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-zinc-300">
+                        Peer Meeting Notes & Vocab Scratchpad
+                      </span>
+                      <span className="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">
+                        Live Synced
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
@@ -1067,7 +1346,7 @@ const CallContent = ({ callId }) => {
                   </div>
                   <textarea
                     value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
+                    onChange={(e) => handleNotesChange(e.target.value)}
                     placeholder="Write key vocabulary, explanations, or code logic discussed during the call here..."
                     className="flex-1 min-h-0 w-full p-4 rounded-2xl bg-zinc-950 border border-zinc-800 text-white text-xs sm:text-sm font-medium focus:outline-none focus:ring-1 focus:ring-white resize-none placeholder:text-zinc-600 leading-relaxed"
                   />
