@@ -1,10 +1,8 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router";
-import AnvaBrandLogo from "./AnvaBrandLogo";
 
 /* ─────────────────────────────────────────────────────────────
-   Clerk appearance — Apple minimal style
-   Variables drive Clerk's own stylesheet tokens directly.
+   Clerk appearance — Modern SaaS indigo & clean card style
 ──────────────────────────────────────────────────────────────── */
 export function buildClerkAppearance() {
   return {
@@ -15,17 +13,17 @@ export function buildClerkAppearance() {
       shimmer: false,
     },
     variables: {
-      colorPrimary: "#1d1d1f",
+      colorPrimary: "#4f46e5",
       colorBackground: "#ffffff",
-      colorInputBackground: "#f5f5f7",
-      colorInputText: "#1d1d1f",
-      colorText: "#1d1d1f",
-      colorTextSecondary: "#6e6e73",
-      colorDanger: "#ff3b30",
-      colorSuccess: "#30d158",
-      borderRadius: "0.875rem",
-      fontFamily: "Comfortaa, Plus Jakarta Sans, system-ui, sans-serif",
-      fontSize: "0.9375rem",
+      colorInputBackground: "#f1f3f5",
+      colorInputText: "#0f172a",
+      colorText: "#0f172a",
+      colorTextSecondary: "#64748b",
+      colorDanger: "#ef4444",
+      colorSuccess: "#10b981",
+      borderRadius: "0.75rem",
+      fontFamily: "Nunito, Plus Jakarta Sans, system-ui, sans-serif",
+      fontSize: "0.875rem",
       fontWeight: { normal: 400, medium: 500, bold: 600 },
       spacingUnit: "1rem",
     },
@@ -40,113 +38,137 @@ export function buildClerkAppearance() {
       footerPages: "!hidden",
       /* Show the sign-in ↔ sign-up switch */
       footerAction: "!pt-4 !pb-0 !bg-transparent !border-none !text-center",
-      footerActionText: "!text-[0.85rem] !text-[#6e6e73]",
+      footerActionText: "!text-xs !text-slate-500 !font-medium",
       footerActionLink:
-        "!text-[#1d1d1f] !font-semibold hover:!underline !text-[0.85rem]",
-      /* Social button — Apple style pill */
+        "!text-indigo-600 !font-bold hover:!underline !text-xs",
+      /* Social button — clean light rounded box */
       socialButtonsBlockButton:
-        "!bg-white !border !border-[#d2d2d7] !text-[#1d1d1f] !font-medium !text-[0.9rem] !rounded-xl !py-3 hover:!bg-[#f5f5f7] !transition-colors !cursor-pointer !shadow-none",
-      socialButtonsBlockButtonText: "!font-medium",
+        "!bg-[#f8fafc] !border !border-[#e2e8f0] !text-slate-800 !font-medium !text-sm !rounded-xl !py-3 hover:!bg-[#f1f5f9] !transition-colors !cursor-pointer !shadow-sm",
+      socialButtonsBlockButtonText: "!font-medium !text-slate-800",
       /* Divider */
-      dividerLine: "!bg-[#d2d2d7]",
+      dividerLine: "!bg-[#e5e7eb]",
       dividerText:
-        "!text-[0.7rem] !font-semibold !uppercase !tracking-widest !text-[#8e8e93]",
+        "!text-[11px] !font-bold !uppercase !tracking-wider !text-slate-400",
       /* Labels */
       formFieldLabel:
-        "!text-[0.75rem] !font-semibold !text-[#6e6e73] !uppercase !tracking-wider",
+        "!text-xs !font-semibold !text-slate-700 !mb-1.5",
       /* Inputs */
       formFieldInput:
-        "!bg-[#f5f5f7] !border !border-[#d2d2d7] !rounded-xl !text-[0.9375rem] !text-[#1d1d1f] !py-3 !px-4 focus:!bg-white focus:!border-[#1d1d1f] focus:!ring-0 !transition-colors !placeholder-[#aeaeb2] !shadow-none",
-      /* Primary CTA — solid black pill */
+        "!bg-[#f1f3f5] !border !border-transparent !rounded-xl !text-sm !text-slate-900 !py-3 !px-4 focus:!bg-white focus:!border-indigo-500 focus:!ring-0 !transition-all !placeholder-slate-400 !shadow-none !font-medium",
+      /* Primary CTA — vibrant indigo */
       formButtonPrimary:
-        "!bg-[#1d1d1f] hover:!bg-[#333336] !text-white !font-semibold !text-[0.9rem] !rounded-xl !py-3.5 !shadow-none !transition-colors !cursor-pointer active:!scale-[0.99] !tracking-[0.01em]",
+        "!bg-[#4f46e5] hover:!bg-[#4338ca] !text-white !font-semibold !text-sm !rounded-xl !py-3.5 !shadow-md !shadow-indigo-500/20 !transition-all !cursor-pointer active:!scale-[0.99]",
       /* Error */
-      formFieldErrorText: "!text-[#ff3b30] !text-[0.78rem] !font-medium",
+      formFieldErrorText: "!text-red-500 !text-xs !font-semibold",
       /* OTP */
       otpCodeFieldInput:
-        "!bg-[#f5f5f7] !border !border-[#d2d2d7] !rounded-xl !text-[#1d1d1f] !font-semibold focus:!border-[#1d1d1f] !transition-all",
+        "!bg-[#f1f3f5] !border !border-slate-200 !rounded-xl !text-slate-900 !font-semibold focus:!border-indigo-500 !transition-all",
       /* Identity preview */
       identityPreview:
-        "!bg-[#f5f5f7] !border !border-[#d2d2d7] !rounded-xl",
-      identityPreviewText: "!text-[#1d1d1f] !font-medium",
+        "!bg-[#f1f3f5] !border !border-slate-200 !rounded-xl",
+      identityPreviewText: "!text-slate-800 !font-medium",
       identityPreviewEditButton:
-        "!text-[#1d1d1f] !font-semibold hover:!underline",
+        "!text-indigo-600 !font-semibold hover:!underline",
       /* Alternative methods */
       alternativeMethodsBlockButton:
-        "!bg-[#f5f5f7] !border !border-[#d2d2d7] !rounded-xl !text-[#1d1d1f] !font-medium hover:!bg-[#e8e8ed] !transition-colors !cursor-pointer",
+        "!bg-[#f1f3f5] !border !border-slate-200 !rounded-xl !text-slate-800 !font-medium hover:!bg-slate-200 !transition-colors !cursor-pointer",
       alert: "!rounded-xl",
-      alertText: "!text-[0.875rem] !font-medium",
+      alertText: "!text-xs !font-medium",
     },
   };
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Apple-style Auth Page
+   Split Card Auth Page Layout
 ──────────────────────────────────────────────────────────────── */
 const AuthCardWrapper = ({
   children,
   title,
   subtitle,
+  illustrationTitle = "Connect with language friends worldwide",
+  illustrationDesc = "Practice conversations, make friends, and elevate your linguistics natively.",
+  illustrationImage = "/i.png",
 }) => {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center bg-white px-6 py-12"
-      style={{ position: "relative", zIndex: 1, isolation: "isolate" }}
-    >
+    <div className="min-h-screen flex items-center justify-center bg-[#f3f4f6] p-4 sm:p-6 md:p-8 font-sans selection:bg-indigo-500 selection:text-white">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="w-full max-w-[400px] flex flex-col items-center"
+        className="w-full max-w-4xl lg:max-w-[960px] bg-white rounded-[28px] border border-[#e5e7eb] shadow-[0_20px_50px_rgba(0,0,0,0.06)] overflow-hidden grid grid-cols-1 lg:grid-cols-2"
       >
-        {/* Brand logo — centered */}
-        <Link
-          to="/"
-          className="mb-8 transition-opacity hover:opacity-60 active:scale-95"
-        >
-          <AnvaBrandLogo badgeSize="size-12" textSize="text-2xl" />
-        </Link>
+        {/* LEFT PANE - FORM */}
+        <div className="p-8 sm:p-10 md:p-12 flex flex-col justify-between">
+          <div>
+            {/* Top Brand Logo */}
+            <div className="mb-8">
+              <Link to="/" className="inline-flex items-center select-none group">
+                <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight group-hover:opacity-90 transition-opacity">
+                  An<span className="font-curly font-bold ml-0.5 text-indigo-600">va</span>
+                </span>
+              </Link>
+            </div>
 
-        {/* Heading */}
-        {title && (
-          <h1
-            className="text-[1.85rem] font-normal text-[#1d1d1f] tracking-tight text-center leading-tight mb-2 font-serif"
-            style={{ fontFamily: "'Young Serif', 'Lora', Georgia, serif" }}
-          >
-            {title}
-          </h1>
-        )}
+            {/* Heading & Subtitle */}
+            <div className="mb-6">
+              {title && (
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1.5">
+                  {title}
+                </h1>
+              )}
+              {subtitle && (
+                <p className="text-sm text-slate-500 font-medium">
+                  {subtitle}
+                </p>
+              )}
+            </div>
 
-        {/* Subtitle */}
-        {subtitle && (
-          <p
-            className="text-[0.9375rem] text-[#6e6e73] text-center leading-relaxed mb-8 max-w-[320px]"
-            style={{ fontFamily: "Nunito, -apple-system, system-ui, sans-serif" }}
-          >
-            {subtitle}
-          </p>
-        )}
+            {/* Form Slot */}
+            <div className="w-full" style={{ minWidth: 0 }}>
+              {children}
+            </div>
+          </div>
 
-        {/* Clerk form — full width, no card chrome */}
-        <div className="w-full" style={{ minWidth: 0 }}>
-          {children}
+          {/* Legal */}
+          <div className="text-center pt-6">
+            <p className="text-xs text-slate-400 leading-relaxed max-w-[320px] mx-auto">
+              By continuing, you agree to our{" "}
+              <Link to="/terms" className="text-slate-700 font-semibold hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" className="text-slate-700 font-semibold hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </div>
         </div>
 
-        {/* Legal */}
-        <p
-          className="mt-8 text-center text-[0.75rem] text-[#aeaeb2] leading-relaxed max-w-[300px]"
-          style={{ fontFamily: "Nunito, -apple-system, system-ui, sans-serif" }}
-        >
-          By continuing, you agree to our{" "}
-          <Link to="/terms" className="text-[#1d1d1f] hover:underline">
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link to="/privacy" className="text-[#1d1d1f] hover:underline">
-            Privacy Policy
-          </Link>
-          .
-        </p>
+        {/* RIGHT PANE - ILLUSTRATION & PITCH */}
+        <div className="hidden lg:flex p-3 sm:p-4">
+          <div className="w-full h-full rounded-[24px] bg-[#eef1f6] flex flex-col items-center justify-center p-8 sm:p-10 text-center relative overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="w-full max-w-[320px] aspect-square flex items-center justify-center mb-6 rounded-2xl overflow-hidden"
+            >
+              <img
+                src={illustrationImage}
+                alt={illustrationTitle}
+                className="w-full h-full object-contain rounded-2xl drop-shadow-sm"
+              />
+            </motion.div>
+
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-2">
+              {illustrationTitle}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-[280px]">
+              {illustrationDesc}
+            </p>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
@@ -154,6 +176,6 @@ const AuthCardWrapper = ({
 
 export default AuthCardWrapper;
 
-/* Backwards-compat exports for other pages that import these */
+/* Backwards-compat exports */
 export const IllustrationPanel = () => null;
 export const AuthIllustrationPanel = () => null;

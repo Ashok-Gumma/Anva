@@ -12,7 +12,6 @@ import {
   updateCommentPost,
   deleteCommentPost,
   deletePost,
-  updatePost,
 } from "../lib/api";
 import { getLanguageIcon } from "../components/FriendCard";
 import { capitalize } from "../lib/utils";

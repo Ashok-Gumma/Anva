@@ -33,7 +33,7 @@ export function checkCaptionSafety(caption = "") {
     .replace(/[$]/g, "s")
     .replace(/[!1i|]/g, "i")
     .replace(/0/g, "o")
-    .replace(/[*_~`\-+=\/\\|]/g, "");
+    .replace(/[*_~`\-+=/\\|]/g, "");
 
   // Extract individual words using regex
   const words = normalized.split(/\s+/);

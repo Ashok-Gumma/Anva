@@ -6,7 +6,6 @@ import {
   createPost,
   toggleLikePost,
   addCommentPost,
-  updateCommentPost,
   deleteCommentPost,
   deletePost,
   updatePost,
@@ -22,7 +21,6 @@ import {
   MessageSquare,
   Trash2,
   Pencil,
-  Check,
   Send,
   Sparkles,
   BookOpen,
@@ -35,7 +33,6 @@ import {
   Download,
   Eye,
   PlusCircle,
-  Smile,
   Users,
   MessageCircle,
 } from "lucide-react";
@@ -52,11 +49,13 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
 
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [commentText, setCommentText] = useState("");
-  const [commentError, setCommentError] = useState("");
-  const [emojiPickerPostId, setEmojiPickerPostId] = useState(null);
   const [lightboxImage, setLightboxImage] = useState(null);
   const [activePdfModal, setActivePdfModal] = useState(null);
   const [loadingMediaPostId, setLoadingMediaPostId] = useState(null);
+
+  // Edit Post States
+  const [editingPost, setEditingPost] = useState(null);
+  const [editCaption, setEditCaption] = useState("");
 
   const COMMON_EMOJIS = [
     "😊","😂","🔥","❤️","👍","🎉","🤔","😍","🙌","💡",
@@ -64,32 +63,43 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
     "📚","🧠","💻","⭐","🎯","✅","❌","🤝","😢","👀",
   ];
 
-  // Fetch full post (with image/pdfUrl) on demand when user clicks
+  // Lazy-load high-res image on click
   const handleViewImage = async (post) => {
-    if (post.image) { setLightboxImage(post.image); return; }
+    if (post.image) {
+      setLightboxImage(post.image);
+      return;
+    }
     setLoadingMediaPostId(post._id);
     try {
-      const { post: full } = await getPostById(post._id);
-      setLightboxImage(full.image);
-    } catch { /* silent */ } finally {
+      const full = await getPostById(post._id);
+      if (full?.image) {
+        setLightboxImage(full.image);
+      }
+    } catch {
+      toast.error("Failed to load image");
+    } finally {
       setLoadingMediaPostId(null);
     }
   };
 
+  // Lazy-load PDF on click
   const handleViewPdf = async (post) => {
-    if (post.pdfUrl) { setActivePdfModal(post); return; }
+    if (post.pdfUrl) {
+      setActivePdfModal({ url: post.pdfUrl, name: post.pdfFileName || "Shared Document.pdf" });
+      return;
+    }
     setLoadingMediaPostId(post._id);
     try {
-      const { post: full } = await getPostById(post._id);
-      setActivePdfModal(full);
-    } catch { /* silent */ } finally {
+      const full = await getPostById(post._id);
+      if (full?.pdfUrl) {
+        setActivePdfModal({ url: full.pdfUrl, name: full.pdfFileName || "Shared Document.pdf" });
+      }
+    } catch {
+      toast.error("Failed to load PDF");
+    } finally {
       setLoadingMediaPostId(null);
     }
   };
-
-  // Edit Post States
-  const [editingPost, setEditingPost] = useState(null);
-  const [editCaption, setEditCaption] = useState("");
 
   // Fetch community feed posts
   const { data, isLoading } = useQuery({
@@ -134,7 +144,6 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       setCommentText("");
-      setCommentError("");
       toast.success("Comment added!");
     },
   });
@@ -153,11 +162,14 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
   });
 
   const updatePostMutation = useMutation({
-    mutationFn: ({ postId, data }) => updatePost(postId, data),
+    mutationFn: ({ postId, data: postData }) => updatePost(postId, postData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       setEditingPost(null);
       toast.success("Post updated!");
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update post.");
     },
   });
 
@@ -211,7 +223,7 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
   const handleCommentSubmit = (postId) => {
     if (!commentText.trim()) return;
     if (!checkCaptionSafety(commentText)) {
-      setCommentError("Comment contains restricted words.");
+      toast.error("Comment contains restricted words.");
       return;
     }
     commentMutation.mutate({ postId, text: commentText });
@@ -437,10 +449,45 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
                   </div>
                 </div>
 
-                {/* Caption */}
-                <p className="text-xs sm:text-sm text-base-content/80 font-medium leading-relaxed whitespace-pre-wrap">
-                  {post.caption}
-                </p>
+                {/* Caption or Inline Edit Box */}
+                {editingPost?._id === post._id ? (
+                  <div className="space-y-2 p-3 bg-base-200/60 rounded-2xl border border-primary/20">
+                    <textarea
+                      value={editCaption}
+                      onChange={(e) => setEditCaption(e.target.value)}
+                      className="w-full p-3 rounded-xl bg-base-100 text-xs sm:text-sm focus:outline-primary border border-base-content/10 font-medium resize-none"
+                      rows={3}
+                      placeholder="Edit your post caption..."
+                    />
+                    <div className="flex items-center gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setEditingPost(null)}
+                        className="btn btn-ghost btn-xs font-bold"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!editCaption.trim()) {
+                            toast.error("Caption cannot be empty.");
+                            return;
+                          }
+                          updatePostMutation.mutate({ postId: post._id, data: { caption: editCaption } });
+                        }}
+                        disabled={updatePostMutation.isPending}
+                        className="btn btn-primary btn-xs font-bold"
+                      >
+                        {updatePostMutation.isPending ? "Saving..." : "Save Changes"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-base-content/80 font-medium leading-relaxed whitespace-pre-wrap">
+                    {post.caption}
+                  </p>
+                )}
 
                 {/* Image Media Preview */}
                 {(post.image || post.hasImage) && (

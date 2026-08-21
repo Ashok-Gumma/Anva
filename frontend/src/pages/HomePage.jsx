@@ -59,90 +59,6 @@ const HomePage = () => {
   const { authUser } = useAuthUser();
   const [searchQuery, setSearchQuery] = useState("");
 
-  /* ── Interactive State (XP) ── */
-  const [xp, setXp] = useState(() => Number(localStorage.getItem("anva_xp") || "1240"));
-
-  /* ── Daily Challenge State ── */
-  const BRAIN_TEASERS = [
-    {
-      topic: "React Hooks Quiz",
-      code: "// Fix React loop:\nuseEffect(() => {\n  fetchData().then(d => setD(d));\n});",
-      options: ["A) Add [d] as dependency", "B) Add [] dependency", "C) Use useState instead", "D) Change variables"],
-      answerIndex: 1,
-      explanation: "Dependency array [] ensures the effect runs only once on mount."
-    },
-    {
-      topic: "JS Closures",
-      code: "for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 1);\n}\n// What prints?",
-      options: ["A) 0, 1, 2", "B) 3, 3, 3", "C) 1, 2, 3", "D) undefined"],
-      answerIndex: 1,
-      explanation: "var is function-scoped. By the time setTimeout runs, the loop has finished and i is 3."
-    },
-    {
-      topic: "CSS Specificity",
-      code: "<div id=\"box\" class=\"box\"></div>\n#box { color: red; }\n.box { color: blue; }\n// What color?",
-      options: ["A) blue", "B) red", "C) black", "D) inherit"],
-      answerIndex: 1,
-      explanation: "ID selectors (#box) have higher specificity than class selectors (.box)."
-    },
-    {
-      topic: "Array Mutation",
-      code: "const arr = [1, 2, 3];\narr[10] = 99;\nconsole.log(arr.length);\n// Output?",
-      options: ["A) 4", "B) 3", "C) 11", "D) Error"],
-      answerIndex: 2,
-      explanation: "JavaScript arrays are sparse. Setting index 10 changes the length to 11."
-    },
-    {
-      topic: "Promise Execution",
-      code: "console.log('A');\nPromise.resolve().then(() => console.log('B'));\nconsole.log('C');",
-      options: ["A) A, B, C", "B) A, C, B", "C) C, A, B", "D) B, A, C"],
-      answerIndex: 1,
-      explanation: "Microtasks (Promises) run after the current synchronous macrotask finishes (A, C, then B)."
-    }
-  ];
-
-  const today = new Date();
-  const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-  const teaserIndex = dayOfYear % BRAIN_TEASERS.length;
-  const todayTeaser = BRAIN_TEASERS[teaserIndex];
-  const challengeKey = `anva_challenge_solved_${dayOfYear}`;
-
-  const [challengeSolved, setChallengeSolved] = useState(() => localStorage.getItem(challengeKey) === "true");
-  const [selectedTeaserOption, setSelectedTeaserOption] = useState(null);
-  const [_teaserError, setTeaserError] = useState(false);
-
-  const [challenges, setChallenges] = useState([
-    { id: 1, text: "Practice Spanish vocabulary for 5 mins", completed: false, xp: 50 },
-    { id: 2, text: "Send a friendly message to a study peer", completed: false, xp: 75 },
-    { id: 3, text: "Check grammar on 1 sentence", completed: false, xp: 40 },
-  ]);
-
-  const toggleChallenge = (id, rewardXp) => {
-    setChallenges((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const nextState = !c.completed;
-          if (nextState) {
-            setXp((curr) => {
-              const updated = curr + rewardXp;
-              localStorage.setItem("anva_xp", String(updated));
-              return updated;
-            });
-            toast.success(`Challenge complete! +${rewardXp} XP 🎉`);
-          } else {
-            setXp((curr) => {
-              const updated = Math.max(0, curr - rewardXp);
-              localStorage.setItem("anva_xp", String(updated));
-              return updated;
-            });
-          }
-          return { ...c, completed: nextState };
-        }
-        return c;
-      })
-    );
-  };
-
   /* ── Random Motivational Quote ── */
   const dailyQuote = useMemo(() => {
     const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
@@ -360,27 +276,6 @@ const HomePage = () => {
     setLoadingIds((prev) => new Set(prev).add(userId));
     cancelRequestMutation(userId);
   };
-
-  // Daily Teaser Answer Handler
-  const handleTeaserOptionClick = (optionIndex) => {
-    if (challengeSolved) return;
-    setSelectedTeaserOption(optionIndex);
-    
-    if (optionIndex === todayTeaser.answerIndex) {
-      const newXp = xp + 20;
-      setXp(newXp);
-      setChallengeSolved(true);
-      setTeaserError(false);
-      localStorage.setItem("anva_xp", newXp.toString());
-      localStorage.setItem(challengeKey, "true");
-      toast.success(`🎉 Correct! ${todayTeaser.explanation} +20 XP awarded!`);
-    } else {
-      setTeaserError(true);
-      toast.error("Oops! That's not right. Try again!");
-    }
-  };
-
-
 
   if (!authUser) return null;
 

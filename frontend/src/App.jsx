@@ -19,6 +19,7 @@ import LandingPage from "./pages/LandingPage.jsx";
 import FriendsPage from "./pages/Friends.jsx";
 import FlashcardsPage from "./pages/FlashcardsPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import SignUpPage from "./pages/SignUpPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
@@ -36,19 +37,16 @@ import PrivacyPage from "./pages/PrivacyPage.jsx";
 import TermsPage from "./pages/TermsPage.jsx";
 import EduFeedPage from "./pages/EduFeedPage.jsx";
 import SavedPostsPage from "./pages/SavedPostsPage.jsx";
+import FeaturesPage from "./pages/FeaturesPage.jsx";
 
 import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
 import { useThemeStore } from "./store/useThemeStore.js";
 
-import { ShieldAlert, LogOut } from "lucide-react";
-import useLogout from "./hooks/useLogout.js";
-
 const App = () => {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const { isLoading, isError, error, authUser, refetch: refetchAuth } = useAuthUser();
-  const { logoutMutation } = useLogout();
   const { theme } = useThemeStore();
   const [minLoadingComplete, setMinLoadingComplete] = useState(() => {
     return sessionStorage.getItem("anva_has_loaded_app") === "true";
@@ -191,7 +189,7 @@ const App = () => {
 
             {/* ── Legacy login pages ── */}
             <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
-            <Route path="/signup" element={!isAuthenticated ? <Navigate to="/sign-up" replace /> : <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
+            <Route path="/signup" element={!isAuthenticated ? <SignUpPage /> : <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />} />
             <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPasswordPage /> : <Navigate to="/" replace />} />
             <Route path="/reset-password/:token" element={!isAuthenticated ? <ResetPasswordPage /> : <Navigate to="/" replace />} />
 
@@ -214,6 +212,8 @@ const App = () => {
             <Route path="/assistant"     element={<ProtectedRoute element={<Layout showSidebar><AssistantPage /></Layout>} />} />
             <Route path="/notifications" element={<ProtectedRoute element={<Layout showSidebar><NotificationsPage /></Layout>} />} />
             <Route path="/profile"       element={<ProtectedRoute element={<Layout showSidebar><ProfilePage /></Layout>} />} />
+            <Route path="/profile/:id"   element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />
+            <Route path="/user/:id"      element={<ProtectedRoute element={<Layout showSidebar><FriendProfilePage /></Layout>} />} />
             <Route path="/saved-posts"   element={<ProtectedRoute element={<Layout showSidebar><SavedPostsPage /></Layout>} />} />
             <Route path="/support"       element={<ProtectedRoute allowSuspended={true} element={<Layout showSidebar><SupportPage /></Layout>} />} />
             <Route path="/admin"        element={<AdminRoute element={<AdminPage />} />} />
@@ -224,7 +224,8 @@ const App = () => {
 
             <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
             
-            {/* ── Legal ── */}
+            {/* ── Public Info & Legal ── */}
+            <Route path="/features"      element={<FeaturesPage />} />
             <Route path="/privacy"       element={<PrivacyPage />} />
             <Route path="/terms"         element={<TermsPage />} />
           </Routes>

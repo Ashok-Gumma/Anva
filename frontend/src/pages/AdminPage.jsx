@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   getAdminStats,
   getAdminComplaints,
@@ -9,7 +9,6 @@ import {
   deleteUserAdmin,
   sendAdminWarning,
   toggleSuspendOffenderAdmin,
-  deleteOffenderAdmin,
   getAdminUsers,
   updateUserRole,
   updateUserDetailsAdmin,
@@ -82,7 +81,6 @@ const RESPONSE_MACROS = [
 ];
 
 const AdminPage = () => {
-  const queryClient = useQueryClient();
   const { logoutMutation } = useLogout();
   const { authUser } = useAuthUser();
 
@@ -265,17 +263,6 @@ const AdminPage = () => {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Failed to suspend offender");
-    },
-  });
-
-  const deleteOffenderMutation = useMutation({
-    mutationFn: (identifier) => deleteOffenderAdmin(identifier),
-    onSuccess: async (data) => {
-      toast.success(data.message || "Offender removed");
-      await Promise.all([refetchUsers(), refetchComplaints(), refetchStats()]);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Failed to delete offender");
     },
   });
 

@@ -35,17 +35,35 @@ const __dirname = path.dirname(__filename);
 // ✅ Allowed origins
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
   "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
   "https://anva-akzm.onrender.com", // production Render URL
+  process.env.CLIENT_URL,
 ].filter(Boolean);
 
 // ✅ CORS config
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin) {
         return callback(null, true);
       }
+
+      // Allow any localhost / 127.0.0.1 port in development
+      if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+
+      // Allow configured origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,

@@ -80,9 +80,10 @@ const FeaturesPage = () => {
       {/* Navbar */}
       <nav className="relative z-10 w-full px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link to="/" className="flex items-center gap-2 shrink-0 group">
-            <AnvaLogo className="h-9 w-9 object-cover rounded-lg drop-shadow-sm group-hover:scale-105 transition-transform text-primary" />
-            <span className="text-slate-900 font-bold text-xl tracking-tight hidden sm:block">Anva</span>
+          <Link to="/" className="flex items-center select-none group">
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight group-hover:opacity-90 transition-opacity">
+              An<span className="font-curly font-bold ml-0.5 text-indigo-600">va</span>
+            </span>
           </Link>
         </div>
 
