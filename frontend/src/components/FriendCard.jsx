@@ -1,7 +1,7 @@
 import { Link } from "react-router";
-import { LANGUAGE_TO_FLAG, LANGUAGE_TO_ICON } from "../constants";
 import { MapPinIcon, MessageSquare, User } from "lucide-react";
 import { capitalize } from "../lib/utils";
+import { getLanguageIcon } from "../lib/languageUtils";
 
 const FriendCard = ({ friend }) => {
   if (!friend) return null;
@@ -79,6 +79,11 @@ const FriendCard = ({ friend }) => {
             <span className="px-2.5 py-1 bg-accent/10 text-accent border border-accent/20 text-[10px] font-extrabold rounded-xl flex items-center gap-1 shadow-2xs">
               {getLanguageIcon(friend.learningLanguage)}
               Learning: {capitalize(friend.learningLanguage)}
+              {friend.proficiencyLevel && (
+                <span className="ml-0.5 px-1.5 py-0.2 bg-accent text-accent-content rounded text-[9px] font-black uppercase">
+                  {friend.proficiencyLevel.split(" ")[0]}
+                </span>
+              )}
             </span>
           ) : null}
 
@@ -127,32 +132,3 @@ const FriendCard = ({ friend }) => {
 
 export default FriendCard;
 
-/* ICON RESOLVER */
-export function getLanguageIcon(language) {
-  if (!language) return null;
-  const langLower = language.toLowerCase();
-
-  if (LANGUAGE_TO_FLAG[langLower]) {
-    return (
-      <img
-        src={`https://flagcdn.com/24x18/${LANGUAGE_TO_FLAG[langLower]}.png`}
-        className="h-3 mr-1 inline-block rounded-xs"
-        alt={language}
-        loading="lazy"
-      />
-    );
-  }
-
-  if (LANGUAGE_TO_ICON[langLower]) {
-    return (
-      <img
-        src={LANGUAGE_TO_ICON[langLower]}
-        className="h-3.5 mr-1 inline-block"
-        alt={language}
-        loading="lazy"
-      />
-    );
-  }
-
-  return null;
-}

@@ -15,11 +15,18 @@ import {
   Trash2,
   Search,
   Copy,
+  Volume2,
+  VolumeX,
+  Award,
+  RotateCcw,
+  CheckCircle,
+  Play,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import useAuthUser from "../hooks/useAuthUser";
 import AnvaBrandLogo from "../components/AnvaBrandLogo";
+import { capitalize } from "../lib/utils";
 
 // Quick prompt suggestions
 const SUGGESTIONS = [
@@ -155,6 +162,48 @@ const formatMessageContent = (text) => {
   });
 };
 
+// Pronunciation Coach Practice Dataset by Language
+const PRACTICE_PHRASES = {
+  spanish: [
+    { phrase: "Hola, ¿cómo estás hoy? Me encanta aprender idiomas con Anva.", phonetic: "OH-lah, KOH-moh ess-TAHS oy? meh en-KAHN-tah ah-pren-DAIR ee-DYOH-mahs...", translation: "Hello, how are you today? I love learning languages with Anva." },
+    { phrase: "El éxito es la suma de pequeños esfuerzos repetidos cada día.", phonetic: "el EK-see-toh ess lah SOO-mah deh peh-KAY-nyohs ess-FWAIRe-sohs...", translation: "Success is the sum of small efforts repeated every day." },
+    { phrase: "La práctica constante hace al maestro.", phonetic: "lah PRAHK-tee-kah kohn-STAHN-teh AH-say ahl my-ESS-troh.", translation: "Constant practice makes the master." },
+  ],
+  french: [
+    { phrase: "Bonjour ! Comment allez-vous aujourd'hui ?", phonetic: "bohn-ZHOOR ! koh-mahn tah-lay VOO oh-zhoor-DWEE ?", translation: "Hello! How are you today?" },
+    { phrase: "La pratique régulière mène toujours au succès.", phonetic: "lah prah-TEEK ray-gyoo-LYAIR mayn too-ZHOOR oh sook-SEH.", translation: "Regular practice always leads to success." },
+  ],
+  german: [
+    { phrase: "Guten Tag! Ich freue mich, heute Deutsch zu üben.", phonetic: "GOO-ten tahk! ikh FROY-eh mikh, HOY-teh DOYTCH tsoo OO-ben.", translation: "Good day! I am happy to practice German today." },
+    { phrase: "Übung macht den Meister.", phonetic: "OO-boong mahkht dayn MYS-ter.", translation: "Practice makes master." },
+  ],
+  japanese: [
+    { phrase: "こんにちは、お元気ですか？今日も一緒に勉強しましょう。", phonetic: "Konnichiwa, o-genki desu ka? Kyou mo issho ni benkyou shimashou.", translation: "Hello, how are you? Let's study together today too." },
+    { phrase: "継続は力なり。", phonetic: "Keizoku wa chikara nari.", translation: "Continuity is strength." },
+  ],
+  default: [
+    { phrase: "Hello! Practice makes perfect, and consistency is the key to mastery.", phonetic: "heh-LOH! PRAK-tis mayks PUR-fikt, and kahn-SIS-tuhn-see is kee...", translation: "Practice and consistency lead to mastery." },
+    { phrase: "Writing clean code and collaborating with peers accelerates learning.", phonetic: "RY-ting kleen kohd and kuh-LAB-er-ay-ting ak-SEL-er-ayts LUR-ning.", translation: "Clean code and collaboration speed up growth." },
+  ],
+};
+
+const getSpeechLangCode = (langName) => {
+  if (!langName) return "en-US";
+  const name = langName.toLowerCase();
+  if (name.includes("spanish")) return "es-ES";
+  if (name.includes("french")) return "fr-FR";
+  if (name.includes("german")) return "de-DE";
+  if (name.includes("japanese")) return "ja-JP";
+  if (name.includes("italian")) return "it-IT";
+  if (name.includes("portuguese")) return "pt-BR";
+  if (name.includes("russian")) return "ru-RU";
+  if (name.includes("chinese") || name.includes("mandarin")) return "zh-CN";
+  if (name.includes("arabic")) return "ar-SA";
+  if (name.includes("hindi")) return "hi-IN";
+  if (name.includes("korean")) return "ko-KR";
+  return "en-US";
+};
+
 const AssistantPage = () => {
   const { authUser } = useAuthUser();
   const [dbMessages, setDbMessages] = useState([]);
@@ -165,6 +214,16 @@ const AssistantPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [speakingMsgIndex, setSpeakingMsgIndex] = useState(null);
+
+  // Pronunciation Coach State
+  const [showCoachModal, setShowCoachModal] = useState(false);
+  const [coachPhraseIndex, setCoachPhraseIndex] = useState(0);
+  const [customCoachPhrase, setCustomCoachPhrase] = useState("");
+  const [isCoachRecording, setIsCoachRecording] = useState(false);
+  const [coachSpokenText, setCoachSpokenText] = useState("");
+  const [coachScore, setCoachScore] = useState(null);
+  const [coachFeedback, setCoachFeedback] = useState("");
 
   const [sessions, setSessions] = useState(() => {
     try {
@@ -181,6 +240,82 @@ const AssistantPage = () => {
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const recognitionRef = useRef(null);
+  const coachRecognitionRef = useRef(null);
+
+  // Active target phrases for the user's learning language
+  const targetLanguageKey = (authUser?.learningLanguage || "default").toLowerCase();
+  const activePracticePhrases = PRACTICE_PHRASES[targetLanguageKey] || PRACTICE_PHRASES.default;
+  const currentPracticePhrase = customCoachPhrase || activePracticePhrases[coachPhraseIndex % activePracticePhrases.length]?.phrase || activePracticePhrases[0].phrase;
+  const currentPracticeItem = activePracticePhrases[coachPhraseIndex % activePracticePhrases.length] || activePracticePhrases[0];
+
+  // Speech-to-Speech Playback handler
+  const handleSpeakMessage = (content, index) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      toast.error("Speech playback is not supported on this device.");
+      return;
+    }
+    if (speakingMsgIndex === index) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgIndex(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const clean = content.replace(/[`*_~#]/g, "");
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.lang = getSpeechLangCode(authUser?.learningLanguage);
+    utterance.rate = 0.92;
+    utterance.onend = () => setSpeakingMsgIndex(null);
+    utterance.onerror = () => setSpeakingMsgIndex(null);
+    setSpeakingMsgIndex(index);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSpeakCoachPhrase = (phraseText) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      toast.error("Speech playback is not supported.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(phraseText);
+    utterance.lang = getSpeechLangCode(authUser?.learningLanguage);
+    utterance.rate = 0.88;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Pronunciation Evaluation Algorithm
+  const evaluatePronunciation = (target, spoken) => {
+    const normalize = (str) =>
+      str
+        .toLowerCase()
+        .replace(/[.,/#!$%^&*;:{}=\-_`~()?"'¡¿]/g, "")
+        .trim()
+        .split(/\s+/);
+
+    const targetWords = normalize(target);
+    const spokenWords = normalize(spoken);
+
+    if (spokenWords.length === 0 || !spokenWords[0]) {
+      setCoachScore(0);
+      setCoachFeedback("No speech detected. Please speak clearly into your microphone.");
+      return;
+    }
+
+    let matches = 0;
+    targetWords.forEach((word) => {
+      if (spokenWords.includes(word)) matches++;
+    });
+
+    const calculatedScore = Math.min(100, Math.round((matches / targetWords.length) * 100));
+    setCoachScore(calculatedScore);
+
+    if (calculatedScore >= 90) {
+      setCoachFeedback("🌟 Excellent pronunciation! Clear phonetic pacing and native rhythm.");
+    } else if (calculatedScore >= 70) {
+      setCoachFeedback("👍 Great effort! Good flow. Listen to the native audio and practice key vowel stress.");
+    } else {
+      setCoachFeedback("💡 Keep going! Try breaking down the sentence into shorter word groups.");
+    }
+  };
 
   // Fetch live active chat history on mount
   useEffect(() => {
@@ -267,6 +402,52 @@ const AssistantPage = () => {
       recognitionRef.current.start();
       setIsRecording(true);
     }
+  };
+
+  const toggleCoachRecording = () => {
+    if (typeof window === "undefined" || (!window.webkitSpeechRecognition && !window.SpeechRecognition)) {
+      toast.error("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isCoachRecording) {
+      if (coachRecognitionRef.current) coachRecognitionRef.current.stop();
+      setIsCoachRecording(false);
+      return;
+    }
+
+    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    const coachRec = new SpeechRecognition();
+    coachRec.continuous = false;
+    coachRec.interimResults = false;
+    coachRec.lang = getSpeechLangCode(authUser?.learningLanguage);
+
+    coachRec.onstart = () => {
+      setIsCoachRecording(true);
+      setCoachSpokenText("");
+      setCoachScore(null);
+      setCoachFeedback("");
+    };
+
+    coachRec.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setCoachSpokenText(transcript);
+      evaluatePronunciation(currentPracticePhrase, transcript);
+      setIsCoachRecording(false);
+    };
+
+    coachRec.onerror = (e) => {
+      console.error("Coach recognition error:", e);
+      setIsCoachRecording(false);
+      toast.error("Could not capture speech. Please speak closer to the mic.");
+    };
+
+    coachRec.onend = () => {
+      setIsCoachRecording(false);
+    };
+
+    coachRecognitionRef.current = coachRec;
+    coachRec.start();
   };
 
   const handleImageChange = (e) => {
@@ -485,10 +666,17 @@ const AssistantPage = () => {
             const SessIcon = sess.icon || Code;
 
             return (
-              <button
+              <div
                 key={sess.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => handleSelectSession(sess.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleSelectSession(sess.id);
+                  }
+                }}
                 className={`w-full p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between text-left group relative ${
                   isSelected
                     ? "bg-primary/10 border-primary/30 text-primary shadow-xs"
@@ -523,7 +711,7 @@ const AssistantPage = () => {
                 >
                   <Trash2 className="size-3.5" />
                 </button>
-              </button>
+              </div>
             );
           })
         )}
@@ -616,6 +804,17 @@ const AssistantPage = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setShowCoachModal(true)}
+              className="px-3 py-1.5 bg-gradient-to-r from-primary/15 via-secondary/10 to-accent/15 hover:from-primary/25 hover:to-accent/25 border border-primary/30 text-primary rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs hover:scale-102 transition-all cursor-pointer"
+              title="Open Pronunciation & Speaking Coach"
+            >
+              <Award className="size-4 text-primary" />
+              <span className="hidden sm:inline">Pronunciation Coach</span>
+              <span className="sm:hidden">Coach</span>
+            </button>
+
+            <button
+              type="button"
               onClick={clearHistory}
               className="px-3 py-1.5 bg-base-200 hover:bg-error/10 hover:text-error hover:border-error/30 border border-base-content/10 rounded-xl text-xs font-bold text-base-content transition-all cursor-pointer flex items-center gap-1.5"
               title="Clear Active Chat"
@@ -705,9 +904,35 @@ const AssistantPage = () => {
                             {formatMessageContent(msg.content)}
                           </div>
                         </div>
-                        <span className="mt-1 px-2 text-[10px] font-bold text-base-content/40 uppercase">
-                          {isUser ? (authUser?.fullName || "You") : "Anva AI"}
-                        </span>
+
+                        {!isUser ? (
+                          <div className="flex items-center gap-2 mt-1 px-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSpeakMessage(msg.content, index)}
+                              className="text-[10px] font-bold text-base-content/60 hover:text-primary flex items-center gap-1 transition-colors cursor-pointer"
+                              title={speakingMsgIndex === index ? "Stop Speaking" : "Listen to audio pronunciation"}
+                            >
+                              {speakingMsgIndex === index ? (
+                                <>
+                                  <VolumeX className="size-3 text-error" />
+                                  <span className="text-error font-extrabold">Stop</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 className="size-3 text-primary" />
+                                  <span>Listen</span>
+                                </>
+                              )}
+                            </button>
+                            <span className="text-[10px] text-base-content/30">•</span>
+                            <span className="text-[10px] font-bold text-base-content/40 uppercase">Anva AI</span>
+                          </div>
+                        ) : (
+                          <span className="mt-1 px-2 text-[10px] font-bold text-base-content/40 uppercase">
+                            {authUser?.fullName || "You"}
+                          </span>
+                        )}
                       </div>
                     </motion.div>
                   );
@@ -778,7 +1003,7 @@ const AssistantPage = () => {
                     ? "bg-error text-white animate-pulse"
                     : "text-base-content/60 hover:text-primary hover:bg-base-200"
                 }`}
-                title="Voice dictation"
+                title={isRecording ? "Listening... click to stop" : "Voice dictation"}
               >
                 <Mic className="size-5" />
               </button>
@@ -809,6 +1034,160 @@ const AssistantPage = () => {
             </div>
           </div>
         </footer>
+
+        {/* ── PRONUNCIATION COACH MODAL VIA PORTAL ── */}
+        {createPortal(
+          <AnimatePresence>
+            {showCoachModal && (
+              <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowCoachModal(false)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                />
+
+                {/* Modal Window */}
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  className="relative bg-base-100 border border-base-content/15 rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 space-y-6 overflow-hidden z-10 font-minimal"
+                >
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between border-b border-base-content/10 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-2xl bg-gradient-to-tr from-primary to-accent text-primary-content flex items-center justify-center shadow-md">
+                        <Award className="size-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-base-content">
+                          AI Pronunciation Coach
+                        </h3>
+                        <p className="text-[11px] text-base-content/60 font-semibold">
+                          Target Language: {capitalize(authUser?.learningLanguage || "General")}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCoachModal(false)}
+                      className="p-2 rounded-xl bg-base-200 hover:bg-base-300 text-base-content/70 transition-colors cursor-pointer"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+
+                  {/* Practice Phrase Card */}
+                  <div className="p-5 bg-gradient-to-br from-base-200/90 to-base-200/40 border border-base-content/10 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-primary">
+                        Target Phrase #{((coachPhraseIndex % activePracticePhrases.length) + 1)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCoachPhraseIndex((prev) => prev + 1);
+                          setCustomCoachPhrase("");
+                          setCoachSpokenText("");
+                          setCoachScore(null);
+                          setCoachFeedback("");
+                        }}
+                        className="px-2.5 py-1 bg-base-100 hover:bg-base-200 border border-base-content/10 rounded-xl text-[10px] font-bold text-base-content/70 flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        <RotateCcw className="size-3" /> Next Phrase
+                      </button>
+                    </div>
+
+                    <p className="text-base sm:text-lg font-black text-base-content leading-snug">
+                      "{currentPracticePhrase}"
+                    </p>
+
+                    {currentPracticeItem.phonetic && !customCoachPhrase && (
+                      <p className="text-xs text-primary font-mono bg-primary/10 p-2.5 rounded-xl border border-primary/20">
+                        🗣️ <span className="font-semibold">{currentPracticeItem.phonetic}</span>
+                      </p>
+                    )}
+
+                    {currentPracticeItem.translation && !customCoachPhrase && (
+                      <p className="text-xs text-base-content/60 italic font-medium">
+                        "{currentPracticeItem.translation}"
+                      </p>
+                    )}
+
+                    <div className="pt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSpeakCoachPhrase(currentPracticePhrase)}
+                        className="btn btn-sm btn-outline btn-primary rounded-xl font-bold gap-1.5"
+                      >
+                        <Volume2 className="size-4" /> Listen Native
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Speech Recording & Feedback Section */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col items-center justify-center p-6 bg-base-200/40 border border-dashed border-base-content/15 rounded-2xl text-center space-y-3">
+                      <button
+                        type="button"
+                        onClick={toggleCoachRecording}
+                        className={`size-16 rounded-3xl flex items-center justify-center shadow-lg transition-all cursor-pointer ${
+                          isCoachRecording
+                            ? "bg-error text-white scale-110 animate-pulse ring-4 ring-error/30"
+                            : "bg-primary text-primary-content hover:scale-105"
+                        }`}
+                      >
+                        <Mic className="size-7" />
+                      </button>
+                      <p className="text-xs font-extrabold text-base-content">
+                        {isCoachRecording ? "Listening to your pronunciation... Speak now!" : "Tap microphone and speak the sentence aloud"}
+                      </p>
+                    </div>
+
+                    {/* Detected Speech & Score */}
+                    {coachSpokenText && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 bg-base-100 border border-base-content/10 rounded-2xl space-y-2.5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-base-content/50">
+                            We Heard:
+                          </span>
+                          {coachScore !== null && (
+                            <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${
+                              coachScore >= 85
+                                ? "bg-success/15 text-success border border-success/30"
+                                : coachScore >= 65
+                                ? "bg-warning/15 text-warning border border-warning/30"
+                                : "bg-error/15 text-error border border-error/30"
+                            }`}>
+                              {coachScore}% Accuracy
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm font-bold text-base-content">
+                          "{coachSpokenText}"
+                        </p>
+                        {coachFeedback && (
+                          <p className="text-xs font-medium text-base-content/80 pt-1 border-t border-base-content/5">
+                            {coachFeedback}
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       </div>
     </div>
   );

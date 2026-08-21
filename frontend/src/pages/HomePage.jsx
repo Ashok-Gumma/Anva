@@ -32,7 +32,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
-import FriendCard, { getLanguageIcon } from "../components/FriendCard";
+import FriendCard from "../components/FriendCard";
+import { getLanguageIcon } from "../lib/languageUtils";
 import NoFriendsFound from "../components/NoFriendsFound";
 import { motion } from "framer-motion";
 import ProgressDashboard from "../components/ProgressDashboard";

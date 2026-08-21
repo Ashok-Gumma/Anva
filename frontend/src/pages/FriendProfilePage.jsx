@@ -149,6 +149,11 @@ const FriendProfilePage = () => {
                     Learning: {user.learningLanguage}
                   </span>
                 )}
+                {user.proficiencyLevel && (
+                  <span className="badge badge-primary text-xs font-extrabold gap-1">
+                    Level: {user.proficiencyLevel}
+                  </span>
+                )}
               </div>
             </div>
           </div>

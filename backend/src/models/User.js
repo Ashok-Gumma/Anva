@@ -50,6 +50,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    proficiencyLevel: {
+      type: String,
+      enum: ["A1 Beginner", "A2 Elementary", "B1 Intermediate", "B2 Upper Intermediate", "C1 Advanced", "C2 Native/Master", ""],
+      default: "B1 Intermediate",
+    },
     location: {
       type: String,
       default: "",

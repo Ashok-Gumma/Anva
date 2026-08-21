@@ -6,7 +6,8 @@ import {
   sendFriendRequest,
   cancelFriendRequest,
 } from "../lib/api";
-import FriendCard, { getLanguageIcon } from "../components/FriendCard";
+import FriendCard from "../components/FriendCard";
+import { getLanguageIcon } from "../lib/languageUtils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UsersIcon,

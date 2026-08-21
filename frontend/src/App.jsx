@@ -11,8 +11,8 @@ import Layout from "./components/Layout.jsx";
 import PageLoader from "./components/PageLoader.jsx";
 import ServerErrorPage from "./components/ServerErrorPage.jsx";
 import AnvaLogo from "./components/AnvaLogo.jsx";
-import AnvaBrandLogo from "./components/AnvaBrandLogo.jsx";
-import AuthCardWrapper, { buildClerkAppearance } from "./components/AuthCardWrapper.jsx";
+import AuthCardWrapper from "./components/AuthCardWrapper.jsx";
+import { buildClerkAppearance } from "./lib/clerkAppearance.js";
 
 import HomePage from "./pages/HomePage.jsx";
 import LandingPage from "./pages/LandingPage.jsx";
@@ -38,10 +38,10 @@ import TermsPage from "./pages/TermsPage.jsx";
 import EduFeedPage from "./pages/EduFeedPage.jsx";
 import SavedPostsPage from "./pages/SavedPostsPage.jsx";
 import FeaturesPage from "./pages/FeaturesPage.jsx";
-
 import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
 import { useThemeStore } from "./store/useThemeStore.js";
+import { openVideoCallPopup } from "./lib/callWindow.js";
 
 const App = () => {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
@@ -91,6 +91,30 @@ const App = () => {
     }, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, [isAuthenticated, authUser]);
+
+  // Global listener: Open any /call/ link across the app in a dedicated WhatsApp-style call window
+  useEffect(() => {
+    const handleGlobalLinkClick = (e) => {
+      const anchor = e.target.closest("a");
+      if (anchor && anchor.href) {
+        try {
+          const url = new URL(anchor.href);
+          if (url.pathname.startsWith("/call/")) {
+            e.preventDefault();
+            e.stopPropagation();
+            openVideoCallPopup(anchor.href);
+          }
+        } catch {
+          // ignore invalid URLs
+        }
+      }
+    };
+
+    document.addEventListener("click", handleGlobalLinkClick, true);
+    return () => {
+      document.removeEventListener("click", handleGlobalLinkClick, true);
+    };
+  }, []);
 
   // PageLoader is shown only when Clerk is initializing or initial session auth is resolving.
   // Also block when Clerk confirms sign-in but authUser hasn't finished loading yet —

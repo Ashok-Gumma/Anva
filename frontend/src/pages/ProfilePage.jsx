@@ -12,8 +12,9 @@ import {
   updateCommentPost,
   deleteCommentPost,
   deletePost,
+  updatePost,
 } from "../lib/api";
-import { getLanguageIcon } from "../components/FriendCard";
+import { getLanguageIcon } from "../lib/languageUtils";
 import { capitalize } from "../lib/utils";
 import toast from "react-hot-toast";
 import imageCompression from "browser-image-compression";
@@ -43,9 +44,11 @@ import {
   Check,
   Image as ImageIcon,
   LogOut,
+  Award,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import useLogout from "../hooks/useLogout";
+import { CEFR_LEVELS } from "../constants";
 
 const ProfilePage = () => {
   const { authUser } = useAuthUser();
@@ -66,6 +69,7 @@ const ProfilePage = () => {
 
   const [githubUrl, setGithubUrl] = useState(authUser?.githubUrl || "");
   const [linkedinUrl, setLinkedinUrl] = useState(authUser?.linkedinUrl || "");
+  const [proficiencyLevel, setProficiencyLevel] = useState(authUser?.proficiencyLevel || "B1 Intermediate");
 
   // Sync state with authUser when user data finishes loading or re-fetching
   useEffect(() => {
@@ -82,7 +86,10 @@ const ProfilePage = () => {
     if (authUser?.linkedinUrl) {
       setLinkedinUrl(authUser.linkedinUrl);
     }
-  }, [authUser?.profilePic, authUser?.bannerPic, authUser?.githubUrl, authUser?.linkedinUrl]);
+    if (authUser?.proficiencyLevel) {
+      setProficiencyLevel(authUser.proficiencyLevel);
+    }
+  }, [authUser?.profilePic, authUser?.bannerPic, authUser?.githubUrl, authUser?.linkedinUrl, authUser?.proficiencyLevel]);
 
   // Saved Posts Interactive States
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
@@ -94,15 +101,17 @@ const ProfilePage = () => {
   const { data: savedData, isLoading: isLoadingSaved } = useQuery({
     queryKey: ["savedPosts"],
     queryFn: getSavedPosts,
+    staleTime: 30_000,
   });
 
   const savedPosts = savedData?.posts || [];
 
-  // Query for user's own published posts
+  // Query for user's own published posts (loaded immediately for accurate tab count badge)
   const { data: myPostsData, isLoading: isLoadingMyPosts } = useQuery({
     queryKey: ["myPosts", authUser?._id],
     queryFn: () => getUserPosts(authUser?._id),
-    enabled: activeTab === "posts" && !!authUser?._id,
+    enabled: Boolean(authUser?._id),
+    staleTime: 30_000,
   });
 
   const myPosts = myPostsData?.posts || [];
@@ -306,6 +315,25 @@ const ProfilePage = () => {
     commentMutation.mutate({ id: postId, text: commentText });
   };
 
+  // Edit post state & mutation
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editCaption, setEditCaption] = useState("");
+  const [editSubject, setEditSubject] = useState("General");
+
+  const updatePostMutation = useMutation({
+    mutationFn: ({ postId, data }) => updatePost(postId, data),
+    onSuccess: (res) => {
+      toast.success(res?.message || "Post updated successfully!");
+      setEditingPostId(null);
+      queryClient.invalidateQueries({ queryKey: ["myPosts"] });
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to update post");
+    },
+  });
+
   // Avatar Image Upload
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -371,6 +399,7 @@ const ProfilePage = () => {
     const payload = {
       githubUrl: githubUrl || "",
       linkedinUrl: linkedinUrl || "",
+      proficiencyLevel: proficiencyLevel || "B1 Intermediate",
     };
     if (base64Image) payload.profilePic = base64Image;
     if (base64Banner) payload.bannerPic = base64Banner;
@@ -547,6 +576,11 @@ const ProfilePage = () => {
               <div className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-xl text-xs font-bold text-primary flex items-center gap-1.5">
                 {getLanguageIcon(authUser.learningLanguage)}
                 <span>Learning: <strong>{capitalize(authUser.learningLanguage)}</strong></span>
+                {proficiencyLevel && (
+                  <span className="px-2 py-0.5 rounded-lg bg-primary text-primary-content text-[10px] font-black uppercase tracking-wider ml-1">
+                    {proficiencyLevel.split(" ")[0]}
+                  </span>
+                )}
               </div>
             )}
 
@@ -632,6 +666,49 @@ const ProfilePage = () => {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* CEFR Language Proficiency Level Selector */}
+          <div className="bg-base-100 p-6 rounded-3xl border border-base-content/10 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-base-content uppercase tracking-wider flex items-center gap-2">
+                <Award className="w-4 h-4 text-primary" /> Target Language Proficiency (CEFR)
+              </h3>
+              <span className="badge badge-primary badge-sm text-[10px] font-black uppercase">
+                {proficiencyLevel || "Select"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {CEFR_LEVELS.map((item) => {
+                const isSelected = proficiencyLevel === item.level;
+                return (
+                  <button
+                    key={item.code}
+                    type="button"
+                    onClick={() => setProficiencyLevel(item.level)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-primary text-primary-content border-primary shadow-md scale-[1.02]"
+                        : "bg-base-200/60 hover:bg-base-200 border-base-content/10 text-base-content"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`px-2 py-0.5 rounded-lg text-[11px] font-black ${
+                        isSelected ? "bg-primary-content/20 text-primary-content" : item.badge
+                      }`}>
+                        {item.code}
+                      </span>
+                      {isSelected && <span className="text-xs">✓</span>}
+                    </div>
+                    <p className="text-xs font-bold truncate">{item.level.split(" ")[1] || item.level}</p>
+                    <p className={`text-[10px] truncate ${isSelected ? "text-primary-content/80" : "text-base-content/50"}`}>
+                      {item.desc}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -788,7 +865,7 @@ const ProfilePage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <span
                         className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${getSubjectBadgeColor(
                           post.subject
@@ -796,6 +873,26 @@ const ProfilePage = () => {
                       >
                         {post.subject}
                       </span>
+
+                      <button
+                        onClick={() => {
+                          if (editingPostId === post._id) {
+                            setEditingPostId(null);
+                          } else {
+                            setEditingPostId(post._id);
+                            setEditCaption(post.caption || "");
+                            setEditSubject(post.subject || "General");
+                          }
+                        }}
+                        className={`btn btn-ghost btn-xs rounded-xl cursor-pointer ${
+                          editingPostId === post._id
+                            ? "text-primary bg-primary/10"
+                            : "text-base-content/60 hover:text-primary"
+                        }`}
+                        title={editingPostId === post._id ? "Cancel Edit" : "Edit Post"}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
 
                       <button
                         onClick={() => {
@@ -811,10 +908,69 @@ const ProfilePage = () => {
                     </div>
                   </div>
 
-                  {/* Post Caption */}
-                  <p className="text-xs sm:text-sm text-base-content/90 font-medium whitespace-pre-line leading-relaxed">
-                    {post.caption}
-                  </p>
+                  {/* Post Caption / Inline Edit Form */}
+                  {editingPostId === post._id ? (
+                    <div className="bg-base-200/70 p-4 rounded-2xl border border-primary/20 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-[11px] font-extrabold uppercase tracking-wider text-base-content/60">
+                          Edit Subject
+                        </label>
+                        <select
+                          value={editSubject}
+                          onChange={(e) => setEditSubject(e.target.value)}
+                          className="select select-bordered select-xs rounded-xl font-bold bg-base-100 border-base-content/20"
+                        >
+                          {["General", "Grammar", "Vocabulary", "Pronunciation", "Culture", "Questions", "Resources"].map(
+                            (s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </div>
+
+                      <textarea
+                        value={editCaption}
+                        onChange={(e) => setEditCaption(e.target.value)}
+                        rows={3}
+                        placeholder="Update your post caption..."
+                        className="textarea textarea-bordered w-full rounded-xl text-xs sm:text-sm font-medium bg-base-100 focus:border-primary resize-none leading-relaxed"
+                      />
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingPostId(null)}
+                          className="btn btn-ghost btn-xs rounded-xl font-bold"
+                          disabled={updatePostMutation.isPending}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!editCaption.trim()) {
+                              toast.error("Post caption cannot be empty");
+                              return;
+                            }
+                            updatePostMutation.mutate({
+                              postId: post._id,
+                              data: { caption: editCaption, subject: editSubject },
+                            });
+                          }}
+                          disabled={updatePostMutation.isPending || !editCaption.trim()}
+                          className="btn btn-primary btn-xs rounded-xl font-bold shadow-sm"
+                        >
+                          {updatePostMutation.isPending ? "Saving..." : "Save Changes"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-base-content/90 font-medium whitespace-pre-line leading-relaxed">
+                      {post.caption}
+                    </p>
+                  )}
 
                   {/* Image Attachment */}
                   {post.image && (

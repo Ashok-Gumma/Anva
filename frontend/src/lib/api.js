@@ -298,7 +298,17 @@ export async function updateCommentPost({ postId, commentId, text }) {
   return response.data;
 }
 
-export async function updatePost({ id, caption, subject }) {
+export async function updatePost(arg1, arg2) {
+  let id, caption, subject;
+  if (typeof arg1 === "object" && arg1 !== null) {
+    id = arg1.id || arg1.postId;
+    caption = arg1.caption;
+    subject = arg1.subject;
+  } else {
+    id = arg1;
+    caption = arg2?.caption;
+    subject = arg2?.subject;
+  }
   const response = await axiosInstance.put(`/posts/${id}`, { caption, subject });
   return response.data;
 }

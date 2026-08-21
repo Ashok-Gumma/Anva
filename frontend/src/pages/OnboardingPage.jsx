@@ -3,9 +3,9 @@ import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { completeOnboarding } from "../lib/api";
-import { Handshake, LoaderIcon, MapPinIcon, ShuffleIcon, CameraIcon } from "lucide-react";
+import { Handshake, LoaderIcon, MapPinIcon, ShuffleIcon, CameraIcon, Award } from "lucide-react";
 import imageCompression from "browser-image-compression";
-import { LANGUAGES } from "../constants";
+import { LANGUAGES, CEFR_LEVELS } from "../constants";
 
 const OnboardingPage = () => {
   const { authUser } = useAuthUser();
@@ -16,6 +16,7 @@ const OnboardingPage = () => {
     bio: authUser?.bio || "",
     nativeLanguage: authUser?.nativeLanguage || "",
     learningLanguage: authUser?.learningLanguage || "",
+    proficiencyLevel: authUser?.proficiencyLevel || "B1 Intermediate",
     location: authUser?.location || "",
     profilePic: authUser?.profilePic || "",
   });
@@ -226,6 +227,48 @@ const OnboardingPage = () => {
                     );
                   })}
                 </select>
+              </div>
+            </div>
+
+            {/* CEFR PROFICIENCY LEVEL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-bold flex items-center gap-1.5">
+                  <Award className="size-4 text-primary" /> Learning Proficiency Level (CEFR)
+                </span>
+                <span className="label-text-alt text-base-content/60 font-semibold">
+                  {formState.proficiencyLevel || "Select Level"}
+                </span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CEFR_LEVELS.map((item) => {
+                  const isSelected = formState.proficiencyLevel === item.level;
+                  return (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => setFormState({ ...formState, proficiencyLevel: item.level })}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-primary text-primary-content border-primary shadow-md scale-[1.02]"
+                          : "bg-base-100 hover:bg-base-200/80 border-base-content/10 text-base-content"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`px-2 py-0.5 rounded-lg text-[11px] font-black ${
+                          isSelected ? "bg-primary-content/20 text-primary-content" : item.badge
+                        }`}>
+                          {item.code}
+                        </span>
+                        {isSelected && <span className="text-xs">✓</span>}
+                      </div>
+                      <p className="text-xs font-bold truncate">{item.level.split(" ")[1] || item.level}</p>
+                      <p className={`text-[10px] truncate ${isSelected ? "text-primary-content/80" : "text-base-content/50"}`}>
+                        {item.desc}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

@@ -142,19 +142,6 @@ const AdminPage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto sync
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const interval = setInterval(() => {
-      refetchStats();
-      refetchComplaints();
-      refetchUsers();
-      if (activeTab === "posts") refetchPosts();
-      setLastRefreshed(new Date());
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [autoRefresh, activeTab]);
-
   /* ── Queries ── */
   const { data: statsData, refetch: refetchStats } = useQuery({
     queryKey: ["adminStats"],
@@ -193,10 +180,22 @@ const AdminPage = () => {
     staleTime: 30_000,
   });
 
+  // Auto sync
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      refetchStats();
+      refetchComplaints();
+      refetchUsers();
+      if (activeTab === "posts") refetchPosts();
+      setLastRefreshed(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, activeTab, refetchStats, refetchComplaints, refetchUsers, refetchPosts]);
 
-  const registeredUsers = adminUsersData?.users || [];
-  const rawTickets = complaintsData?.tickets || [];
-  const allPosts = postsData?.posts || [];
+  const registeredUsers = useMemo(() => adminUsersData?.users || [], [adminUsersData?.users]);
+  const rawTickets = useMemo(() => complaintsData?.tickets || [], [complaintsData?.tickets]);
+  const allPosts = useMemo(() => postsData?.posts || [], [postsData?.posts]);
 
   /* ── Mutations ── */
   const updateComplaintMutation = useMutation({

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { capitalize } from "../lib/utils";
-import { getLanguageIcon } from "../components/FriendCard";
+import { getLanguageIcon } from "../lib/languageUtils";
 
 import {
   Channel,
@@ -31,6 +31,7 @@ import toast from "react-hot-toast";
 
 import ChatLoader from "../components/ChatLoader";
 import CallButton from "../components/CallButton";
+import { openVideoCallPopup } from "../lib/callWindow";
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
@@ -159,7 +160,24 @@ const ChatPage = () => {
         text: `I've started a video call. Join me here: ${callUrl}`,
       });
 
-      toast.success("Video call link sent successfully!");
+      toast.success("Video call started! Opening call window...");
+      openVideoCallPopup(callUrl);
+    }
+  };
+
+  const handleChatContainerClick = (e) => {
+    const anchor = e.target.closest("a");
+    if (anchor && anchor.href) {
+      try {
+        const url = new URL(anchor.href);
+        if (url.pathname.startsWith("/call/")) {
+          e.preventDefault();
+          e.stopPropagation();
+          openVideoCallPopup(anchor.href);
+        }
+      } catch {
+        // no-op
+      }
     }
   };
 
@@ -525,7 +543,10 @@ const ChatPage = () => {
         </header>
 
         {/* Stream Chat Area */}
-        <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col">
+        <div
+          onClickCapture={handleChatContainerClick}
+          className="flex-1 w-full h-full relative overflow-hidden flex flex-col"
+        >
           <Chat client={chatClient}>
             <Channel channel={channel}>
               <div className="w-full h-full flex flex-col relative overflow-hidden">

@@ -1,6 +1,6 @@
 import useAuthUser from "../hooks/useAuthUser";
 import { capitalize } from "../lib/utils";
-import { getLanguageIcon } from "./FriendCard";
+import { getLanguageIcon } from "../lib/languageUtils";
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { getRandomLanguageQuote } from "../lib/languageQuotes";
