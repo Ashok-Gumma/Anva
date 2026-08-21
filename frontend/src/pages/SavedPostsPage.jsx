@@ -5,6 +5,7 @@ import useAuthUser from "../hooks/useAuthUser";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import SharePostModal from "../components/SharePostModal";
 import {
   Bookmark,
   BookmarkCheck,
@@ -22,6 +23,7 @@ import {
   Pencil,
   Trash2,
   Check,
+  Share2,
 } from "lucide-react";
 
 const SavedPostsPage = () => {
@@ -32,6 +34,7 @@ const SavedPostsPage = () => {
   const [commentText, setCommentText] = useState("");
   const [lightboxImage, setLightboxImage] = useState(null);
   const [activePdfModal, setActivePdfModal] = useState(null);
+  const [sharingPost, setSharingPost] = useState(null);
 
   // Fetch saved posts with live dynamic updates
   const { data, isLoading } = useQuery({
@@ -231,6 +234,10 @@ const SavedPostsPage = () => {
   const handleAddComment = (postId) => {
     if (!commentText.trim()) return;
     commentMutation.mutate({ id: postId, text: commentText });
+  };
+
+  const handleSharePost = (post) => {
+    setSharingPost(post);
   };
 
   const getSubjectBadgeColor = (subj) => {
@@ -458,6 +465,15 @@ const SavedPostsPage = () => {
                     >
                       <BookmarkCheck className="w-4 h-4 fill-primary/20" />
                       <span>Saved</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSharePost(post)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-base-200/70 hover:bg-base-200 text-base-content/70 hover:text-primary rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      title="Share post link"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>Share</span>
                     </button>
                   </div>
                 </div>
@@ -710,6 +726,13 @@ const SavedPostsPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Share Post Modal */}
+      <SharePostModal
+        isOpen={!!sharingPost}
+        onClose={() => setSharingPost(null)}
+        post={sharingPost}
+      />
     </div>
   );
 };

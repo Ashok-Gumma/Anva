@@ -13,6 +13,7 @@ import {
   getUserProgress,
   startMockTest,
   submitMockTest,
+  resetProgress,
 } from "../controllers/placement.controller.js";
 
 const router = express.Router();
@@ -27,6 +28,7 @@ router.get("/questions/:id", protectRoute, getQuestionById);
 
 // Practice & Submissions
 router.post("/submit-answer", protectRoute, submitAnswer);
+router.post("/reset-progress", protectRoute, resetProgress);
 router.post("/run-code", protectRoute, runCodingTest);
 router.post("/submit-code", protectRoute, submitCodingSolution);
 

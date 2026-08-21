@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Search,
   Sparkles,
-  Bookmark,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
@@ -15,7 +14,7 @@ import {
   Award,
   Layers,
 } from "lucide-react";
-import { getPlacementQuestions, togglePlacementBookmark } from "../../lib/placementApi";
+import { getPlacementQuestions } from "../../lib/placementApi";
 import toast from "react-hot-toast";
 
 const INTERVIEW_TABS = [
@@ -52,14 +51,6 @@ const InterviewPrepPage = () => {
   const toggleExpand = (id) => {
     setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
-
-  const { mutate: bookmarkMutation } = useMutation({
-    mutationFn: togglePlacementBookmark,
-    onSuccess: (res) => {
-      toast.success(res.message);
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
-    },
-  });
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-base-200 p-3 sm:p-6 lg:p-8 font-sans text-base-content">
@@ -180,15 +171,6 @@ const InterviewPrepPage = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          bookmarkMutation(item._id);
-                        }}
-                        className="p-2 rounded-xl hover:bg-base-200 text-base-content/60 hover:text-amber-500"
-                      >
-                        <Bookmark className={`size-4 ${item.isBookmarked ? "fill-amber-500 text-amber-500" : ""}`} />
-                      </button>
                       <div className="p-2 rounded-xl bg-base-200 text-base-content">
                         {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                       </div>

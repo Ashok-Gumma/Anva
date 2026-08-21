@@ -103,6 +103,7 @@ export async function getRecommendedUsers(req, res) {
         { _id: { $nin: currentUser.blockedUsers || [] } }, // exclude users blocked by current user
         { blockedUsers: { $ne: currentUserId } }, // exclude users who blocked current user
         { isOnboarded: true },
+        { role: { $ne: "admin" } }, // exclude admin accounts from explore & recommendations
       ],
     })
       .select("-password")

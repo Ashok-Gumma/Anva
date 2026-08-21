@@ -1133,3 +1133,47 @@ export const submitMockTest = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to submit mock test." });
   }
 };
+
+/**
+ * 12. POST /api/placement/reset-progress
+ * Resets user question attempts (single question, questionIds array, or category)
+ */
+export const resetProgress = async (req, res) => {
+  try {
+    const { questionId, questionIds, category } = req.body;
+    const userId = req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
+
+    const progress = await getOrCreateProgress(userId);
+
+    if (questionId) {
+      progress.solvedQuestions = progress.solvedQuestions.filter(
+        (q) => q.questionId.toString() !== questionId.toString()
+      );
+    } else if (Array.isArray(questionIds) && questionIds.length > 0) {
+      const qIdSet = new Set(questionIds.map((id) => id.toString()));
+      progress.solvedQuestions = progress.solvedQuestions.filter(
+        (q) => !qIdSet.has(q.questionId.toString())
+      );
+    } else if (category && category !== "all") {
+      progress.solvedQuestions = progress.solvedQuestions.filter(
+        (q) => q.category !== category.toLowerCase()
+      );
+    } else {
+      progress.solvedQuestions = [];
+    }
+
+    await progress.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Progress reset successfully.",
+    });
+  } catch (error) {
+    console.error("Error in resetProgress:", error);
+    res.status(500).json({ success: false, message: "Failed to reset progress." });
+  }
+};

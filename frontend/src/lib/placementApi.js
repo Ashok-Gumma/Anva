@@ -41,6 +41,14 @@ export const submitPlacementAnswer = async (data) => {
 };
 
 /**
+ * Reset progress / attempts for placement questions
+ */
+export const resetPlacementProgress = async (data = {}) => {
+  const response = await axiosInstance.post("/placement/reset-progress", data);
+  return response.data;
+};
+
+/**
  * Run code against sample test cases or custom input
  */
 export const runPlacementCode = async (data) => {

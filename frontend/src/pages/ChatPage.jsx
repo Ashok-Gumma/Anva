@@ -25,13 +25,24 @@ import {
   MessageList,
   Thread,
   Window,
+  Attachment as DefaultAttachment,
 } from "stream-chat-react";
 import { StreamChat } from "stream-chat";
 import toast from "react-hot-toast";
 
 import ChatLoader from "../components/ChatLoader";
 import CallButton from "../components/CallButton";
+import PostAttachment from "../components/PostAttachment";
 import { openVideoCallPopup } from "../lib/callWindow";
+
+const CustomAttachment = (props) => {
+  const { attachments } = props;
+  const postAttachment = attachments?.find((att) => att.type === "post");
+  if (postAttachment) {
+    return <PostAttachment attachment={postAttachment} />;
+  }
+  return <DefaultAttachment {...props} />;
+};
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
@@ -548,7 +559,7 @@ const ChatPage = () => {
           className="flex-1 w-full h-full relative overflow-hidden flex flex-col"
         >
           <Chat client={chatClient}>
-            <Channel channel={channel}>
+            <Channel channel={channel} Attachment={CustomAttachment}>
               <div className="w-full h-full flex flex-col relative overflow-hidden">
                 <Window>
                   <MessageList />

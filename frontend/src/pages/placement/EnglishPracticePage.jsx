@@ -8,17 +8,17 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Bookmark,
   ChevronRight,
   ChevronLeft,
   BookMarked,
   HelpCircle,
   Check,
+  RotateCcw,
 } from "lucide-react";
 import {
   getPlacementQuestions,
   submitPlacementAnswer,
-  togglePlacementBookmark,
+  resetPlacementProgress,
 } from "../../lib/placementApi";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,6 +50,49 @@ const EnglishPracticePage = () => {
   const questions = data?.questions || [];
   const topics = data?.availableTopics || [];
   const currentQuestion = questions[currentIndex] || null;
+
+  // Reset Progress Mutation
+  const { mutate: resetProgressMutation, isPending: isResetting } = useMutation({
+    mutationFn: resetPlacementProgress,
+    onSuccess: (_, variables) => {
+      if (variables?.questionId) {
+        setAttemptMap((prev) => {
+          const next = { ...prev };
+          delete next[variables.questionId];
+          return next;
+        });
+        if (currentQuestion?._id === variables.questionId) {
+          setSelectedOption(null);
+          setSubmissionResult(null);
+        }
+        toast.success("Question reset! You can try again.");
+      } else {
+        setAttemptMap({});
+        setSelectedOption(null);
+        setSubmissionResult(null);
+        toast.success("Progress reset successfully!");
+      }
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to reset progress.");
+    },
+  });
+
+  const handleResetCurrentQuestion = () => {
+    if (!currentQuestion) return;
+    resetProgressMutation({ questionId: currentQuestion._id });
+  };
+
+  const handleResetAll = () => {
+    if (questions.length === 0) return;
+    resetProgressMutation({
+      questionIds: questions.map((q) => q._id),
+      category: "english",
+    });
+  };
 
   useEffect(() => {
     if (currentQuestion) {
@@ -91,6 +134,7 @@ const EnglishPracticePage = () => {
       setIsSubmitting(false);
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
       if (res.isCorrect) toast.success("Correct Answer! 🎉");
       else toast.error("Incorrect. Check the explanation below.");
     },
@@ -107,14 +151,6 @@ const EnglishPracticePage = () => {
       userChoice: selectedOption,
     });
   };
-
-  const { mutate: bookmarkMutation } = useMutation({
-    mutationFn: togglePlacementBookmark,
-    onSuccess: (res) => {
-      toast.success(res.message);
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
-    },
-  });
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-base-200 p-3 sm:p-6 lg:p-8 font-sans text-base-content">
@@ -209,15 +245,6 @@ const EnglishPracticePage = () => {
                       {currentQuestion.difficulty}
                     </span>
                   </div>
-
-                  <button
-                    onClick={() => bookmarkMutation(currentQuestion._id)}
-                    className={`btn btn-ghost btn-sm btn-circle ${
-                      currentQuestion.isBookmarked ? "text-amber-500" : "text-base-content/40"
-                    }`}
-                  >
-                    <Bookmark className={`size-5 ${currentQuestion.isBookmarked ? "fill-current" : ""}`} />
-                  </button>
                 </div>
 
                 {/* Comprehension Passage if present */}
@@ -242,13 +269,19 @@ const EnglishPracticePage = () => {
                 {/* Options */}
                 <div className="space-y-3 pt-2">
                   {(currentQuestion.options || []).map((option, idx) => {
-                    const isSelected = Number(selectedOption) === Number(idx);
+                    const isSelected =
+                      selectedOption !== null &&
+                      selectedOption !== undefined &&
+                      Number(selectedOption) === Number(idx);
                     let optionStyle = "border-base-content/10 hover:border-emerald-500/30 hover:bg-base-200/50";
                     let badgeStyle = "bg-base-200 text-base-content/70";
 
                     if (submissionResult) {
                       const isCorrectChoice = Number(idx) === Number(submissionResult.correctAnswer);
-                      const isUserChoice = Number(selectedOption) === Number(idx);
+                      const isUserChoice =
+                        selectedOption !== null &&
+                        selectedOption !== undefined &&
+                        Number(selectedOption) === Number(idx);
 
                       if (isCorrectChoice) {
                         optionStyle = "bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs ring-2 ring-emerald-500/30";
@@ -275,10 +308,10 @@ const EnglishPracticePage = () => {
                         <div className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${badgeStyle}`}>
                           {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) ? (
                             <Check className="size-4 stroke-[3]" />
-                          ) : submissionResult && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
+                          ) : submissionResult && selectedOption !== null && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
                             <XCircle className="size-4" />
                           ) : (
-                            ["A", "B", "C", "D"][idx] || idx + 1
+                            ["A", "B", "C", "D", "E"][idx] || idx + 1
                           )}
                         </div>
                         <span className="text-sm font-semibold flex-1 leading-snug">{option}</span>
@@ -307,18 +340,29 @@ const EnglishPracticePage = () => {
                       {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
                     </button>
                   ) : (
-                    <button
-                      onClick={() => {
-                        if (currentIndex < questions.length - 1) {
-                          setCurrentIndex((prev) => prev + 1);
-                        }
-                      }}
-                      disabled={currentIndex === questions.length - 1}
-                      className="btn btn-success text-white btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
-                    >
-                      <span>Next Question</span>
-                      <ChevronRight className="size-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleResetCurrentQuestion}
+                        disabled={isResetting}
+                        className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors cursor-pointer"
+                        title="Reset this question and try again"
+                      >
+                        <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                        <span>Try Again</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (currentIndex < questions.length - 1) {
+                            setCurrentIndex((prev) => prev + 1);
+                          }
+                        }}
+                        disabled={currentIndex === questions.length - 1}
+                        className="btn btn-success text-white btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                      >
+                        <span>Next Question</span>
+                        <ChevronRight className="size-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -342,7 +386,7 @@ const EnglishPracticePage = () => {
                             <XCircle className="size-5" />
                             <span>
                               Incorrect. Correct Answer: Option{" "}
-                              {["A", "B", "C", "D"][submissionResult.correctAnswer]}
+                              {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
                             </span>
                           </div>
                         )}
@@ -369,9 +413,19 @@ const EnglishPracticePage = () => {
                   <h3 className="font-black text-sm uppercase tracking-wider text-base-content">
                     Questions Palette
                   </h3>
-                  <span className="text-xs text-base-content/40 font-bold">
-                    {questions.filter((q) => q.isSolved).length}/{questions.length} Solved
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-base-content/40 font-bold">
+                      {questions.filter((q) => (attemptMap[q._id] ? attemptMap[q._id].isCorrect : q.isSolved)).length}/{questions.length} Solved
+                    </span>
+                    <button
+                      onClick={handleResetAll}
+                      disabled={isResetting}
+                      className="p-1.5 rounded-lg hover:bg-base-200 text-base-content/50 hover:text-error transition-colors cursor-pointer"
+                      title="Reset all questions in this topic"
+                    >
+                      <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-5 gap-2 pt-2">
@@ -379,9 +433,12 @@ const EnglishPracticePage = () => {
                     const isCurrent = currentIndex === idx;
                     let numStyle = "bg-base-200 text-base-content/70 hover:bg-base-300";
 
-                    if (q.isSolved) {
+                    const attempt = attemptMap[q._id] || q.userAttempt;
+                    const isSolved = attemptMap[q._id] ? attemptMap[q._id].isCorrect : q.isSolved;
+
+                    if (isSolved) {
                       numStyle = "bg-emerald-500 text-white font-bold";
-                    } else if (q.userAttempt && !q.userAttempt.isCorrect) {
+                    } else if (attempt && !attempt.isCorrect) {
                       numStyle = "bg-rose-500/20 text-rose-600 font-bold border border-rose-500/30";
                     }
 

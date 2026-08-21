@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getPosts,
@@ -35,8 +35,10 @@ import {
   PlusCircle,
   Users,
   MessageCircle,
+  Share2,
 } from "lucide-react";
 import { Link } from "react-router";
+import SharePostModal from "./SharePostModal";
 
 const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent posts and study notes from learners" }) => {
   const { authUser } = useAuthUser();
@@ -51,6 +53,7 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
   const [commentText, setCommentText] = useState("");
   const [lightboxImage, setLightboxImage] = useState(null);
   const [activePdfModal, setActivePdfModal] = useState(null);
+  const [sharingPost, setSharingPost] = useState(null);
   const [loadingMediaPostId, setLoadingMediaPostId] = useState(null);
 
   // Edit Post States
@@ -109,6 +112,27 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
   });
 
   const posts = data?.posts || [];
+
+  // Scroll to targeted post if URL contains a #post-<id> hash
+  useEffect(() => {
+    if (!isLoading && posts.length > 0 && window.location.hash) {
+      const targetHash = window.location.hash;
+      setTimeout(() => {
+        try {
+          const el = document.querySelector(targetHash);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("ring-2", "ring-primary", "ring-offset-4", "ring-offset-base-100");
+            setTimeout(() => {
+              el.classList.remove("ring-2", "ring-primary", "ring-offset-4", "ring-offset-base-100");
+            }, 3000);
+          }
+        } catch {
+          // Ignore invalid selector
+        }
+      }, 400);
+    }
+  }, [isLoading, posts]);
 
   // Mutations
   const createMutation = useMutation({
@@ -271,6 +295,10 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
     commentMutation.mutate({ postId, text: commentText });
   };
 
+  const handleSharePost = (post) => {
+    setSharingPost(post);
+  };
+
   return (
     <div className="space-y-6">
       {/* Section Header */}
@@ -426,9 +454,10 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
             return (
               <motion.div
                 key={post._id}
+                id={`post-${post._id}`}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-base-100 p-5 sm:p-6 rounded-[2rem] border border-base-content/10 shadow-lg space-y-4"
+                className="bg-base-100 p-5 sm:p-6 rounded-[2rem] border border-base-content/10 shadow-lg space-y-4 scroll-mt-20"
               >
                 {/* Author Bar */}
                 <div className="flex items-center justify-between gap-3">
@@ -455,6 +484,15 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {/* Share Button */}
+                    <button
+                      onClick={() => handleSharePost(post)}
+                      className="p-2 rounded-xl border bg-base-200/50 text-base-content/50 border-base-content/10 hover:text-primary hover:bg-base-200 transition-colors cursor-pointer"
+                      title="Share Post"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+
                     {/* Bookmark Button */}
                     <button
                       onClick={() => saveMutation.mutate(post._id)}
@@ -608,6 +646,16 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
                       <MessageSquare className="w-4 h-4" />
                       <span>{post.comments?.length || 0} Comments</span>
                     </button>
+
+                    {/* Share button */}
+                    <button
+                      onClick={() => handleSharePost(post)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-base-content/60 hover:text-primary transition-colors cursor-pointer"
+                      title="Share Post"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>Share</span>
+                    </button>
                   </div>
                 </div>
 
@@ -736,6 +784,13 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Share Post Modal */}
+      <SharePostModal
+        isOpen={!!sharingPost}
+        onClose={() => setSharingPost(null)}
+        post={sharingPost}
+      />
     </div>
   );
 };

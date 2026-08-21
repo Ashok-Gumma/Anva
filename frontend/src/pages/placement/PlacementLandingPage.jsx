@@ -15,7 +15,6 @@ import {
   MessageSquare,
   Flame,
   ArrowRight,
-  Bookmark,
   Layers,
   ChevronRight,
   ShieldCheck,

@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Bookmark,
   Sparkles,
   RefreshCw,
   Award,
@@ -19,11 +18,12 @@ import {
   Check,
   Flame,
   Timer,
+  RotateCcw,
 } from "lucide-react";
 import {
   getPlacementQuestions,
   submitPlacementAnswer,
-  togglePlacementBookmark,
+  resetPlacementProgress,
 } from "../../lib/placementApi";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -152,6 +152,7 @@ const AptitudePracticePage = () => {
       setIsSubmitting(false);
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
       if (res.isCorrect) {
         toast.success("Correct Answer! 🎉");
       } else {
@@ -187,18 +188,47 @@ const AptitudePracticePage = () => {
     }
   };
 
-  // Bookmark Toggle
-  const { mutate: bookmarkMutation } = useMutation({
-    mutationFn: togglePlacementBookmark,
-    onSuccess: (res) => {
-      toast.success(res.message);
+  // Reset Progress Mutation
+  const { mutate: resetProgressMutation, isPending: isResetting } = useMutation({
+    mutationFn: resetPlacementProgress,
+    onSuccess: (_, variables) => {
+      if (variables?.questionId) {
+        setAttemptMap((prev) => {
+          const next = { ...prev };
+          delete next[variables.questionId];
+          return next;
+        });
+        if (currentQuestion?._id === variables.questionId) {
+          setSelectedOption(null);
+          setSubmissionResult(null);
+        }
+        toast.success("Question reset! You can try again.");
+      } else {
+        setAttemptMap({});
+        setSelectedOption(null);
+        setSubmissionResult(null);
+        toast.success("Progress reset successfully!");
+      }
       queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed to reset progress.");
     },
   });
 
-  const handleToggleBookmark = () => {
+  const handleResetCurrentQuestion = () => {
     if (!currentQuestion) return;
-    bookmarkMutation(currentQuestion._id);
+    resetProgressMutation({ questionId: currentQuestion._id });
+  };
+
+  const handleResetAll = () => {
+    if (questions.length === 0) return;
+    resetProgressMutation({
+      questionIds: questions.map((q) => q._id),
+      category: "aptitude",
+    });
   };
 
   // Mock test submission
@@ -418,13 +448,6 @@ const AptitudePracticePage = () => {
                         🔥 {currentQuestion.frequency} Freq
                       </span>
                     )}
-                    <button
-                      onClick={handleToggleBookmark}
-                      className="p-1.5 rounded-lg hover:bg-base-200 text-base-content/60 hover:text-amber-500 transition-colors"
-                      title="Bookmark Question"
-                    >
-                      <Bookmark className={`size-4 ${currentQuestion.isBookmarked ? "fill-amber-500 text-amber-500" : ""}`} />
-                    </button>
                   </div>
                 </div>
 
@@ -450,13 +473,19 @@ const AptitudePracticePage = () => {
                 {/* Options List */}
                 <div className="space-y-3 pt-2">
                   {(currentQuestion.options || []).map((option, idx) => {
-                    const isSelected = Number(selectedOption) === Number(idx);
+                    const isSelected =
+                      selectedOption !== null &&
+                      selectedOption !== undefined &&
+                      Number(selectedOption) === Number(idx);
                     let optionStyle = "border-base-content/10 hover:border-primary/30 hover:bg-base-200/50";
                     let badgeStyle = "bg-base-200 text-base-content/70";
 
                     if (submissionResult) {
                       const isCorrectChoice = Number(idx) === Number(submissionResult.correctAnswer);
-                      const isUserChoice = Number(selectedOption) === Number(idx);
+                      const isUserChoice =
+                        selectedOption !== null &&
+                        selectedOption !== undefined &&
+                        Number(selectedOption) === Number(idx);
 
                       if (isCorrectChoice) {
                         optionStyle = "bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs ring-2 ring-emerald-500/30";
@@ -487,7 +516,7 @@ const AptitudePracticePage = () => {
                         <div className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${badgeStyle}`}>
                           {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) ? (
                             <Check className="size-4 stroke-[3]" />
-                          ) : submissionResult && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
+                          ) : submissionResult && selectedOption !== null && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
                             <XCircle className="size-4" />
                           ) : (
                             optionLetters[idx] || idx + 1
@@ -521,18 +550,29 @@ const AptitudePracticePage = () => {
                           {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
                         </button>
                       ) : (
-                        <button
-                          onClick={() => {
-                            if (currentIndex < questions.length - 1) {
-                              setCurrentIndex((prev) => prev + 1);
-                            }
-                          }}
-                          disabled={currentIndex === questions.length - 1}
-                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
-                        >
-                          <span>Next Question</span>
-                          <ChevronRight className="size-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleResetCurrentQuestion}
+                            disabled={isResetting}
+                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
+                            title="Reset this question and try again"
+                          >
+                            <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                            <span>Try Again</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (currentIndex < questions.length - 1) {
+                                setCurrentIndex((prev) => prev + 1);
+                              }
+                            }}
+                            disabled={currentIndex === questions.length - 1}
+                            className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                          >
+                            <span>Next Question</span>
+                            <ChevronRight className="size-4" />
+                          </button>
+                        </div>
                       )
                     ) : (
                       <button
@@ -566,7 +606,7 @@ const AptitudePracticePage = () => {
                             <XCircle className="size-5" />
                             <span>
                               Incorrect. Correct Answer: Option{" "}
-                              {["A", "B", "C", "D"][submissionResult.correctAnswer]}
+                              {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
                             </span>
                           </div>
                         )}
@@ -599,9 +639,23 @@ const AptitudePracticePage = () => {
                   <h3 className="font-black text-sm uppercase tracking-wider text-base-content">
                     Question Palette
                   </h3>
-                  <span className="text-xs text-base-content/40 font-bold">
-                    {mode === "practice" ? `${questions.filter((q) => q.isSolved).length}/${questions.length} Solved` : `${answeredCount}/${questions.length} Answered`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-base-content/40 font-bold">
+                      {mode === "practice"
+                        ? `${questions.filter((q) => (attemptMap[q._id] ? attemptMap[q._id].isCorrect : q.isSolved)).length}/${questions.length} Solved`
+                        : `${answeredCount}/${questions.length} Answered`}
+                    </span>
+                    {mode === "practice" && (
+                      <button
+                        onClick={handleResetAll}
+                        disabled={isResetting}
+                        className="p-1.5 rounded-lg hover:bg-base-200 text-base-content/50 hover:text-error transition-colors cursor-pointer"
+                        title="Reset all questions in this topic"
+                      >
+                        <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Numbers Grid */}
@@ -611,9 +665,11 @@ const AptitudePracticePage = () => {
                     let numStyle = "bg-base-200 text-base-content/70 hover:bg-base-300";
 
                     if (mode === "practice") {
-                      if (q.isSolved) {
+                      const attempt = attemptMap[q._id] || q.userAttempt;
+                      const isSolved = attemptMap[q._id] ? attemptMap[q._id].isCorrect : q.isSolved;
+                      if (isSolved) {
                         numStyle = "bg-emerald-500 text-white font-bold";
-                      } else if (q.userAttempt && !q.userAttempt.isCorrect) {
+                      } else if (attempt && !attempt.isCorrect) {
                         numStyle = "bg-rose-500/20 text-rose-600 font-bold border border-rose-500/30";
                       }
                     } else {

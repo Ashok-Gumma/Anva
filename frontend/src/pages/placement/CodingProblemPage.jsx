@@ -14,7 +14,6 @@ import {
   XCircle,
   AlertTriangle,
   Flame,
-  Bookmark,
   ChevronRight,
   Terminal,
   HelpCircle,
@@ -26,7 +25,6 @@ import {
   getPlacementQuestionById,
   runPlacementCode,
   submitPlacementCode,
-  togglePlacementBookmark,
 } from "../../lib/placementApi";
 import toast from "react-hot-toast";
 import PomodoroTimer from "../../components/PomodoroTimer";
@@ -163,14 +161,6 @@ const CodingProblemPage = () => {
     });
   };
 
-  const { mutate: bookmarkMutation } = useMutation({
-    mutationFn: togglePlacementBookmark,
-    onSuccess: (res) => {
-      toast.success(res.message);
-      queryClient.invalidateQueries({ queryKey: ["placementQuestion", problemId] });
-    },
-  });
-
   if (isLoading || !question) {
     return (
       <div className="min-h-[calc(100dvh-4rem)] bg-base-200 flex items-center justify-center p-6">
@@ -227,12 +217,6 @@ const CodingProblemPage = () => {
               <CheckCircle2 className="size-3" /> Solved
             </span>
           )}
-          <button
-            onClick={() => bookmarkMutation(question._id)}
-            className="btn btn-ghost btn-xs text-base-content/60 hover:text-amber-500"
-          >
-            <Bookmark className={`size-4 ${question.isBookmarked ? "fill-amber-500 text-amber-500" : ""}`} />
-          </button>
         </div>
       </div>
 
