@@ -35,9 +35,14 @@ export const openVideoCallPopup = (url) => {
   ].join(",");
 
   const windowName = "AnvaVideoCallPopup";
-  const popup = window.open(fullUrl, windowName, windowFeatures);
-  if (popup && !popup.closed) {
-    popup.focus();
+  try {
+    const popup = window.open(fullUrl, windowName, windowFeatures);
+    if (popup && !popup.closed) {
+      popup.focus();
+      return popup;
+    }
+  } catch (err) {
+    console.warn("Could not open call popup window:", err);
   }
-  return popup;
+  return null;
 };

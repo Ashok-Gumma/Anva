@@ -15,6 +15,7 @@ const FriendProfilePage = () => {
   const { data: user, isLoading, isError } = useQuery({
     queryKey: ["userProfile", id],
     queryFn: () => getUserProfile(id),
+    enabled: !!id && !!authUser,
   });
 
   const unfriendMutation = useMutation({
@@ -60,6 +61,7 @@ const FriendProfilePage = () => {
   const { data: outgoingFriendReqs = [] } = useQuery({
     queryKey: ["outgoingFriendReqs"],
     queryFn: getOutgoingFriendReqs,
+    enabled: !!authUser,
   });
 
   const hasRequestBeenSent = outgoingFriendReqs.some((req) => req?.recipient?._id === id);

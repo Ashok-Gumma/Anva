@@ -23,6 +23,7 @@ import {
   Chat,
   MessageInput,
   MessageList,
+  MessageSimple,
   Thread,
   Window,
   Attachment as DefaultAttachment,
@@ -33,7 +34,9 @@ import toast from "react-hot-toast";
 import ChatLoader from "../components/ChatLoader";
 import CallButton from "../components/CallButton";
 import PostAttachment from "../components/PostAttachment";
+import CallHistoryAttachment from "../components/CallHistoryAttachment";
 import { openVideoCallPopup } from "../lib/callWindow";
+import { useCallContext } from "../context/CallContext";
 
 const CustomAttachment = (props) => {
   const { attachments } = props;
@@ -41,7 +44,47 @@ const CustomAttachment = (props) => {
   if (postAttachment) {
     return <PostAttachment attachment={postAttachment} />;
   }
+
+  // Call history is rendered exclusively by CustomMessage as a top-level system card
+  if (attachments?.some((att) => att.type === "call_history")) {
+    return null;
+  }
+
   return <DefaultAttachment {...props} />;
+};
+
+const CustomMessage = (props) => {
+  const { message } = props;
+  const callAttachment = message?.attachments?.find((att) => att.type === "call_history");
+  const isCall =
+    Boolean(callAttachment) ||
+    (message?.text &&
+      (message.text.includes("/call/") ||
+        message.text.includes("Video Call") ||
+        message.text.includes("video call") ||
+        message.text.includes("Missed Video") ||
+        message.text.includes("Declined Video")));
+
+  if (isCall) {
+    const attachment = callAttachment || {
+      type: "call_history",
+      call_status: message?.text?.toLowerCase().includes("missed")
+        ? "missed"
+        : message?.text?.toLowerCase().includes("declined")
+        ? "declined"
+        : "ended",
+      call_id: message?.channel_id,
+      timestamp: message?.created_at,
+    };
+
+    return (
+      <div className="w-full flex justify-center my-3 px-2 select-none">
+        <CallHistoryAttachment attachment={attachment} message={message} />
+      </div>
+    );
+  }
+
+  return <MessageSimple {...props} />;
 };
 
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
@@ -49,6 +92,7 @@ const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 const ChatPage = () => {
   const { id: targetUserId } = useParams();
   const navigate = useNavigate();
+  const { initiateCall } = useCallContext();
 
   const [chatClient, setChatClient] = useState(null);
   const [channel, setChannel] = useState(null);
@@ -68,6 +112,7 @@ const ChatPage = () => {
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
     queryFn: getUserFriends,
+    enabled: !!authUser,
   });
 
   /* ── Target User Profile Query ── */
@@ -164,16 +209,18 @@ const ChatPage = () => {
   }, [tokenData, authUser, targetUserId]);
 
   const handleVideoCall = () => {
-    if (channel) {
-      const callUrl = `${window.location.origin}/call/${channel.id}`;
+    const peer = currentFriend || {
+      _id: targetUserId,
+      fullName: targetUser?.fullName || "Peer",
+      profilePic: targetUser?.profilePic || "",
+    };
 
-      channel.sendMessage({
-        text: `I've started a video call. Join me here: ${callUrl}`,
-      });
-
-      toast.success("Video call started! Opening call window...");
-      openVideoCallPopup(callUrl);
-    }
+    initiateCall({
+      targetUser: peer,
+      channelId: channel?.id,
+      channel,
+      navigateFallback: navigate,
+    });
   };
 
   const handleChatContainerClick = (e) => {
@@ -559,10 +606,10 @@ const ChatPage = () => {
           className="flex-1 w-full h-full relative overflow-hidden flex flex-col"
         >
           <Chat client={chatClient}>
-            <Channel channel={channel} Attachment={CustomAttachment}>
+            <Channel channel={channel} Attachment={CustomAttachment} Message={CustomMessage}>
               <div className="w-full h-full flex flex-col relative overflow-hidden">
                 <Window>
-                  <MessageList />
+                  <MessageList Message={CustomMessage} />
                   <MessageInput focus />
                 </Window>
               </div>

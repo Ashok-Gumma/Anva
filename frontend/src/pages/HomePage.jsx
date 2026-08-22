@@ -183,18 +183,21 @@ const HomePage = () => {
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
     queryFn: getUserFriends,
+    enabled: !!authUser,
   });
 
   /* ── Recommended Users ── */
   const { data: recommendedUsers = [], isLoading: loadingUsers } = useQuery({
     queryKey: ["users"],
     queryFn: getRecommendedUsers,
+    enabled: !!authUser,
   });
 
   /* ── Outgoing Requests ── */
   const { data: outgoingFriendReqs = [] } = useQuery({
     queryKey: ["outgoingFriendReqs"],
     queryFn: getOutgoingFriendReqs,
+    enabled: !!authUser,
   });
 
   /* ── Derived ── */

@@ -51,6 +51,8 @@ import { Toaster } from "react-hot-toast";
 import useAuthUser from "./hooks/useAuthUser.js";
 import { useThemeStore } from "./store/useThemeStore.js";
 import { openVideoCallPopup } from "./lib/callWindow.js";
+import { CallProvider } from "./context/CallContext.jsx";
+import IncomingCallModal from "./components/IncomingCallModal.jsx";
 
 const App = () => {
   const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
@@ -139,12 +141,15 @@ const App = () => {
   }
 
   return (
-    <>
+    <CallProvider>
       {/* 
         Always rendered — registers Clerk's getToken into the axios interceptor
         the moment Clerk initializes, BEFORE the first authUser query fires.
       */}
       <AxiosClerkInterceptor />
+
+      {/* Global WhatsApp-style Incoming Call Ringing Dialog */}
+      <IncomingCallModal />
 
       {isAuthResolving ? (
         <PageLoader />
@@ -309,7 +314,7 @@ const App = () => {
           />
         </div>
       )}
-    </>
+    </CallProvider>
   );
 };
 

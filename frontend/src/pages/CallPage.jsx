@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
 import { getStreamToken, executeCompilerCode } from "../lib/api";
@@ -17,8 +17,10 @@ import {
 } from "@stream-io/video-react-sdk";
 
 import "@stream-io/video-react-sdk/dist/css/styles.css";
+import { StreamChat } from "stream-chat";
 import toast from "react-hot-toast";
 import PageLoader from "../components/PageLoader";
+import { callSounds } from "../lib/callSounds";
 import {
   Code,
   Edit3,
@@ -45,10 +47,14 @@ import {
   Mic,
   MicOff,
   PhoneOff,
+  Phone,
+  PhoneMissed,
   Laptop,
   ChevronsLeftRight,
   Radio,
   Users,
+  User,
+  Volume2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -125,7 +131,7 @@ const CODE_LANGUAGES = {
     label: "Kotlin",
     version: "1.8.20",
     monacoLang: "kotlin",
-    defaultCode: `fun main() {\n    println("🚀 Hello from Kotlin in Anva Call Session!")\n}`,
+    defaultCode: `fun main() {\n    println!("🚀 Hello from Kotlin in Anva Call Session!")\n}`,
   },
   csharp: {
     label: "C# (.NET)",
@@ -173,11 +179,27 @@ const CODE_LANGUAGES = {
 
 const CallPage = () => {
   const { id: callId } = useParams();
+  const [searchParams] = useSearchParams();
+  const isCallerParam = searchParams.get("isCaller") === "true";
+  const isCalleeParam = searchParams.get("isCallee") === "true";
+  const peerId = searchParams.get("peerId") || "";
+  const peerName = searchParams.get("peerName") || "Peer";
+  const peerPic = searchParams.get("peerPic") || "";
+
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
 
+  // Call lifecycle status: "CALLING" | "RINGING" | "CONNECTED" | "DECLINED" | "NOT_LIFTING"
+  const [callStatus, setCallStatus] = useState(() => {
+    if (isCallerParam) return "CALLING";
+    return "CONNECTED";
+  });
+
   const { authUser, isLoading } = useAuthUser();
+  const navigate = useNavigate();
+  const broadcastChannelRef = useRef(null);
+  const timeoutTimerRef = useRef(null);
 
   const { data: tokenData } = useQuery({
     queryKey: ["streamToken"],
@@ -185,9 +207,121 @@ const CallPage = () => {
     enabled: !!authUser,
   });
 
+  // Handle Outgoing Ringing and Signaling State Machine
+  useEffect(() => {
+    if (!isCallerParam) {
+      setCallStatus("CONNECTED");
+      return;
+    }
+
+    // 1. Play Outgoing Dial / Ringback Tone
+    callSounds.playOutgoingRingtone();
+
+    // 2. Transition from "Calling" to "Ringing" after 2 seconds
+    const ringingTimer = setTimeout(() => {
+      setCallStatus((prev) => (prev === "CALLING" ? "RINGING" : prev));
+    }, 2000);
+
+    // 3. 35-second Timeout: If receiver doesn't answer, show "NOT_LIFTING"
+    timeoutTimerRef.current = setTimeout(() => {
+      callSounds.stopAll();
+      callSounds.playEndTone();
+      setCallStatus("NOT_LIFTING");
+
+      // Broadcast timeout to callee to close incoming popup
+      broadcastChannelRef.current?.postMessage({
+        type: "CALL_TIMEOUT",
+        payload: { callId },
+      });
+
+      // Auto close after 4 seconds
+      setTimeout(() => {
+        window.close();
+        if (window.history.length > 1) {
+          navigate(-1);
+        } else {
+          navigate("/chat");
+        }
+      }, 4000);
+    }, 35000);
+
+    return () => {
+      clearTimeout(ringingTimer);
+      if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+      callSounds.stopAll();
+    };
+  }, [isCallerParam, callId, navigate]);
+
+  const handleRemoteHangup = useCallback(() => {
+    callSounds.stopAll();
+    callSounds.playEndTone();
+    if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+    setCallStatus("ENDED");
+    toast("Call ended by peer", { icon: "📞" });
+    setTimeout(() => {
+      window.close();
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate("/chat");
+      }
+    }, 1500);
+  }, [navigate]);
+
+  // Setup BroadcastChannel for Instant Cross-Window / Cross-Tab Signaling
+  useEffect(() => {
+    try {
+      const bc = new BroadcastChannel("anva_call_signaling");
+      broadcastChannelRef.current = bc;
+
+      bc.onmessage = (event) => {
+        const { type, payload } = event.data || {};
+        if (payload?.callId && payload.callId !== callId) return;
+
+        if (type === "CALL_ACCEPTED") {
+          callSounds.stopAll();
+          if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+          setCallStatus("CONNECTED");
+          toast.success(`${peerName} joined the call!`);
+        } else if (type === "CALL_REJECTED") {
+          callSounds.stopAll();
+          callSounds.playDeclinedTone();
+          if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+          setCallStatus("DECLINED");
+
+          setTimeout(() => {
+            window.close();
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate("/chat");
+            }
+          }, 3500);
+        } else if (type === "CALL_TIMEOUT") {
+          callSounds.stopAll();
+          callSounds.playEndTone();
+          if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+          setCallStatus("NOT_LIFTING");
+        } else if (type === "CALL_ENDED" || type === "CALL_CANCELLED") {
+          handleRemoteHangup();
+        }
+      };
+
+      return () => {
+        bc.close();
+      };
+    } catch (err) {
+      console.warn("BroadcastChannel error:", err);
+    }
+  }, [callId, peerName, navigate, handleRemoteHangup]);
+
+  // Initialize Stream Video Call Client and cross-device sync
   useEffect(() => {
     let videoClient;
     let callInstance;
+    let participantSub;
+    let remoteSub;
+    let customEventUnsub;
 
     const initCall = async () => {
       if (!tokenData?.token || !authUser || !callId) return;
@@ -210,6 +344,61 @@ const CallPage = () => {
         callInstance = videoClient.call("default", callId);
         await callInstance.join({ create: true });
 
+        // 1. Remote participants subscription (immediate detection of peer)
+        remoteSub = callInstance.state.remoteParticipants$.subscribe((remotes) => {
+          if (remotes && remotes.length > 0) {
+            callSounds.stopAll();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("CONNECTED");
+          }
+        });
+
+        // 2. Total participants subscription
+        participantSub = callInstance.state.participants$.subscribe((participants) => {
+          if (participants && participants.length > 1) {
+            callSounds.stopAll();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("CONNECTED");
+          }
+        });
+
+        // 3. Stream Video custom signaling events
+        customEventUnsub = callInstance.on("custom", (event) => {
+          const data = event.custom;
+          if (data?.actionType === "CALL_ACCEPTED") {
+            callSounds.stopAll();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("CONNECTED");
+          } else if (data?.actionType === "CALL_REJECTED") {
+            callSounds.stopAll();
+            callSounds.playDeclinedTone();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("DECLINED");
+          } else if (data?.actionType === "CALL_ENDED" || data?.actionType === "CALL_CANCELLED") {
+            handleRemoteHangup();
+          }
+        });
+
+        // 4. Remote participant left / call ended natively in WebRTC room
+        callInstance.on("call.ended", () => {
+          handleRemoteHangup();
+        });
+        callInstance.on("call.session_participant_left", (event) => {
+          if (event.participant?.user?.id && event.participant.user.id !== authUser._id) {
+            handleRemoteHangup();
+          }
+        });
+
+        // If callee joined, broadcast acceptance signal directly via Stream Video room
+        if (isCalleeParam) {
+          callInstance
+            .sendCustomEvent({
+              actionType: "CALL_ACCEPTED",
+              senderId: authUser._id,
+            })
+            .catch(() => {});
+        }
+
         setClient(videoClient);
         setCall(callInstance);
       } catch (error) {
@@ -223,13 +412,301 @@ const CallPage = () => {
     initCall();
 
     return () => {
+      if (participantSub) participantSub.unsubscribe();
+      if (remoteSub) remoteSub.unsubscribe();
+      if (customEventUnsub) customEventUnsub();
       if (callInstance) callInstance.leave().catch(console.error);
       if (videoClient) videoClient.disconnectUser().catch(console.error);
     };
-  }, [tokenData, authUser, callId]);
+  }, [tokenData, authUser, callId, isCalleeParam, handleRemoteHangup]);
+
+  // Stream Chat Channel signaling sync inside CallPage (cross-device & remote sync)
+  useEffect(() => {
+    if (!tokenData?.token || !authUser || !callId) return;
+
+    let isMounted = true;
+    const chatClient = StreamChat.getInstance(STREAM_API_KEY);
+
+    const initChatSignaling = async () => {
+      try {
+        if (chatClient.userID !== authUser._id) {
+          if (chatClient.userID) await chatClient.disconnectUser();
+          await chatClient.connectUser(
+            { id: authUser._id, name: authUser.fullName },
+            tokenData.token
+          );
+        }
+
+        const ch = chatClient.channel("messaging", callId);
+        await ch.watch().catch(() => {});
+
+        const handleChatSignal = (event) => {
+          if (!isMounted) return;
+          const type = event.type || event.custom?.type;
+
+          if (
+            type === "call_accepted" ||
+            type === "call.accepted"
+          ) {
+            callSounds.stopAll();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("CONNECTED");
+          } else if (
+            type === "call_rejected" ||
+            type === "call.rejected"
+          ) {
+            callSounds.stopAll();
+            callSounds.playDeclinedTone();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("DECLINED");
+          } else if (
+            type === "call_timeout" ||
+            type === "call.timeout"
+          ) {
+            callSounds.stopAll();
+            callSounds.playEndTone();
+            if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+            setCallStatus("NOT_LIFTING");
+          } else if (
+            type === "call_ended" ||
+            type === "call.ended" ||
+            type === "call_cancelled" ||
+            type === "call.cancelled"
+          ) {
+            handleRemoteHangup();
+          }
+        };
+
+        ch.on("call_accepted", handleChatSignal);
+        ch.on("call_rejected", handleChatSignal);
+        ch.on("call_timeout", handleChatSignal);
+        ch.on("call_ended", handleChatSignal);
+        ch.on("call_cancelled", handleChatSignal);
+        ch.on("message.new", (e) => {
+          if (e.message?.custom) handleChatSignal(e.message.custom);
+        });
+
+        return () => {
+          ch.off("call_accepted", handleChatSignal);
+          ch.off("call_rejected", handleChatSignal);
+          ch.off("call_timeout", handleChatSignal);
+          ch.off("call_ended", handleChatSignal);
+          ch.off("call_cancelled", handleChatSignal);
+        };
+      } catch (err) {
+        console.warn("CallPage chat signaling error:", err);
+      }
+    };
+
+    initChatSignaling();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [tokenData, authUser, callId, handleRemoteHangup]);
+
+  const handleCancelOutgoingCall = async () => {
+    callSounds.stopAll();
+    if (timeoutTimerRef.current) clearTimeout(timeoutTimerRef.current);
+
+    // 1. Broadcast cancellation signal via BroadcastChannel
+    broadcastChannelRef.current?.postMessage({
+      type: "CALL_CANCELLED",
+      payload: { callId },
+    });
+
+    // 2. Broadcast cancellation via Stream Video
+    call?.sendCustomEvent({ actionType: "CALL_CANCELLED", senderId: authUser?._id }).catch(() => {});
+
+    // 3. Broadcast cancellation via Stream Chat
+    if (tokenData?.token && authUser && callId) {
+      try {
+        const chatClient = StreamChat.getInstance(STREAM_API_KEY);
+        const ch = chatClient.channel("messaging", callId);
+        ch.sendEvent({ type: "call_cancelled", callId, targetUserId: peerId }).catch(() => {});
+        ch.sendMessage({
+          text: "📵 Video call cancelled.",
+          custom: { type: "call_cancelled", callId, targetUserId: peerId },
+        }).catch(() => {});
+      } catch (err) {
+        console.warn("Could not send call cancellation:", err);
+      }
+    }
+
+    if (call) {
+      try {
+        await call.leave();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    window.close();
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/chat");
+    }
+  };
 
   if (isLoading || isConnecting) return <PageLoader />;
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // OUTGOING CALLING / RINGING / NOT LIFTING SCREEN (WhatsApp Style)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (callStatus !== "CONNECTED") {
+    return (
+      <div className="h-screen w-screen bg-black text-white flex flex-col items-center justify-between p-8 font-sans select-none relative overflow-hidden">
+        {/* Ambient Radial Background Glow */}
+        <div className="absolute inset-0 bg-radial from-zinc-900/60 via-black to-black pointer-events-none" />
+
+        {/* Top Header */}
+        <div className="flex items-center gap-2 z-10">
+          <div className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-mono font-bold tracking-widest text-zinc-400 uppercase">
+            Anva End-to-End Encrypted Call
+          </span>
+        </div>
+
+        {/* Center Calling Status & Pulsing Peer Avatar */}
+        <div className="flex flex-col items-center text-center z-10 max-w-sm">
+          {/* Pulsing Avatar */}
+          <div className="relative mb-8 flex items-center justify-center">
+            {(callStatus === "CALLING" || callStatus === "RINGING") && (
+              <>
+                <div className="absolute -inset-4 rounded-full bg-emerald-500/20 animate-ping opacity-60" />
+                <div className="absolute -inset-10 rounded-full bg-emerald-500/10 animate-pulse" />
+              </>
+            )}
+
+            {callStatus === "DECLINED" && (
+              <div className="absolute -inset-4 rounded-full bg-red-500/20 animate-pulse" />
+            )}
+
+            {callStatus === "NOT_LIFTING" && (
+              <div className="absolute -inset-4 rounded-full bg-amber-500/20 animate-pulse" />
+            )}
+
+            <div
+              className={`relative size-32 sm:size-40 rounded-full overflow-hidden border-4 shadow-2xl bg-zinc-900 flex items-center justify-center z-10 transition-all ${
+                callStatus === "DECLINED"
+                  ? "border-red-500 opacity-80"
+                  : callStatus === "NOT_LIFTING"
+                  ? "border-amber-500 opacity-80"
+                  : "border-white/40 shadow-emerald-500/20"
+              }`}
+            >
+              {peerPic ? (
+                <img
+                  src={peerPic}
+                  alt={peerName}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <User className="size-20 text-zinc-500" />
+              )}
+            </div>
+          </div>
+
+          {/* Peer Full Name */}
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+            {peerName}
+          </h1>
+
+          {/* Dynamic Status Badges */}
+          {callStatus === "CALLING" && (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-black uppercase tracking-wider">
+              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Calling...</span>
+            </div>
+          )}
+
+          {callStatus === "RINGING" && (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-700/60 text-emerald-400 text-xs font-black uppercase tracking-wider animate-pulse">
+              <Volume2 className="size-3.5" />
+              <span>Ringing...</span>
+            </div>
+          )}
+
+          {callStatus === "DECLINED" && (
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-950/80 border border-red-700/80 text-red-400 text-xs font-black uppercase tracking-wider">
+                <PhoneOff className="size-3.5" />
+                <span>Call Declined</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1 font-medium">
+                User is busy or declined the call. Closing window...
+              </p>
+            </div>
+          )}
+
+          {callStatus === "NOT_LIFTING" && (
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-950/80 border border-amber-700/80 text-amber-400 text-xs font-black uppercase tracking-wider">
+                <PhoneMissed className="size-3.5" />
+                <span>Not Lifting</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1 font-medium">
+                User is not answering the call. Closing window...
+              </p>
+            </div>
+          )}
+
+          {callStatus === "ENDED" && (
+            <div className="flex flex-col items-center gap-1.5 animate-in fade-in duration-300">
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs font-black uppercase tracking-wider">
+                <PhoneOff className="size-3.5 text-red-400" />
+                <span>Call Ended</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1 font-medium">
+                The call has ended. Closing window...
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Action Controls */}
+        <div className="flex flex-col items-center gap-3 z-10 w-full max-w-xs">
+          {callStatus === "CALLING" || callStatus === "RINGING" ? (
+            <button
+              type="button"
+              onClick={handleCancelOutgoingCall}
+              className="w-full py-4 px-6 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black text-sm rounded-2xl shadow-xl border border-red-500/40 flex items-center justify-center gap-2.5 transition-all cursor-pointer group"
+            >
+              <div className="size-8 rounded-full bg-white/20 flex items-center justify-center group-hover:rotate-12 transition-transform">
+                <PhoneOff className="size-4 text-white" />
+              </div>
+              <span>End Call</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                window.close();
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate("/chat");
+                }
+              }}
+              className="w-full py-3.5 px-6 bg-zinc-900 hover:bg-zinc-800 active:scale-95 text-zinc-200 font-bold text-xs rounded-2xl border border-zinc-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <X className="size-4" />
+              <span>Close Window</span>
+            </button>
+          )}
+
+          <p className="text-[11px] text-zinc-500 font-mono">
+            {callStatus === "RINGING" ? "Waiting for peer to pick up..." : ""}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ACTIVE CONNECTED VIDEO CALL + COLLABORATIVE MONACO WORKSPACE
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="h-screen w-screen bg-black text-white overflow-hidden flex flex-col font-sans select-none" data-theme="dark">
       {/* Scoped CSS to make Stream UI popups and menus crystal clear in pure Black & White */}
@@ -288,8 +765,14 @@ const CallPage = () => {
   );
 };
 
-const CustomCallControls = () => {
+const CustomCallControls = ({ seconds = 0, callId = "" }) => {
   const call = useCall();
+  const { authUser } = useAuthUser();
+  const { data: tokenData } = useQuery({
+    queryKey: ["streamToken"],
+    queryFn: getStreamToken,
+    enabled: !!authUser,
+  });
   const { useMicrophoneState, useCameraState, useScreenShareState } = useCallStateHooks();
   const { isMute: isMicMute } = useMicrophoneState();
   const { isMute: isCamMute } = useCameraState();
@@ -322,6 +805,35 @@ const CustomCallControls = () => {
 
   const leaveCall = async () => {
     try {
+      // If the call lasted at least 3 seconds, post an "Ended Call" card with duration to the chat channel
+      if (seconds >= 3 && callId && authUser && tokenData?.token) {
+        const chatClient = StreamChat.getInstance(STREAM_API_KEY);
+        const ch = chatClient.channel("messaging", callId);
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        const durStr = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+
+        ch.sendMessage({
+          text: `📹 Video Call (${durStr})`,
+          attachments: [
+            {
+              type: "call_history",
+              call_type: "video",
+              call_status: "ended",
+              duration: seconds,
+              call_id: callId,
+              caller_id: authUser._id,
+              caller_name: authUser.fullName,
+              timestamp: Date.now(),
+            },
+          ],
+          custom: {
+            type: "call_ended",
+            callId,
+            duration: seconds,
+          },
+        }).catch(() => {});
+      }
       await call?.leave();
     } catch (err) {
       console.error(err);
@@ -901,7 +1413,7 @@ const CallContent = ({ callId }) => {
         {/* Right Header Layout & Call Controls (Clean, No Duplicates) */}
         <div className="flex items-center gap-2">
           {/* Active Call Controls in Header when Video is Hidden */}
-          {hideVideo && <CustomCallControls />}
+          {hideVideo && <CustomCallControls seconds={seconds} callId={callId} />}
 
           {/* Toggle Hide / Show Video Button */}
           <button
@@ -955,7 +1467,7 @@ const CallContent = ({ callId }) => {
               <SpeakerLayout ParticipantViewUIConfig={{ showParticipantMenu: false }} />
             </div>
             <div className="p-3 flex justify-center z-10 bg-gradient-to-t from-black via-black/80 to-transparent shrink-0">
-              <CustomCallControls />
+              <CustomCallControls seconds={seconds} callId={callId} />
             </div>
           </div>
         )}
