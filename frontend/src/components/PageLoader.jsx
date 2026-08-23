@@ -1,47 +1,76 @@
-import { motion } from "framer-motion";
-import AnvaLogo from "./AnvaLogo";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "../store/useThemeStore";
+import { NOTION_LOADING_SCENES } from "./loader/LoadingVisuals";
 
-const PageLoader = () => {
+/**
+ * Minimalist Notion-Aesthetic Page Loader
+ * Clean, distraction-free hand-drawn illustrations that transition immediately
+ * with zero box containers or heavy UI clutter.
+ */
+const PageLoader = ({
+  message,
+  fullscreen = true,
+  className = "",
+}) => {
   const { theme } = useThemeStore();
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Immediate & snappy cycling (shifts immediately every 280ms like a sketchbook flipbook)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % NOTION_LOADING_SCENES.length);
+    }, 280);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentScene = NOTION_LOADING_SCENES[currentIndex];
+  const ActiveComponent = currentScene.Component;
+
+  const containerClasses = fullscreen
+    ? "min-h-screen fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#faf9f6] text-neutral-800 dark:bg-[#141312] dark:text-neutral-200 select-none p-4 transition-colors duration-300"
+    : `relative flex flex-col items-center justify-center p-4 text-neutral-800 dark:text-neutral-200 select-none ${className}`;
 
   return (
-    <div 
-      className="min-h-screen flex flex-col items-center justify-center bg-[#f8f6ee] text-[#2c221e] dark:bg-[#161412] dark:text-[#f8f6ee] overflow-hidden relative selection:bg-amber-900/20" 
-      data-theme={theme}
-    >
-      {/* Warm Retro Ambient Backlight Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-600/10 dark:bg-amber-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+    <div className={containerClasses} data-theme={theme}>
+      <div className="flex flex-col items-center justify-center gap-4">
+        {/* ── Minimalist Aesthetic Illustration (Instant Shift / Stop-Motion Flip) ── */}
+        <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center">
+          <AnimatePresence>
+            <motion.div
+              key={currentScene.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.08, ease: "linear" }}
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <ActiveComponent />
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
-      <div className="relative flex flex-col items-center gap-6 z-10 px-4">
-        {/* Floating Animated Retro Logo Badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: [0.95, 1.02, 0.98, 1], y: [0, -6, 0] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-          className="relative p-3 bg-white/60 dark:bg-black/30 rounded-full border border-base-content/10 shadow-2xl backdrop-blur-sm"
-        >
-          <AnvaLogo className="size-36 sm:size-44 shadow-md" />
-        </motion.div>
+        {/* ── Minimal Notion-Style Micro Caption ── */}
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-xs sm:text-sm font-medium tracking-wide font-sans text-neutral-600 dark:text-neutral-400">
+            {message || "loading..."}
+          </p>
 
-        {/* Retro Shimmer Loading Line */}
-        <motion.div 
-          className="w-48 sm:w-56 h-1 bg-current opacity-25 rounded-full overflow-hidden relative mt-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.35 }}
-          transition={{ delay: 0.3 }}
-        >
-          <motion.div 
-            className="h-full bg-current rounded-full"
-            initial={{ x: "-100%" }}
-            animate={{ x: "100%" }}
-            transition={{ 
-              duration: 1.8,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        </motion.div>
+          {/* Minimal 3-dot pulse indicator */}
+          <div className="flex items-center gap-1.5 opacity-40">
+            {NOTION_LOADING_SCENES.map((_, idx) => (
+              <span
+                key={idx}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                  idx === currentIndex
+                    ? "bg-neutral-800 dark:bg-neutral-200 scale-125 opacity-100"
+                    : "bg-neutral-400 dark:bg-neutral-600 opacity-40"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

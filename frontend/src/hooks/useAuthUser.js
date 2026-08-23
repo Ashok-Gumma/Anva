@@ -3,14 +3,20 @@ import { useAuth } from "@clerk/clerk-react";
 import { getAuthUser } from "../lib/api";
 
 const useAuthUser = () => {
-  const { isLoaded: isClerkLoaded } = useAuth();
+  const { isLoaded: isClerkLoaded, isSignedIn: isClerkSignedIn } = useAuth();
 
   const query = useQuery({
     queryKey: ["authUser"],
     queryFn: getAuthUser,
     enabled: isClerkLoaded,
-    retry: 1,
-    staleTime: 60_000,
+    retry: (failureCount, error) => {
+      // Never retry 401 (Unauthenticated) or 404 (Not Found)
+      if (error?.response?.status === 401 || error?.response?.status === 404) {
+        return false;
+      }
+      return failureCount < 1;
+    },
+    staleTime: 5 * 60_000,
   });
 
   return {

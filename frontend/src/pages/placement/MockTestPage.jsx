@@ -77,7 +77,7 @@ const MockTestPage = () => {
   const [secondsRemaining, setSecondsRemaining] = useState(90 * 60);
 
   // Coding question compiler state
-  const [selectedLanguage, setSelectedLanguage] = useState("javascript");
+  const [selectedLanguage, setSelectedLanguage] = useState("java");
   const [codeMap, setCodeMap] = useState({}); // questionId -> code string
   const [customInput, setCustomInput] = useState("");
   const [activeCodingTab, setActiveCodingTab] = useState("editor"); // "editor" | "output"
@@ -618,10 +618,10 @@ const MockTestPage = () => {
                         }}
                         className="select select-bordered select-xs font-mono font-bold text-xs bg-base-100 rounded-xl"
                       >
+                        <option value="java">Java (OpenJDK)</option>
                         <option value="javascript">JavaScript (Node.js)</option>
                         <option value="python">Python 3</option>
                         <option value="cpp">C++ (GCC)</option>
-                        <option value="java">Java (OpenJDK)</option>
                       </select>
                     </div>
 

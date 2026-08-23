@@ -126,10 +126,10 @@ const CodingListPage = () => {
               {questions.map((prob, idx) => {
                 const diffColor =
                   prob.difficulty === "Easy"
-                    ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+                    ? "text-emerald-700 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400"
                     : prob.difficulty === "Medium"
-                    ? "text-amber-500 bg-amber-500/10 border-amber-500/20"
-                    : "text-rose-500 bg-rose-500/10 border-rose-500/20";
+                    ? "text-amber-700 bg-amber-500/10 border-amber-500/30 dark:text-amber-400"
+                    : "text-rose-700 bg-rose-500/10 border-rose-500/30 dark:text-rose-400";
 
                 return (
                   <div

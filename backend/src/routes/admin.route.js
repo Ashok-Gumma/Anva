@@ -22,11 +22,10 @@ import {
 
 const router = express.Router();
 
-router.post("/promote", protectRoute, promoteToAdmin);
-
-// All routes below require login AND admin role
+// All routes strictly require valid login AND admin role
 router.use(protectRoute, protectAdminRoute);
 
+router.post("/promote", promoteToAdmin);
 router.get("/stats", getAdminStats);
 router.post("/broadcast", broadcastAnnouncement);
 

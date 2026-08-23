@@ -63,7 +63,7 @@ const App = () => {
     return sessionStorage.getItem("anva_has_loaded_app") === "true";
   });
 
-  const isAuthenticated = Boolean(authUser) || isClerkSignedIn;
+  const isAuthenticated = Boolean(authUser);
 
   // Minimum loading timer (only on initial login/session load)
   useEffect(() => {
@@ -95,13 +95,13 @@ const App = () => {
 
   // Keep-alive ping immediately & every 2 minutes
   useEffect(() => {
-    if (!isAuthenticated || authUser?.isSuspended) return;
+    if (!authUser || authUser?.isSuspended) return;
     import("./lib/api").then(({ sendPing }) => sendPing().catch(() => {}));
     const interval = setInterval(() => {
       import("./lib/api").then(({ sendPing }) => sendPing().catch(() => {}));
     }, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, authUser]);
+  }, [authUser]);
 
   // Global listener: Open any /call/ link across the app in a dedicated WhatsApp-style call window
   useEffect(() => {
@@ -195,7 +195,7 @@ const App = () => {
                     />
                   </AuthCardWrapper>
                 ) : (
-                  <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
+                  <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />
                 )
               }
             />
@@ -220,7 +220,7 @@ const App = () => {
                     />
                   </AuthCardWrapper>
                 ) : (
-                  <Navigate to={authUser?.isOnboarded ? "/" : "/onboarding"} replace />
+                  <Navigate to={authUser?.role === "admin" ? "/admin" : authUser?.isOnboarded ? "/" : "/onboarding"} replace />
                 )
               }
             />
@@ -273,10 +273,12 @@ const App = () => {
 
             <Route path="/call/:id"      element={<ProtectedRoute element={<CallPage />} />} />
             
-            {/* ── Public Info & Legal ── */}
             <Route path="/features"      element={<FeaturesPage />} />
             <Route path="/privacy"       element={<PrivacyPage />} />
             <Route path="/terms"         element={<TermsPage />} />
+
+            {/* ── Strict Fallback Route (404 / Invalid URL handling) ── */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
 
           <Toaster

@@ -19,13 +19,14 @@ import {
   Flame,
   Timer,
   RotateCcw,
+  Layers,
+  Lightbulb,
 } from "lucide-react";
 import {
   getPlacementQuestions,
   submitPlacementAnswer,
   resetPlacementProgress,
 } from "../../lib/placementApi";
-import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import PomodoroTimer from "../../components/PomodoroTimer";
 
@@ -46,7 +47,7 @@ const AptitudePracticePage = () => {
 
   // Timer state
   const [secondsElapsed, setSecondsElapsed] = useState(0);
-  const [mockSecondsRemaining, setMockSecondsRemaining] = useState(25 * 60); // 25 mins for mock
+  const [mockSecondsRemaining, setMockSecondsRemaining] = useState(25 * 60);
 
   // Mock test session answers: map of questionId -> { choice, isCorrect }
   const [mockAnswers, setMockAnswers] = useState({});
@@ -93,7 +94,6 @@ const AptitudePracticePage = () => {
           setSubmissionResult(null);
         }
       } else {
-        // Mock mode
         const previousChoice = mockAnswers[qId];
         setSelectedOption(previousChoice !== undefined ? previousChoice : null);
       }
@@ -127,14 +127,13 @@ const AptitudePracticePage = () => {
     }
   }, [mode, isMockCompleted]);
 
-  // Format timer
   const formatTime = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Submit answer in Practice Mode
+  // Submit answer in Practice Mode (Quiet inline feedback)
   const { mutate: submitAnswerMutation } = useMutation({
     mutationFn: submitPlacementAnswer,
     onMutate: () => setIsSubmitting(true),
@@ -153,15 +152,9 @@ const AptitudePracticePage = () => {
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
       queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
-      if (res.isCorrect) {
-        toast.success("Correct Answer! 🎉");
-      } else {
-        toast.error("Incorrect. Check the explanation below.");
-      }
     },
-    onError: (err) => {
+    onError: () => {
       setIsSubmitting(false);
-      toast.error(err.response?.data?.message || "Failed to submit answer.");
     },
   });
 
@@ -174,311 +167,241 @@ const AptitudePracticePage = () => {
         userChoice: selectedOption,
       });
     } else {
-      // Mock Mode: Record answer locally
-      setMockAnswers((prev) => ({
-        ...prev,
-        [currentQuestion._id]: selectedOption,
-      }));
-      // Move to next question if available
+      setMockAnswers((prev) => ({ ...prev, [currentQuestion._id]: selectedOption }));
       if (currentIndex < questions.length - 1) {
         setCurrentIndex((prev) => prev + 1);
-      } else {
-        toast.success("Reached last question. You can review or submit your test.");
       }
     }
   };
 
-  // Reset Progress Mutation
-  const { mutate: resetProgressMutation, isPending: isResetting } = useMutation({
+  // Reset single question in Practice Mode
+  const { mutate: resetQuestionMutation, isPending: isResetting } = useMutation({
     mutationFn: resetPlacementProgress,
-    onSuccess: (_, variables) => {
-      if (variables?.questionId) {
+    onSuccess: () => {
+      if (currentQuestion) {
+        const qId = currentQuestion._id;
         setAttemptMap((prev) => {
-          const next = { ...prev };
-          delete next[variables.questionId];
-          return next;
+          const copy = { ...prev };
+          delete copy[qId];
+          return copy;
         });
-        if (currentQuestion?._id === variables.questionId) {
-          setSelectedOption(null);
-          setSubmissionResult(null);
-        }
-        toast.success("Question reset! You can try again.");
-      } else {
-        setAttemptMap({});
-        setSelectedOption(null);
-        setSubmissionResult(null);
-        toast.success("Progress reset successfully!");
       }
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      setSelectedOption(null);
+      setSubmissionResult(null);
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Failed to reset progress.");
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
     },
   });
 
   const handleResetCurrentQuestion = () => {
-    if (!currentQuestion) return;
-    resetProgressMutation({ questionId: currentQuestion._id });
-  };
-
-  const handleResetAll = () => {
-    if (questions.length === 0) return;
-    resetProgressMutation({
-      questionIds: questions.map((q) => q._id),
+    if (!currentQuestion || isResetting) return;
+    resetQuestionMutation({
+      company: companyId,
       category: "aptitude",
+      questionId: currentQuestion._id,
     });
   };
 
-  // Mock test submission
   const handleFinishMock = () => {
     setIsMockCompleted(true);
-    // Grade all answered questions
-    let correctCount = 0;
-    questions.forEach((q) => {
-      const choice = mockAnswers[q._id];
-      if (choice !== undefined && Number(choice) === Number(q.correctAnswer)) {
-        correctCount++;
-        // Submit to persist
-        submitPlacementAnswer({ questionId: q._id, userChoice: choice });
-      }
-    });
-    toast.success(`Mock Test Completed! Scored ${correctCount} / ${questions.length}`);
   };
 
-  const answeredCount = Object.keys(mockAnswers).length;
+  // Summary Metrics
+  const totalSolved = useMemo(() => {
+    return questions.filter((q) => attemptMap[q._id]?.isCorrect || q.userAttempt?.isCorrect).length;
+  }, [questions, attemptMap]);
+
+  const mockScore = useMemo(() => {
+    if (mode !== "mock") return 0;
+    let score = 0;
+    questions.forEach((q) => {
+      if (mockAnswers[q._id] !== undefined && Number(mockAnswers[q._id]) === Number(q.correctAnswer)) {
+        score += 1;
+      }
+    });
+    return score;
+  }, [mode, questions, mockAnswers]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-[calc(100dvh-4rem)] bg-base-200 flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3 text-base-content/60">
+          <span className="loading loading-spinner loading-lg text-primary" />
+          <span className="text-xs font-bold uppercase tracking-widest font-mono">Loading Practice Hub...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-[calc(100dvh-4rem)] bg-base-200 p-3 sm:p-6 lg:p-8 font-sans text-base-content">
-      <div className="container mx-auto max-w-[1300px] space-y-6">
-        {/* ── 1. HEADER & MODE SWITCHER ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-4 sm:p-6 rounded-3xl border border-base-content/10 shadow-sm">
+    <div className="min-h-[calc(100dvh-4rem)] bg-base-200/50 p-2 sm:p-5 font-sans text-base-content">
+      <div className="max-w-6xl mx-auto space-y-4">
+        {/* ── TOP HEADER / NAV BAR ── */}
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-base-100 p-4 rounded-3xl border border-base-content/10 shadow-xs">
           <div className="flex items-center gap-3">
             <Link
               to={`/placement/${companyId}`}
-              className="p-2 rounded-xl bg-base-200 hover:bg-base-300 text-base-content transition-colors"
+              className="p-2 rounded-2xl bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors shrink-0"
+              title="Back to Dashboard"
             >
-              <ArrowLeft className="size-5" />
+              <ArrowLeft className="size-4" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm uppercase tracking-wider text-primary">
+                <span className="font-extrabold text-[11px] uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20">
                   {companyId?.toUpperCase()}
                 </span>
-                <span className="text-base-content/40">•</span>
-                <span className="font-black text-base text-base-content">Quantitative & Logical Aptitude</span>
+                <span className="text-xs font-bold text-base-content/40">•</span>
+                <span className="text-xs font-black uppercase tracking-wider text-base-content/70">
+                  Quantitative Aptitude
+                </span>
               </div>
-              <p className="text-xs text-base-content/60 font-medium">
-                {mode === "practice" ? "Practice mode with step-by-step solutions" : "Timed mock test evaluation"}
-              </p>
+              <h1 className="text-lg font-black tracking-tight text-base-content">
+                Practice &amp; Mastery Deck
+              </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Mode Switch */}
-            <div className="join bg-base-200 p-1 rounded-2xl border border-base-content/5">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+            {/* Mode Switcher */}
+            <div className="grid grid-cols-2 p-1 bg-base-200 rounded-2xl text-xs font-bold">
               <button
-                onClick={() => {
-                  setMode("practice");
-                  setIsMockCompleted(false);
-                }}
-                className={`join-item px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                  mode === "practice"
-                    ? "bg-primary text-primary-content shadow-xs"
-                    : "text-base-content/70 hover:text-base-content"
+                onClick={() => setMode("practice")}
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                  mode === "practice" ? "bg-base-100 text-primary font-black shadow-xs" : "text-base-content/60"
                 }`}
               >
-                Practice Mode
+                Practice
               </button>
               <button
-                onClick={() => {
-                  setMode("mock");
-                  setMockSecondsRemaining(25 * 60);
-                  setIsMockCompleted(false);
-                }}
-                className={`join-item px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                  mode === "mock"
-                    ? "bg-primary text-primary-content shadow-xs"
-                    : "text-base-content/70 hover:text-base-content"
+                onClick={() => setMode("mock")}
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                  mode === "mock" ? "bg-base-100 text-primary font-black shadow-xs" : "text-base-content/60"
                 }`}
               >
                 Mock Test
               </button>
             </div>
 
-            {/* Pomodoro Focus Button */}
+            {/* Timer Display */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-200/80 rounded-2xl text-xs font-mono font-bold text-base-content/80 border border-base-content/5">
+              <Clock className="size-3.5 text-primary" />
+              <span>{mode === "practice" ? formatTime(secondsElapsed) : formatTime(mockSecondsRemaining)}</span>
+            </div>
+
+            {/* Pomodoro Focus */}
             <button
               onClick={() => setShowPomodoro((prev) => !prev)}
-              className="btn btn-ghost btn-sm rounded-xl border border-base-content/10 gap-1.5 text-xs font-bold hover:bg-base-200"
-              title="Open Pomodoro Focus Timer"
+              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-base-200"
+              title="Pomodoro Focus Timer"
             >
-              <span className="text-sm">🍅</span>
-              <span className="hidden sm:inline">Pomodoro</span>
+              <span>🍅</span>
+              <span className="hidden md:inline">Focus</span>
             </button>
-
-            {/* Mock Test Countdown Timer only */}
-            {mode === "mock" && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-base-200 rounded-xl border border-base-content/5 text-xs font-mono font-bold text-base-content shrink-0">
-                <Clock className="size-4 text-primary" />
-                <span>{formatTime(mockSecondsRemaining)}</span>
-              </div>
-            )}
           </div>
-        </div>
+        </header>
 
-        {/* ── 2. TOPIC & DIFFICULTY FILTERS (Practice Mode) ── */}
-        {mode === "practice" && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-            <span className="text-[10px] font-black uppercase tracking-widest text-base-content/50 shrink-0 ml-1">
-              Topics:
-            </span>
+        {/* ── TOPIC FILTERS BAR ── */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar text-xs">
+          <span className="text-[11px] font-black uppercase tracking-wider text-base-content/40 pl-1 shrink-0">
+            Topics:
+          </span>
+          <button
+            onClick={() => {
+              setSelectedTopic("all");
+              setCurrentIndex(0);
+            }}
+            className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
+              selectedTopic === "all"
+                ? "bg-primary text-primary-content font-black shadow-xs"
+                : "bg-base-100 text-base-content/70 hover:bg-base-200 border border-base-content/5"
+            }`}
+          >
+            All Topics
+          </button>
+          {topics.map((t, idx) => (
             <button
-              onClick={() => setSelectedTopic("all")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                selectedTopic === "all"
-                  ? "bg-primary text-primary-content shadow-xs"
-                  : "bg-base-100 text-base-content/70 hover:bg-base-200 border border-base-content/10"
+              key={idx}
+              onClick={() => {
+                setSelectedTopic(t);
+                setCurrentIndex(0);
+              }}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 cursor-pointer ${
+                selectedTopic === t
+                  ? "bg-primary text-primary-content font-black shadow-xs"
+                  : "bg-base-100 text-base-content/70 hover:bg-base-200 border border-base-content/5"
               }`}
             >
-              All Topics
+              {t}
             </button>
-            {topics.map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedTopic(t)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  selectedTopic === t
-                    ? "bg-primary text-primary-content shadow-xs"
-                    : "bg-base-100 text-base-content/70 hover:bg-base-200 border border-base-content/10"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
-        {/* ── 3. MAIN QUESTION WORKSPACE ── */}
-        {isLoading ? (
-          <div className="bg-base-100 rounded-3xl p-12 border border-base-content/10 flex flex-col items-center justify-center gap-3">
-            <span className="loading loading-spinner loading-md text-primary" />
-            <span className="text-xs font-bold text-base-content/60">Loading questions...</span>
-          </div>
-        ) : questions.length === 0 ? (
-          <div className="bg-base-100 rounded-3xl p-12 border border-base-content/10 text-center space-y-3">
-            <Brain className="size-12 mx-auto text-base-content/30" />
-            <h3 className="font-extrabold text-base">No questions available</h3>
-            <p className="text-xs text-base-content/60">
-              No aptitude questions found for the selected topic filter.
-            </p>
-            <button onClick={() => setSelectedTopic("all")} className="btn btn-primary btn-sm rounded-xl font-bold">
-              Show All Topics
-            </button>
-          </div>
-        ) : isMockCompleted ? (
-          /* Mock Test Result Card */
-          <div className="bg-base-100 rounded-3xl p-8 sm:p-12 border border-base-content/10 text-center space-y-6 shadow-xl">
-            <Award className="size-16 mx-auto text-primary animate-bounce" />
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black">Mock Test Completed!</h2>
-              <p className="text-sm text-base-content/60 font-medium">
-                Here is your performance summary for {companyId?.toUpperCase()} Aptitude Assessment:
-              </p>
-            </div>
-
-            <div className="max-w-md mx-auto grid grid-cols-3 gap-3">
-              <div className="p-4 bg-base-200 rounded-2xl">
-                <span className="text-[10px] font-black uppercase text-base-content/50 block">Total</span>
-                <span className="text-2xl font-black text-base-content">{questions.length}</span>
-              </div>
-              <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                <span className="text-[10px] font-black uppercase text-emerald-600 block">Attempted</span>
-                <span className="text-2xl font-black text-emerald-600">{answeredCount}</span>
-              </div>
-              <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
-                <span className="text-[10px] font-black uppercase text-primary block">Time</span>
-                <span className="text-2xl font-black text-primary">{formatTime(25 * 60 - mockSecondsRemaining)}</span>
-              </div>
-            </div>
-
-            <div className="flex justify-center gap-3 pt-4">
-              <button
-                onClick={() => {
-                  setMode("practice");
-                  setIsMockCompleted(false);
-                }}
-                className="btn btn-primary rounded-2xl font-black text-xs uppercase tracking-wider px-6"
-              >
-                Review in Practice Mode
-              </button>
-              <button
-                onClick={() => {
-                  setMockAnswers({});
-                  setMockSecondsRemaining(25 * 60);
-                  setIsMockCompleted(false);
-                  setCurrentIndex(0);
-                }}
-                className="btn btn-outline rounded-2xl font-black text-xs uppercase tracking-wider px-6"
-              >
-                Retake Mock Test
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Question Card (8 cols) */}
-            <div className="lg:col-span-8 space-y-6">
-              <div className="bg-base-100 rounded-3xl p-6 sm:p-8 border border-base-content/10 shadow-md space-y-6 relative overflow-hidden">
-                {/* Top Question Info */}
-                <div className="flex items-center justify-between border-b border-base-content/5 pb-4">
+        {/* ── MAIN PRACTICE WORKSPACE (Grid: 8 cols Deck, 4 cols Palette) ── */}
+        {questions.length > 0 && currentQuestion ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left: Question Card Deck (8 cols) */}
+            <div className="lg:col-span-8 space-y-4">
+              <div className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-xs space-y-6">
+                {/* Question Header & Meta */}
+                <div className="flex items-center justify-between gap-2 border-b border-base-content/5 pb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-black uppercase tracking-widest text-primary">
+                    <span className="font-extrabold text-xs text-primary uppercase tracking-wider">
                       Question {currentIndex + 1}
                     </span>
-                    <span className="text-xs text-base-content/40">of {questions.length}</span>
+                    <span className="text-xs text-base-content/30">of {questions.length}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="badge badge-sm font-black bg-base-200 border-base-content/10 text-base-content/80 text-[10px] uppercase">
+                    <span
+                      className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border ${
+                        currentQuestion.difficulty === "Easy"
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+                          : currentQuestion.difficulty === "Medium"
+                          ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                          : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                      }`}
+                    >
                       {currentQuestion.difficulty}
                     </span>
                     {currentQuestion.frequency && (
-                      <span className="badge badge-sm font-black bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] uppercase">
-                        🔥 {currentQuestion.frequency} Freq
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                        <Flame className="size-3" /> {currentQuestion.frequency} Freq
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Question Prompt */}
+                {/* Question Statement */}
                 <div className="space-y-3">
-                  <h3 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
-                    {currentQuestion.description || currentQuestion.title}
-                  </h3>
+                  <h2 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
+                    {currentQuestion.problemDescription || currentQuestion.description || currentQuestion.title}
+                  </h2>
                   {currentQuestion.topics?.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {currentQuestion.topics.map((tp, idx) => (
+                      {currentQuestion.topics.map((tag, idx) => (
                         <span
                           key={idx}
                           className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-base-200 text-base-content/60"
                         >
-                          #{tp}
+                          #{tag}
                         </span>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Options List */}
+                {/* Options Tiles List */}
                 <div className="space-y-3 pt-2">
                   {(currentQuestion.options || []).map((option, idx) => {
                     const isSelected =
                       selectedOption !== null &&
                       selectedOption !== undefined &&
                       Number(selectedOption) === Number(idx);
-                    let optionStyle = "border-base-content/10 hover:border-primary/30 hover:bg-base-200/50";
+                    let optionStyle = "border-base-content/10 bg-base-100/60 hover:border-primary/30 hover:bg-base-200/50";
                     let badgeStyle = "bg-base-200 text-base-content/70";
+                    let textStyle = "text-base-content font-semibold";
 
                     if (submissionResult) {
                       const isCorrectChoice = Number(idx) === Number(submissionResult.correctAnswer);
@@ -488,17 +411,22 @@ const AptitudePracticePage = () => {
                         Number(selectedOption) === Number(idx);
 
                       if (isCorrectChoice) {
-                        optionStyle = "bg-emerald-500/15 border-emerald-500 text-emerald-900 dark:text-emerald-200 font-bold shadow-xs ring-2 ring-emerald-500/30";
-                        badgeStyle = "bg-emerald-500 text-white shadow-xs";
+                        optionStyle = "bg-emerald-500/15 border-emerald-600 dark:border-emerald-400 shadow-sm ring-2 ring-emerald-500/30";
+                        badgeStyle = "bg-emerald-600 text-white font-black shadow-xs";
+                        textStyle = "text-emerald-950 dark:text-emerald-50 font-bold";
                       } else if (isUserChoice && !submissionResult.isCorrect) {
-                        optionStyle = "bg-rose-500/15 border-rose-500 text-rose-900 dark:text-rose-200 font-bold shadow-xs ring-2 ring-rose-500/30";
-                        badgeStyle = "bg-rose-500 text-white shadow-xs";
+                        optionStyle = "bg-rose-500/15 border-rose-600 dark:border-rose-400 shadow-sm ring-2 ring-rose-500/30";
+                        badgeStyle = "bg-rose-600 text-white font-black shadow-xs";
+                        textStyle = "text-rose-950 dark:text-rose-50 font-bold";
                       } else {
-                        optionStyle = "border-base-content/10 opacity-60";
+                        optionStyle = "border-base-content/10 bg-base-100/40 opacity-70";
+                        badgeStyle = "bg-base-200 text-base-content/50";
+                        textStyle = "text-base-content/70 font-medium";
                       }
                     } else if (isSelected) {
-                      optionStyle = "bg-primary/10 border-primary/40 text-primary shadow-xs ring-1 ring-primary/30";
-                      badgeStyle = "bg-primary text-primary-content";
+                      optionStyle = "bg-primary/15 border-primary shadow-xs ring-2 ring-primary/30";
+                      badgeStyle = "bg-primary text-primary-content font-black";
+                      textStyle = "text-base-content font-bold";
                     }
 
                     const optionLetters = ["A", "B", "C", "D", "E"];
@@ -522,13 +450,13 @@ const AptitudePracticePage = () => {
                             optionLetters[idx] || idx + 1
                           )}
                         </div>
-                        <span className="text-sm font-semibold flex-1 leading-snug">{option}</span>
+                        <span className={`text-sm flex-1 leading-snug ${textStyle}`}>{option}</span>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Bar */}
                 <div className="flex items-center justify-between pt-4 border-t border-base-content/5">
                   <button
                     onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
@@ -545,7 +473,7 @@ const AptitudePracticePage = () => {
                         <button
                           onClick={handleSubmitAnswer}
                           disabled={selectedOption === null || isSubmitting}
-                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-md"
+                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
                         >
                           {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
                         </button>
@@ -555,7 +483,7 @@ const AptitudePracticePage = () => {
                             onClick={handleResetCurrentQuestion}
                             disabled={isResetting}
                             className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
-                            title="Reset this question and try again"
+                            title="Reset question to try again"
                           >
                             <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
                             <span>Try Again</span>
@@ -586,7 +514,7 @@ const AptitudePracticePage = () => {
                   </div>
                 </div>
 
-                {/* Explanation Box (Shows after submission in Practice Mode) */}
+                {/* Mastery Breakdown / Step-by-Step Solution Card */}
                 <AnimatePresence>
                   {submissionResult && (
                     <motion.div
@@ -597,13 +525,13 @@ const AptitudePracticePage = () => {
                     >
                       <div className="flex items-center gap-2">
                         {submissionResult.isCorrect ? (
-                          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-sm">
-                            <CheckCircle2 className="size-5" />
-                            <span>Correct! Excellent logic.</span>
+                          <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-black text-sm">
+                            <CheckCircle2 className="size-5 text-emerald-500" />
+                            <span>Correct! Excellent solution.</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-black text-sm">
-                            <XCircle className="size-5" />
+                          <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-black text-sm">
+                            <XCircle className="size-5 text-rose-500" />
                             <span>
                               Incorrect. Correct Answer: Option{" "}
                               {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
@@ -613,7 +541,7 @@ const AptitudePracticePage = () => {
                       </div>
 
                       {submissionResult.formula && (
-                        <div className="p-3 bg-primary/5 rounded-xl border border-primary/15 text-xs font-mono text-primary font-bold">
+                        <div className="p-3.5 bg-primary/5 rounded-2xl border border-primary/15 text-xs font-mono text-primary font-bold">
                           💡 Formula: {submissionResult.formula}
                         </div>
                       )}
@@ -622,7 +550,7 @@ const AptitudePracticePage = () => {
                         <span className="text-[10px] font-black uppercase tracking-widest text-base-content/50 block">
                           Step-by-Step Solution &amp; Explanation
                         </span>
-                        <p className="text-xs text-base-content/80 font-medium whitespace-pre-line leading-relaxed">
+                        <p className="text-xs text-base-content/85 font-medium whitespace-pre-line leading-relaxed">
                           {submissionResult.explanation}
                         </p>
                       </div>
@@ -633,60 +561,49 @@ const AptitudePracticePage = () => {
             </div>
 
             {/* Right: Question Navigation Palette (4 cols) */}
-            <div className="lg:col-span-4 space-y-6">
-              <div className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-sm space-y-4">
+            <div className="lg:col-span-4 space-y-4">
+              <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-xs space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black text-sm uppercase tracking-wider text-base-content">
+                  <h3 className="font-black text-xs uppercase tracking-wider text-base-content/70">
                     Question Palette
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-base-content/40 font-bold">
-                      {mode === "practice"
-                        ? `${questions.filter((q) => (attemptMap[q._id] ? attemptMap[q._id].isCorrect : q.isSolved)).length}/${questions.length} Solved`
-                        : `${answeredCount}/${questions.length} Answered`}
-                    </span>
-                    {mode === "practice" && (
-                      <button
-                        onClick={handleResetAll}
-                        disabled={isResetting}
-                        className="p-1.5 rounded-lg hover:bg-base-200 text-base-content/50 hover:text-error transition-colors cursor-pointer"
-                        title="Reset all questions in this topic"
-                      >
-                        <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-[11px] font-bold text-primary">
+                    {totalSolved}/{questions.length} Solved
+                  </span>
                 </div>
 
-                {/* Numbers Grid */}
-                <div className="grid grid-cols-5 gap-2 pt-2">
+                {/* Progress Bar */}
+                <div className="w-full bg-base-200 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-primary h-full transition-all duration-300 rounded-full"
+                    style={{ width: `${(totalSolved / (questions.length || 1)) * 100}%` }}
+                  />
+                </div>
+
+                {/* Palette Grid */}
+                <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
                   {questions.map((q, idx) => {
-                    const isCurrent = currentIndex === idx;
+                    const isSolved = attemptMap[q._id]?.isCorrect || q.userAttempt?.isCorrect;
+                    const isAttempted = attemptMap[q._id] || q.userAttempt || mockAnswers[q._id] !== undefined;
+                    const isCurrent = idx === currentIndex;
+
                     let numStyle = "bg-base-200 text-base-content/70 hover:bg-base-300";
 
-                    if (mode === "practice") {
-                      const attempt = attemptMap[q._id] || q.userAttempt;
-                      const isSolved = attemptMap[q._id] ? attemptMap[q._id].isCorrect : q.isSolved;
-                      if (isSolved) {
-                        numStyle = "bg-emerald-500 text-white font-bold";
-                      } else if (attempt && !attempt.isCorrect) {
-                        numStyle = "bg-rose-500/20 text-rose-600 font-bold border border-rose-500/30";
-                      }
-                    } else {
-                      if (mockAnswers[q._id] !== undefined) {
-                        numStyle = "bg-primary text-primary-content font-bold shadow-xs";
-                      }
-                    }
-
-                    if (isCurrent) {
-                      numStyle += " ring-2 ring-primary ring-offset-2 ring-offset-base-100 scale-105";
+                    if (isSolved) {
+                      numStyle = "bg-emerald-600 text-white font-black shadow-xs";
+                    } else if (isAttempted && !isSolved && mode === "practice") {
+                      numStyle = "bg-rose-600 text-white font-black shadow-xs";
+                    } else if (isAttempted && mode === "mock") {
+                      numStyle = "bg-primary text-primary-content font-black";
                     }
 
                     return (
                       <button
                         key={idx}
                         onClick={() => setCurrentIndex(idx)}
-                        className={`size-10 rounded-xl flex items-center justify-center text-xs font-black transition-all cursor-pointer ${numStyle}`}
+                        className={`h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${numStyle} ${
+                          isCurrent ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100 scale-105" : ""
+                        }`}
                       >
                         {idx + 1}
                       </button>
@@ -694,19 +611,32 @@ const AptitudePracticePage = () => {
                   })}
                 </div>
 
-                {/* Mock mode Finish Button */}
-                {mode === "mock" && (
-                  <div className="pt-4 border-t border-base-content/10">
-                    <button
-                      onClick={handleFinishMock}
-                      className="btn btn-error btn-sm rounded-xl font-black uppercase text-xs tracking-wider w-full shadow-md"
-                    >
-                      Submit Mock Test
-                    </button>
+                {/* Legend */}
+                <div className="pt-2 border-t border-base-content/5 grid grid-cols-2 gap-2 text-[10px] font-bold text-base-content/60">
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-full bg-emerald-600" />
+                    <span>Solved</span>
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-full bg-rose-600" />
+                    <span>Incorrect</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-full ring-2 ring-primary bg-base-100" />
+                    <span>Current</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-full bg-base-200" />
+                    <span>Unattempted</span>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="p-12 text-center bg-base-100 rounded-3xl border border-base-content/10 space-y-2">
+            <h3 className="font-bold text-base text-base-content">No Questions Found</h3>
+            <p className="text-xs text-base-content/50">Try selecting a different topic or difficulty filter above.</p>
           </div>
         )}
       </div>

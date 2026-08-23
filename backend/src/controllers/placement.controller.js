@@ -452,11 +452,36 @@ const executeSandboxedCode = async (code, language, stdin = "") => {
       const fnName = fnMatch ? fnMatch[1] || fnMatch[2] : null;
 
       const harness = `
+        function ListNode(val, next) {
+          this.val = (val === undefined ? 0 : val);
+          this.next = (next === undefined ? null : next);
+        }
+
+        function __buildLinkedList(arr, pos = -1) {
+          if (!Array.isArray(arr) || arr.length === 0) return null;
+          const nodes = arr.map(v => new ListNode(v));
+          for (let i = 0; i < nodes.length - 1; i++) {
+            nodes[i].next = nodes[i + 1];
+          }
+          if (typeof pos === 'number' && pos >= 0 && pos < nodes.length) {
+            nodes[nodes.length - 1].next = nodes[pos];
+          }
+          return nodes[0];
+        }
+
         ${code}
+
+        let __callArgs = [...args];
+        if (__callArgs.length > 0 && Array.isArray(__callArgs[0]) && (${fnName === "hasCycle" || fnName === "detectCycle" || code.includes("ListNode")})) {
+          const arr = __callArgs[0];
+          const pos = typeof __callArgs[1] === 'number' ? __callArgs[1] : -1;
+          __callArgs = [__buildLinkedList(arr, pos)];
+        }
+
         if (typeof ${fnName || "solve"} === 'function') {
-          result = (${fnName || "solve"})(...args);
+          result = (${fnName || "solve"})(...__callArgs);
         } else if (typeof solve === 'function') {
-          result = solve(...args);
+          result = solve(...__callArgs);
         }
       `;
 
@@ -491,6 +516,20 @@ const executeSandboxedCode = async (code, language, stdin = "") => {
   if (lang === "python" || lang === "python3") {
     executableCode = `import sys, json
 
+class ListNode:
+    def __init__(self, x):
+        self.val = x
+        self.next = None
+
+def __build_linked_list__(arr, pos=-1):
+    if not arr: return None
+    nodes = [ListNode(v) for v in arr]
+    for i in range(len(nodes) - 1):
+        nodes[i].next = nodes[i + 1]
+    if isinstance(pos, int) and 0 <= pos < len(nodes):
+        nodes[-1].next = nodes[pos]
+    return nodes[0]
+
 ${code}
 
 def __harness__():
@@ -504,6 +543,10 @@ def __harness__():
             args.append(json.loads(l))
         except:
             args.append(l)
+    
+    if args and isinstance(args[0], list) and ('hasCycle' in '${code}' or 'ListNode' in '${code}'):
+        pos = args[1] if len(args) > 1 and isinstance(args[1], int) else -1
+        args = [__build_linked_list__(args[0], pos)]
     
     if 'Solution' in globals():
         sol = Solution()
@@ -531,6 +574,15 @@ if __name__ == '__main__':
   } else if (lang === "java") {
     executableCode = `import java.util.*;
 import java.io.*;
+
+class ListNode {
+    public int val;
+    public ListNode next;
+    public ListNode(int x) {
+        val = x;
+        next = null;
+    }
+}
 
 ${code}
 
@@ -563,7 +615,31 @@ public class Main {
             for (int i = 0; i < paramTypes.length && i < lines.length; i++) {
                 String line = lines[i].trim();
                 Class<?> pt = paramTypes[i];
-                if (pt == int.class || pt == Integer.class) {
+                if (pt.getSimpleName().equals("ListNode")) {
+                    String clean = line.replace("[", "").replace("]", "").replace(" ", "").trim();
+                    if (!clean.isEmpty()) {
+                        String[] parts = clean.split(",");
+                        List<ListNode> nodes = new ArrayList<>();
+                        for (String p : parts) {
+                            nodes.add(new ListNode(Integer.parseInt(p.trim())));
+                        }
+                        for (int k = 0; k < nodes.size() - 1; k++) {
+                            nodes.get(k).next = nodes.get(k + 1);
+                        }
+                        int pos = -1;
+                        if (lines.length > i + 1) {
+                            try {
+                                pos = Integer.parseInt(lines[i + 1].replaceAll("[^0-9-]", ""));
+                            } catch (Exception ignored) {}
+                        }
+                        if (pos >= 0 && pos < nodes.size()) {
+                            nodes.get(nodes.size() - 1).next = nodes.get(pos);
+                        }
+                        invokeArgs[i] = nodes.get(0);
+                    } else {
+                        invokeArgs[i] = null;
+                    }
+                } else if (pt == int.class || pt == Integer.class) {
                     invokeArgs[i] = Integer.parseInt(line.replaceAll("[^0-9-]", ""));
                 } else if (pt == int[].class) {
                     String clean = line.replace("[", "").replace("]", "").replace(" ", "").trim();
@@ -655,12 +731,27 @@ public class Main {
     const run = pistonRes.data?.run || {};
     const compile = pistonRes.data?.compile || {};
 
-    const combinedStderr = [compile.stderr, run.stderr, compile.output].filter(Boolean).join("\n").trim();
-    const combinedStdout = (run.stdout || compile.stdout || "").trim();
+    let rawStderr = [compile.stderr, compile.output, run.stderr].filter(Boolean).join("\n").trim();
+    const combinedStdout = (run.stdout || "").trim();
+
+    // Map compiler line numbers to editor line numbers for high developer clarity
+    if (rawStderr) {
+      if (lang === "java") {
+        rawStderr = rawStderr.replace(/Main\.java:(\d+)/g, (match, p1) => {
+          const lineNum = Math.max(1, parseInt(p1, 10) - 12);
+          return `Solution.java:Line ${lineNum}`;
+        });
+      } else if (lang === "python" || lang === "python3") {
+        rawStderr = rawStderr.replace(/File "<string>", line (\d+)/g, (match, p1) => {
+          const lineNum = Math.max(1, parseInt(p1, 10) - 16);
+          return `Solution.py:Line ${lineNum}`;
+        });
+      }
+    }
 
     return {
       stdout: combinedStdout,
-      stderr: combinedStderr,
+      stderr: rawStderr,
       executionTime: run.time || compile.time || 50,
     };
   } catch (err) {
@@ -697,6 +788,8 @@ export const runCodingTest = async (req, res) => {
         customRun: true,
         output: result.stdout,
         error: result.stderr,
+        stderr: result.stderr,
+        hasError: Boolean(result.stderr),
         executionTime: result.executionTime,
       });
     }
@@ -715,27 +808,40 @@ export const runCodingTest = async (req, res) => {
       const normActual = normalizeOutput(actualTrimmed);
       const normExpected = normalizeOutput(expectedTrimmed);
 
+      const isCompileOrRuntimeError = Boolean(runRes.stderr);
+
       // Check if output matches
       const passed =
-        !runRes.stderr &&
+        !isCompileOrRuntimeError &&
         (normActual === normExpected || normActual.includes(normExpected) || normExpected.includes(normActual));
 
       testResults.push({
         testCaseIndex: i + 1,
         input: tc.input,
         expectedOutput: tc.expectedOutput,
-        actualOutput: actualTrimmed || (runRes.stderr ? "(Error)" : "(No Output)"),
+        actualOutput: actualTrimmed || (isCompileOrRuntimeError ? "(Compilation / Runtime Error)" : "(No Output)"),
         error: runRes.stderr || (!passed ? `Expected "${expectedTrimmed}", but received "${actualTrimmed || '(No Output)'}"` : ""),
+        stderr: runRes.stderr || "",
+        isError: isCompileOrRuntimeError,
         passed,
         executionTime: runRes.executionTime,
       });
+
+      // Fail-fast on compile error to prevent repeating identical compiler diagnostics
+      if (isCompileOrRuntimeError) break;
     }
 
     const allPassed = testResults.every((r) => r.passed);
+    const hasError = testResults.some((r) => r.isError);
+    const firstErrorItem = testResults.find((r) => r.stderr || r.error);
+    const globalStderr = testResults.find((r) => r.stderr)?.stderr || "";
 
     res.status(200).json({
       success: true,
       allPassed,
+      hasError,
+      error: firstErrorItem ? (firstErrorItem.stderr || firstErrorItem.error) : "",
+      stderr: globalStderr,
       results: testResults,
     });
   } catch (error) {
@@ -777,23 +883,27 @@ export const submitCodingSolution = async (req, res) => {
       const normActual = normalizeOutput(actualTrimmed);
       const normExpected = normalizeOutput(expectedTrimmed);
 
+      const isCompileOrRuntimeError = Boolean(runRes.stderr);
+
       const passed =
-        !runRes.stderr &&
+        !isCompileOrRuntimeError &&
         (normActual === normExpected || normActual.includes(normExpected) || normExpected.includes(normActual));
 
       testResults.push({
         testCaseIndex: i + 1,
-        isHidden: tc.isHidden,
-        input: tc.isHidden ? "[Hidden Test Case]" : tc.input,
-        expectedOutput: tc.isHidden ? "[Hidden]" : tc.expectedOutput,
-        actualOutput: tc.isHidden ? (passed ? "[Passed]" : "[Failed]") : actualTrimmed,
-        error: runRes.stderr || (!passed ? `Mismatch: Expected "${expectedTrimmed}", but received "${actualTrimmed}"` : ""),
+        isHidden: Boolean(tc.isHidden),
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
+        actualOutput: actualTrimmed || (isCompileOrRuntimeError ? "(Compilation / Runtime Error)" : "(No Output)"),
+        error: runRes.stderr || (!passed ? `Mismatch: Expected "${expectedTrimmed}", but received "${actualTrimmed || '(No Output)'}"` : ""),
+        stderr: runRes.stderr || "",
+        isError: isCompileOrRuntimeError,
         passed,
         executionTime: runRes.executionTime,
       });
 
       // Fail-fast on runtime or compilation error
-      if (runRes.stderr) break;
+      if (isCompileOrRuntimeError) break;
     }
 
     const passedCount = testResults.filter((r) => r.passed).length;
@@ -803,8 +913,12 @@ export const submitCodingSolution = async (req, res) => {
     const avgRuntime = testResults.length > 0 ? Math.round(totalTime / testResults.length) : 55;
     const memoryKb = Math.floor(34000 + Math.random() * 8000);
 
+    const hasCompileOrRuntimeError = testResults.some((r) => r.isError);
+    const firstErrorItem = testResults.find((r) => r.stderr || r.error);
+    const globalStderr = testResults.find((r) => r.stderr)?.stderr || "";
+
     let status = "Accepted";
-    if (testResults.some((r) => r.error)) status = "Runtime Error / Compile Error";
+    if (hasCompileOrRuntimeError) status = "Compilation / Runtime Error";
     else if (!isAccepted) status = `Wrong Answer (${passedCount}/${totalCount} test cases passed)`;
 
     if (userId) {
@@ -831,11 +945,14 @@ export const submitCodingSolution = async (req, res) => {
       success: true,
       status,
       isAccepted,
-      passedCount,
-      totalCount,
+      passedCases: passedCount,
+      totalCases: totalCount,
       runtimeMs: avgRuntime,
       memoryKb,
       testResults,
+      hasError: hasCompileOrRuntimeError,
+      error: firstErrorItem ? (firstErrorItem.stderr || firstErrorItem.error) : "",
+      stderr: globalStderr,
     });
   } catch (error) {
     console.error("Error in submitCodingSolution:", error);

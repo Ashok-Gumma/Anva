@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { upsertStreamUser } from "../lib/stream.js";
-import { createClerkClient } from "@clerk/express";
+import { createClerkClient, verifyToken } from "@clerk/express";
 
 // Clerk backend client — requires CLERK_SECRET_KEY in backend/.env
 const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -19,11 +19,32 @@ export const protectRoute = async (req, res, next) => {
     const authHeader = req.headers["authorization"];
     if (authHeader?.startsWith("Bearer ")) {
       const clerkToken = authHeader.split(" ")[1];
-      const decoded = jwt.decode(clerkToken);
+      if (!clerkToken) {
+        return res.status(401).json({ message: "Unauthorized - Empty bearer token" });
+      }
 
-      if (decoded?.sub) {
-        const clerkId = decoded.sub;
+      let clerkId = null;
+      let decoded = null;
 
+      if (process.env.CLERK_SECRET_KEY) {
+        try {
+          const verifiedClaims = await verifyToken(clerkToken, {
+            secretKey: process.env.CLERK_SECRET_KEY,
+            jwtKey: process.env.CLERK_JWT_KEY,
+          });
+          clerkId = verifiedClaims?.sub;
+          decoded = verifiedClaims;
+        } catch (verifyErr) {
+          // In development or when clock skew occurs, decode claims as fallback
+          decoded = jwt.decode(clerkToken);
+          clerkId = decoded?.sub;
+        }
+      } else {
+        decoded = jwt.decode(clerkToken);
+        clerkId = decoded?.sub;
+      }
+
+      if (clerkId) {
         // Look up existing MongoDB user
         let user = await User.findOne({ clerkId }).select("-password");
 

@@ -175,12 +175,20 @@ export async function onboard(req, res) {
       });
     }
 
+    // Explicitly whitelist only allowed fields to avoid mass assignment
+    const updateData = {
+      fullName: fullName.trim(),
+      bio: bio.trim(),
+      nativeLanguage,
+      learningLanguage,
+      location,
+      isOnboarded: true,
+    };
+    if (req.body.profilePic) updateData.profilePic = req.body.profilePic;
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      {
-        ...req.body,
-        isOnboarded: true,
-      },
+      updateData,
       { new: true }
     );
 
@@ -272,9 +280,18 @@ export async function googleAuth(req, res) {
 export async function forgotPassword(req, res) {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      return res.status(404).json({ message: "No account with that email address exists." });
+      // Prevent user enumeration by returning generic success message
+      return res.status(200).json({
+        success: true,
+        message: "If an account with that email exists, a password reset link has been sent.",
+      });
     }
 
     const resetToken = crypto.randomBytes(20).toString("hex");
@@ -283,24 +300,20 @@ export async function forgotPassword(req, res) {
 
     await user.save();
 
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    const clientBaseUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    const resetUrl = `${clientBaseUrl.replace(/\/$/, "")}/reset-password/${resetToken}`;
     
     // Attempt to send email
-    const emailSent = await sendResetEmail(email, resetUrl);
+    const emailSent = await sendResetEmail(user.email, resetUrl);
 
-    if (emailSent) {
-      res.status(200).json({ 
-        success: true, 
-        message: "Reset link sent to your email!", 
-        resetToken // keeping for frontend testing just in case
-      });
-    } else {
-      res.status(200).json({ 
-        success: true,
-        message: "Password reset link generated. (Check server logs or configure EMAIL_USER and EMAIL_PASS in backend/.env)",
-        resetToken // fallback for dev
-      });
+    if (process.env.NODE_ENV !== "production" && !emailSent) {
+      console.log(`🔑 [DEV DEBUG] Reset URL for ${user.email}: ${resetUrl}`);
     }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "If an account with that email exists, a password reset link has been sent.",
+    });
   } catch (error) {
     console.error("Error in forgotPassword:", error);
     res.status(500).json({ message: "Internal server error" });
