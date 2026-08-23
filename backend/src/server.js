@@ -88,6 +88,11 @@ app.use("/api/", globalLimiter);
 app.use("/api/auth/signup", authLimiter);
 app.use("/api/auth/login", authLimiter);
 
+// ✅ Health / Ping Endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "healthy", timestamp: Date.now() });
+});
+
 // ✅ API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
