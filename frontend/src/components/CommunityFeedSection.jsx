@@ -199,9 +199,47 @@ const CommunityFeedSection = ({ title = "Community Feed", subtitle = "Recent pos
 
   const saveMutation = useMutation({
     mutationFn: toggleSavePost,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["posts"] });
-      queryClient.invalidateQueries({ queryKey: ["authUser"] });
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["authUser"] });
+      const previousUser = queryClient.getQueryData(["authUser"]);
+
+      queryClient.setQueryData(["authUser"], (old) => {
+        if (!old) return old;
+        const userObj = old.user || old;
+        const currentSaved = userObj.savedPosts || [];
+        const isAlreadySaved = currentSaved.some(
+          (id) => (id?._id || id)?.toString() === postId?.toString()
+        );
+        const newSaved = isAlreadySaved
+          ? currentSaved.filter((id) => (id?._id || id)?.toString() !== postId?.toString())
+          : [...currentSaved, postId];
+
+        if (old.user) {
+          return {
+            ...old,
+            user: {
+              ...old.user,
+              savedPosts: newSaved,
+            },
+          };
+        }
+
+        return {
+          ...old,
+          savedPosts: newSaved,
+        };
+      });
+
+      return { previousUser };
+    },
+    onError: (_err, _postId, context) => {
+      if (context?.previousUser) {
+        queryClient.setQueryData(["authUser"], context.previousUser);
+      }
+      toast.error("Failed to update bookmark.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedPosts"] });
     },
   });
 

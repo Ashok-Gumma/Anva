@@ -340,44 +340,35 @@ export async function updatePost(req, res) {
   }
 }
 
-// Toggle saving/bookmarking a post for the authenticated user
+// Toggle saving/bookmarking a post for the authenticated user (Fast Atomic Operation)
 export async function toggleSavePost(req, res) {
   try {
     const { id } = req.params;
     const userId = req.user?._id || req.user?.id;
-    const user = await User.findById(userId);
 
+    const user = await User.findById(userId).select("savedPosts").lean();
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    const post = await Post.findById(id);
-    if (!post) {
-      return res.status(404).json({ message: "Post not found or has been deleted." });
-    }
-
-    if (!user.savedPosts) {
-      user.savedPosts = [];
-    }
-
-    const isSaved = user.savedPosts.some(
-      (savedId) => savedId.toString() === id.toString()
+    const currentSaved = user.savedPosts || [];
+    const isSaved = currentSaved.some(
+      (savedId) => (savedId?._id || savedId).toString() === id.toString()
     );
 
-    if (isSaved) {
-      user.savedPosts = user.savedPosts.filter(
-        (savedId) => savedId.toString() !== id.toString()
-      );
-    } else {
-      user.savedPosts.push(id);
-    }
+    const updateOp = isSaved
+      ? { $pull: { savedPosts: id } }
+      : { $addToSet: { savedPosts: id } };
 
-    await user.save();
+    const updatedUser = await User.findByIdAndUpdate(userId, updateOp, {
+      new: true,
+      select: "savedPosts",
+    }).lean();
 
     res.status(200).json({
       success: true,
       isSaved: !isSaved,
-      savedPosts: user.savedPosts,
+      savedPosts: updatedUser.savedPosts,
       message: !isSaved
         ? "Post bookmarked to your saved collection!"
         : "Post removed from your saved collection.",

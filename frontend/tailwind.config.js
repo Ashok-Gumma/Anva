@@ -6,8 +6,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Nunito"', '"Plus Jakarta Sans"', '"Inter"', 'system-ui', 'sans-serif'],
-        minimal: ['"Nunito"', '"Inter"', '"Plus Jakarta Sans"', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', '"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+        minimal: ['"Plus Jakarta Sans"', '"Inter"', 'sans-serif'],
         curly: ['"Dancing Script"', '"Caveat"', '"Playfair Display"', 'cursive', 'serif'],
         serif: ['"Playfair Display"', 'Georgia', 'serif'],
       },

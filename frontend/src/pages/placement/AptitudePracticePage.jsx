@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   Brain,
   ArrowLeft,
@@ -35,7 +36,6 @@ const AptitudePracticePage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [mode, setMode] = useState("practice"); // "practice" | "mock"
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -45,15 +45,7 @@ const AptitudePracticePage = () => {
   const [attemptMap, setAttemptMap] = useState({});
   const [showPomodoro, setShowPomodoro] = useState(false);
 
-  // Timer state
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
-  const [mockSecondsRemaining, setMockSecondsRemaining] = useState(25 * 60);
-
-  // Mock test session answers: map of questionId -> { choice, isCorrect }
-  const [mockAnswers, setMockAnswers] = useState({});
-  const [isMockCompleted, setIsMockCompleted] = useState(false);
-
-  // Fetch Questions
+  // Fetch Questions (Cached for 5 minutes for instant switches)
   const { data, isLoading, isError } = useQuery({
     queryKey: ["placementQuestions", companyId, "aptitude", selectedTopic, selectedDifficulty],
     queryFn: () =>
@@ -64,6 +56,8 @@ const AptitudePracticePage = () => {
         difficulty: selectedDifficulty,
         limit: 100,
       }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const questions = data?.questions || [];
@@ -74,66 +68,28 @@ const AptitudePracticePage = () => {
   useEffect(() => {
     if (currentQuestion) {
       const qId = currentQuestion._id;
-      if (mode === "practice") {
-        if (attemptMap[qId]) {
-          setSelectedOption(attemptMap[qId].userChoice);
-          setSubmissionResult(attemptMap[qId]);
-        } else if (currentQuestion.userAttempt) {
-          const attempt = {
-            isCorrect: currentQuestion.userAttempt.isCorrect,
-            correctAnswer: currentQuestion.correctAnswer,
-            explanation: currentQuestion.explanation,
-            formula: currentQuestion.formula,
-            userChoice: currentQuestion.userAttempt.userChoice,
-          };
-          setSelectedOption(currentQuestion.userAttempt.userChoice);
-          setSubmissionResult(attempt);
-          setAttemptMap((prev) => ({ ...prev, [qId]: attempt }));
-        } else {
-          setSelectedOption(null);
-          setSubmissionResult(null);
-        }
+      if (attemptMap[qId]) {
+        setSelectedOption(attemptMap[qId].userChoice);
+        setSubmissionResult(attemptMap[qId]);
+      } else if (currentQuestion.userAttempt) {
+        const attempt = {
+          isCorrect: currentQuestion.userAttempt.isCorrect,
+          correctAnswer: currentQuestion.correctAnswer,
+          explanation: currentQuestion.explanation,
+          formula: currentQuestion.formula,
+          userChoice: currentQuestion.userAttempt.userChoice,
+        };
+        setSelectedOption(currentQuestion.userAttempt.userChoice);
+        setSubmissionResult(attempt);
+        setAttemptMap((prev) => ({ ...prev, [qId]: attempt }));
       } else {
-        const previousChoice = mockAnswers[qId];
-        setSelectedOption(previousChoice !== undefined ? previousChoice : null);
+        setSelectedOption(null);
+        setSubmissionResult(null);
       }
     }
-  }, [currentIndex, currentQuestion?._id, mode]);
+  }, [currentIndex, currentQuestion?._id]);
 
-  // Practice Mode Elapsed Timer
-  useEffect(() => {
-    if (mode === "practice") {
-      const interval = setInterval(() => {
-        setSecondsElapsed((prev) => prev + 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [mode]);
-
-  // Mock Mode Countdown Timer
-  useEffect(() => {
-    if (mode === "mock" && !isMockCompleted) {
-      const interval = setInterval(() => {
-        setMockSecondsRemaining((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            handleFinishMock();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [mode, isMockCompleted]);
-
-  const formatTime = (totalSeconds) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Submit answer in Practice Mode (Quiet inline feedback)
+  // Submit answer in Practice Mode (Fast inline feedback)
   const { mutate: submitAnswerMutation } = useMutation({
     mutationFn: submitPlacementAnswer,
     onMutate: () => setIsSubmitting(true),
@@ -151,7 +107,6 @@ const AptitudePracticePage = () => {
       setIsSubmitting(false);
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
     },
     onError: () => {
       setIsSubmitting(false);
@@ -160,18 +115,10 @@ const AptitudePracticePage = () => {
 
   const handleSubmitAnswer = () => {
     if (selectedOption === null || !currentQuestion) return;
-
-    if (mode === "practice") {
-      submitAnswerMutation({
-        questionId: currentQuestion._id,
-        userChoice: selectedOption,
-      });
-    } else {
-      setMockAnswers((prev) => ({ ...prev, [currentQuestion._id]: selectedOption }));
-      if (currentIndex < questions.length - 1) {
-        setCurrentIndex((prev) => prev + 1);
-      }
-    }
+    submitAnswerMutation({
+      questionId: currentQuestion._id,
+      userChoice: selectedOption,
+    });
   };
 
   // Reset single question in Practice Mode
@@ -190,12 +137,16 @@ const AptitudePracticePage = () => {
       setSubmissionResult(null);
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      toast.success("Question reset successfully.");
     },
   });
 
   const handleResetCurrentQuestion = () => {
     if (!currentQuestion || isResetting) return;
+    if (!submissionResult && selectedOption !== null) {
+      setSelectedOption(null);
+      return;
+    }
     resetQuestionMutation({
       company: companyId,
       category: "aptitude",
@@ -203,25 +154,26 @@ const AptitudePracticePage = () => {
     });
   };
 
-  const handleFinishMock = () => {
-    setIsMockCompleted(true);
+  // Reset entire deck progress
+  const handleResetDeck = () => {
+    if (isResetting || !questions.length) return;
+    const questionIds = questions.map((q) => q._id);
+    resetQuestionMutation({
+      company: companyId,
+      category: "aptitude",
+      questionIds,
+    });
+    setAttemptMap({});
+    setSelectedOption(null);
+    setSubmissionResult(null);
+    setCurrentIndex(0);
+    toast.success("All questions in this deck have been reset! 🔄");
   };
 
   // Summary Metrics
   const totalSolved = useMemo(() => {
     return questions.filter((q) => attemptMap[q._id]?.isCorrect || q.userAttempt?.isCorrect).length;
   }, [questions, attemptMap]);
-
-  const mockScore = useMemo(() => {
-    if (mode !== "mock") return 0;
-    let score = 0;
-    questions.forEach((q) => {
-      if (mockAnswers[q._id] !== undefined && Number(mockAnswers[q._id]) === Number(q.correctAnswer)) {
-        score += 1;
-      }
-    });
-    return score;
-  }, [mode, questions, mockAnswers]);
 
   if (isLoading) {
     return (
@@ -263,41 +215,26 @@ const AptitudePracticePage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
-            {/* Mode Switcher */}
-            <div className="grid grid-cols-2 p-1 bg-base-200 rounded-2xl text-xs font-bold">
-              <button
-                onClick={() => setMode("practice")}
-                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                  mode === "practice" ? "bg-base-100 text-primary font-black shadow-xs" : "text-base-content/60"
-                }`}
-              >
-                Practice
-              </button>
-              <button
-                onClick={() => setMode("mock")}
-                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                  mode === "mock" ? "bg-base-100 text-primary font-black shadow-xs" : "text-base-content/60"
-                }`}
-              >
-                Mock Test
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            {/* Reset All Questions in Deck Button */}
+            <button
+              onClick={handleResetDeck}
+              disabled={isResetting || totalSolved === 0}
+              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-error/10 hover:text-error hover:border-error/20 flex items-center gap-1.5 px-3 transition-colors disabled:opacity-40"
+              title="Reset progress for all questions in this deck"
+            >
+              <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+              <span>Reset All</span>
+            </button>
 
-            {/* Timer Display */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-200/80 rounded-2xl text-xs font-mono font-bold text-base-content/80 border border-base-content/5">
-              <Clock className="size-3.5 text-primary" />
-              <span>{mode === "practice" ? formatTime(secondsElapsed) : formatTime(mockSecondsRemaining)}</span>
-            </div>
-
-            {/* Pomodoro Focus */}
+            {/* Pomodoro Focus Timer */}
             <button
               onClick={() => setShowPomodoro((prev) => !prev)}
-              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-base-200"
+              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-base-200 flex items-center gap-2 px-3"
               title="Pomodoro Focus Timer"
             >
-              <span>🍅</span>
-              <span className="hidden md:inline">Focus</span>
+              <Timer className="size-4 text-primary" />
+              <span>Focus Mode</span>
             </button>
           </div>
         </header>
@@ -356,102 +293,84 @@ const AptitudePracticePage = () => {
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border ${
-                        currentQuestion.difficulty === "Easy"
-                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
-                          : currentQuestion.difficulty === "Medium"
-                          ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
-                          : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30"
+                        currentQuestion.difficulty === "easy"
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                          : currentQuestion.difficulty === "medium"
+                          ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                          : "bg-rose-500/10 text-rose-600 border-rose-500/20"
                       }`}
                     >
-                      {currentQuestion.difficulty}
+                      {currentQuestion.difficulty || "medium"}
                     </span>
-                    {currentQuestion.frequency && (
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
-                        <Flame className="size-3" /> {currentQuestion.frequency} Freq
-                      </span>
-                    )}
+                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-base-200 text-base-content/70 border-base-content/10">
+                      {currentQuestion.topic || "General"}
+                    </span>
                   </div>
                 </div>
 
-                {/* Question Statement */}
+                {/* Problem Statement */}
                 <div className="space-y-3">
                   <h2 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
                     {currentQuestion.problemDescription || currentQuestion.description || currentQuestion.title}
                   </h2>
-                  {currentQuestion.topics?.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {currentQuestion.topics.map((tag, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-base-200 text-base-content/60"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
-                {/* Options Tiles List */}
+                {/* Options List */}
                 <div className="space-y-3 pt-2">
                   {(currentQuestion.options || []).map((option, idx) => {
                     const isSelected =
                       selectedOption !== null &&
                       selectedOption !== undefined &&
                       Number(selectedOption) === Number(idx);
-                    let optionStyle = "border-base-content/10 bg-base-100/60 hover:border-primary/30 hover:bg-base-200/50";
+
+                    let optionBorder = "border-base-content/10 hover:border-base-content/30 bg-base-200/30 hover:bg-base-200/60";
                     let badgeStyle = "bg-base-200 text-base-content/70";
-                    let textStyle = "text-base-content font-semibold";
 
                     if (submissionResult) {
-                      const isCorrectChoice = Number(idx) === Number(submissionResult.correctAnswer);
-                      const isUserChoice =
-                        selectedOption !== null &&
-                        selectedOption !== undefined &&
-                        Number(selectedOption) === Number(idx);
+                      const isCorrectAnswer = Number(idx) === Number(submissionResult.correctAnswer);
+                      const isUserSelection = Number(idx) === Number(submissionResult.userChoice);
 
-                      if (isCorrectChoice) {
-                        optionStyle = "bg-emerald-500/15 border-emerald-600 dark:border-emerald-400 shadow-sm ring-2 ring-emerald-500/30";
-                        badgeStyle = "bg-emerald-600 text-white font-black shadow-xs";
-                        textStyle = "text-emerald-950 dark:text-emerald-50 font-bold";
-                      } else if (isUserChoice && !submissionResult.isCorrect) {
-                        optionStyle = "bg-rose-500/15 border-rose-600 dark:border-rose-400 shadow-sm ring-2 ring-rose-500/30";
-                        badgeStyle = "bg-rose-600 text-white font-black shadow-xs";
-                        textStyle = "text-rose-950 dark:text-rose-50 font-bold";
-                      } else {
-                        optionStyle = "border-base-content/10 bg-base-100/40 opacity-70";
-                        badgeStyle = "bg-base-200 text-base-content/50";
-                        textStyle = "text-base-content/70 font-medium";
+                      if (isCorrectAnswer) {
+                        optionBorder = "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500";
+                        badgeStyle = "bg-emerald-500 text-white font-bold";
+                      } else if (isUserSelection && !submissionResult.isCorrect) {
+                        optionBorder = "border-rose-500 bg-rose-500/10 text-rose-950 dark:text-rose-200 ring-1 ring-rose-500";
+                        badgeStyle = "bg-rose-500 text-white font-bold";
                       }
                     } else if (isSelected) {
-                      optionStyle = "bg-primary/15 border-primary shadow-xs ring-2 ring-primary/30";
-                      badgeStyle = "bg-primary text-primary-content font-black";
-                      textStyle = "text-base-content font-bold";
+                      optionBorder = "border-primary bg-primary/10 text-primary ring-1 ring-primary";
+                      badgeStyle = "bg-primary text-primary-content font-bold";
                     }
 
-                    const optionLetters = ["A", "B", "C", "D", "E"];
-
                     return (
-                      <div
+                      <button
                         key={idx}
                         onClick={() => {
-                          if (!submissionResult || mode === "mock") {
+                          if (!submissionResult) {
                             setSelectedOption(idx);
                           }
                         }}
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 ${optionStyle}`}
+                        disabled={!!submissionResult}
+                        className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${optionBorder} ${
+                          submissionResult ? "cursor-default" : ""
+                        }`}
                       >
-                        <div className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${badgeStyle}`}>
-                          {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) ? (
-                            <Check className="size-4 stroke-[3]" />
-                          ) : submissionResult && selectedOption !== null && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
-                            <XCircle className="size-4" />
-                          ) : (
-                            optionLetters[idx] || idx + 1
+                        <span className={`size-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${badgeStyle}`}>
+                          {["A", "B", "C", "D", "E"][idx]}
+                        </span>
+                        <span className="text-xs sm:text-sm font-semibold flex-1 leading-relaxed">
+                          {option}
+                        </span>
+
+                        {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) && (
+                          <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
+                        )}
+                        {submissionResult &&
+                          !submissionResult.isCorrect &&
+                          Number(idx) === Number(submissionResult.userChoice) && (
+                            <XCircle className="size-5 text-rose-500 shrink-0" />
                           )}
-                        </div>
-                        <span className={`text-sm flex-1 leading-snug ${textStyle}`}>{option}</span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -468,8 +387,18 @@ const AptitudePracticePage = () => {
                   </button>
 
                   <div className="flex items-center gap-2">
-                    {mode === "practice" ? (
-                      !submissionResult ? (
+                    {!submissionResult ? (
+                      <>
+                        {selectedOption !== null && (
+                          <button
+                            onClick={handleResetCurrentQuestion}
+                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 text-base-content/60 hover:text-error hover:bg-error/10"
+                            title="Clear choice"
+                          >
+                            <RotateCcw className="size-3.5" />
+                            <span>Clear</span>
+                          </button>
+                        )}
                         <button
                           onClick={handleSubmitAnswer}
                           disabled={selectedOption === null || isSubmitting}
@@ -477,39 +406,31 @@ const AptitudePracticePage = () => {
                         >
                           {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
                         </button>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={handleResetCurrentQuestion}
-                            disabled={isResetting}
-                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
-                            title="Reset question to try again"
-                          >
-                            <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
-                            <span>Try Again</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (currentIndex < questions.length - 1) {
-                                setCurrentIndex((prev) => prev + 1);
-                              }
-                            }}
-                            disabled={currentIndex === questions.length - 1}
-                            className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
-                          >
-                            <span>Next Question</span>
-                            <ChevronRight className="size-4" />
-                          </button>
-                        </div>
-                      )
+                      </>
                     ) : (
-                      <button
-                        onClick={handleSubmitAnswer}
-                        disabled={selectedOption === null}
-                        className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6"
-                      >
-                        {currentIndex === questions.length - 1 ? "Save & Review" : "Save & Next"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleResetCurrentQuestion}
+                          disabled={isResetting}
+                          className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
+                          title="Reset question to try again"
+                        >
+                          <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                          <span>Reset &amp; Try Again</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (currentIndex < questions.length - 1) {
+                              setCurrentIndex((prev) => prev + 1);
+                            }
+                          }}
+                          disabled={currentIndex === questions.length - 1}
+                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                        >
+                          <span>Next Question</span>
+                          <ChevronRight className="size-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -560,50 +481,65 @@ const AptitudePracticePage = () => {
               </div>
             </div>
 
-            {/* Right: Question Navigation Palette (4 cols) */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-xs uppercase tracking-wider text-base-content/70">
-                    Question Palette
-                  </h3>
-                  <span className="text-[11px] font-bold text-primary">
-                    {totalSolved}/{questions.length} Solved
-                  </span>
+            {/* Right: Question Navigation Palette (4 cols, sticky on desktop) */}
+            <div className="lg:col-span-4 space-y-4 sticky top-4 self-start">
+              <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-sm space-y-4 relative z-10">
+                {/* Header */}
+                <div className="flex items-center justify-between pb-1 border-b border-base-content/5">
+                  <div className="flex items-center gap-2">
+                    <Layers className="size-4 text-primary" />
+                    <span className="font-bold text-xs uppercase tracking-wider text-base-content/70">
+                      Question Palette
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {totalSolved > 0 && (
+                      <button
+                        onClick={handleResetDeck}
+                        disabled={isResetting}
+                        className="text-[10px] font-bold text-base-content/40 hover:text-error hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Reset all questions in this deck"
+                      >
+                        <RotateCcw className="size-2.5" />
+                        <span>Reset All</span>
+                      </button>
+                    )}
+                    <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                      {totalSolved}/{questions.length} Solved
+                    </span>
+                  </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-base-200 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-primary h-full transition-all duration-300 rounded-full"
-                    style={{ width: `${(totalSolved / (questions.length || 1)) * 100}%` }}
-                  />
-                </div>
-
-                {/* Palette Grid */}
+                {/* Minimal Question Grid */}
                 <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
                   {questions.map((q, idx) => {
                     const isSolved = attemptMap[q._id]?.isCorrect || q.userAttempt?.isCorrect;
-                    const isAttempted = attemptMap[q._id] || q.userAttempt || mockAnswers[q._id] !== undefined;
+                    const isAttempted = Boolean(attemptMap[q._id] || q.userAttempt);
                     const isCurrent = idx === currentIndex;
 
-                    let numStyle = "bg-base-200 text-base-content/70 hover:bg-base-300";
+                    let tileClass = "bg-base-200/70 hover:bg-base-200 text-base-content/80 border border-base-content/10 hover:border-base-content/25";
 
                     if (isSolved) {
-                      numStyle = "bg-emerald-600 text-white font-black shadow-xs";
-                    } else if (isAttempted && !isSolved && mode === "practice") {
-                      numStyle = "bg-rose-600 text-white font-black shadow-xs";
-                    } else if (isAttempted && mode === "mock") {
-                      numStyle = "bg-primary text-primary-content font-black";
+                      tileClass = "bg-emerald-600 hover:bg-emerald-700 text-white font-bold border border-emerald-600 shadow-xs";
+                    } else if (isAttempted) {
+                      tileClass = "bg-rose-600 hover:bg-rose-700 text-white font-bold border border-rose-600 shadow-xs";
+                    }
+
+                    if (isCurrent) {
+                      if (isSolved) {
+                        tileClass = "bg-emerald-600 text-white font-black ring-2 ring-primary ring-offset-2 ring-offset-base-100 shadow-sm";
+                      } else if (isAttempted) {
+                        tileClass = "bg-rose-600 text-white font-black ring-2 ring-primary ring-offset-2 ring-offset-base-100 shadow-sm";
+                      } else {
+                        tileClass = "border-2 border-primary bg-primary/15 text-primary font-black shadow-xs";
+                      }
                     }
 
                     return (
                       <button
                         key={idx}
                         onClick={() => setCurrentIndex(idx)}
-                        className={`h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${numStyle} ${
-                          isCurrent ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100 scale-105" : ""
-                        }`}
+                        className={`h-9 w-full rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer flex items-center justify-center ${tileClass}`}
                       >
                         {idx + 1}
                       </button>
@@ -611,23 +547,23 @@ const AptitudePracticePage = () => {
                   })}
                 </div>
 
-                {/* Legend */}
-                <div className="pt-2 border-t border-base-content/5 grid grid-cols-2 gap-2 text-[10px] font-bold text-base-content/60">
-                  <div className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full bg-emerald-600" />
-                    <span>Solved</span>
+                {/* Minimal Status Legend */}
+                <div className="pt-3 border-t border-base-content/10 grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full bg-emerald-600 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Solved</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full bg-rose-600" />
-                    <span>Incorrect</span>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full bg-rose-600 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Incorrect</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full ring-2 ring-primary bg-base-100" />
-                    <span>Current</span>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full border-2 border-primary bg-primary/20 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Current</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full bg-base-200" />
-                    <span>Unattempted</span>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full bg-base-300 border border-base-content/30 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Unattempted</span>
                   </div>
                 </div>
               </div>

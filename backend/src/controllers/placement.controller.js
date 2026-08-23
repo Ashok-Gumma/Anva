@@ -242,43 +242,49 @@ export const getQuestions = async (req, res) => {
     }
 
     const skip = (Number(page) - 1) * Number(limit);
-    const total = await PlacementQuestion.countDocuments(filter);
+    const numLimit = Number(limit);
 
-    // Exclude full solution code from question lists to keep payloads light
-    const questions = await PlacementQuestion.find(filter)
-      .sort({ frequency: 1, createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
+    const distinctTopicFilter = {
+      ...(company && company !== "all" ? { companies: company.toLowerCase() } : {}),
+      ...(category && category !== "all" ? { category: category.toLowerCase() } : {}),
+    };
 
-    // Attach user status (solved / bookmarked / choice)
-    let userProgress = null;
-    if (userId) {
-      userProgress = await PlacementProgress.findOne({ userId });
-    }
+    // Execute all database queries in parallel with .lean() for maximum performance
+    const [total, questions, userProgress, topics] = await Promise.all([
+      PlacementQuestion.countDocuments(filter),
+      PlacementQuestion.find(filter)
+        .sort({ frequency: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(numLimit)
+        .lean(),
+      userId
+        ? PlacementProgress.findOne({ userId })
+            .select("solvedQuestions bookmarkedQuestions")
+            .lean()
+        : Promise.resolve(null),
+      PlacementQuestion.distinct("topics", distinctTopicFilter),
+    ]);
 
     const solvedMap = new Map();
     (userProgress?.solvedQuestions || []).forEach((item) => {
-      solvedMap.set(item.questionId.toString(), item);
+      if (item?.questionId) {
+        solvedMap.set(item.questionId.toString(), item);
+      }
     });
 
     const bookmarkedSet = new Set(
-      (userProgress?.bookmarkedQuestions || []).map((id) => id.toString())
+      (userProgress?.bookmarkedQuestions || []).map((id) => (id?._id || id).toString())
     );
 
     const enrichedQuestions = questions.map((q) => {
-      const attempt = solvedMap.get(q._id.toString());
+      const qIdStr = q._id.toString();
+      const attempt = solvedMap.get(qIdStr);
       return {
-        ...q.toObject(),
+        ...q,
         isSolved: attempt ? attempt.isCorrect : false,
         userAttempt: attempt || null,
-        isBookmarked: bookmarkedSet.has(q._id.toString()),
+        isBookmarked: bookmarkedSet.has(qIdStr),
       };
-    });
-
-    // Fetch distinct topics for the current filter to power filter chips
-    const topics = await PlacementQuestion.distinct("topics", {
-      ...(company && company !== "all" ? { companies: company.toLowerCase() } : {}),
-      ...(category && category !== "all" ? { category: category.toLowerCase() } : {}),
     });
 
     res.status(200).json({
@@ -287,7 +293,7 @@ export const getQuestions = async (req, res) => {
       pagination: {
         total,
         page: Number(page),
-        pages: Math.ceil(total / Number(limit)) || 1,
+        pages: Math.ceil(total / numLimit) || 1,
       },
       availableTopics: topics,
     });
@@ -348,7 +354,7 @@ export const getQuestionById = async (req, res) => {
 
 /**
  * 5. POST /api/placement/submit-answer
- * Submits an answer for MCQ (Aptitude, English, Technical)
+ * Submits an answer for MCQ (Aptitude, English, Technical) with instant response
  */
 export const submitAnswer = async (req, res) => {
   try {
@@ -359,33 +365,45 @@ export const submitAnswer = async (req, res) => {
       return res.status(400).json({ success: false, message: "questionId and userChoice are required." });
     }
 
-    const question = await PlacementQuestion.findById(questionId);
+    const question = await PlacementQuestion.findById(questionId)
+      .select("correctAnswer explanation formula category")
+      .lean();
+
     if (!question) {
       return res.status(404).json({ success: false, message: "Question not found." });
     }
 
     const isCorrect = Number(userChoice) === Number(question.correctAnswer);
 
+    // Persist progress asynchronously via atomic operations
     if (userId) {
-      const progress = await getOrCreateProgress(userId);
-
-      // Remove existing attempt for this question if present
-      progress.solvedQuestions = progress.solvedQuestions.filter(
-        (q) => q.questionId.toString() !== questionId
-      );
-
-      // Record new attempt
-      progress.solvedQuestions.push({
+      const attemptEntry = {
         questionId: question._id,
         category: question.category,
         isCorrect,
         userChoice,
         attemptedAt: new Date(),
-      });
+      };
 
-      await progress.save();
+      PlacementProgress.updateOne(
+        { userId },
+        {
+          $pull: { solvedQuestions: { questionId: question._id } },
+        },
+        { upsert: true }
+      )
+        .then(() => {
+          return PlacementProgress.updateOne(
+            { userId },
+            {
+              $push: { solvedQuestions: attemptEntry },
+            }
+          );
+        })
+        .catch((err) => console.error("Error saving progress attempt:", err));
     }
 
+    // Return instant validation result
     res.status(200).json({
       success: true,
       isCorrect,
@@ -1264,26 +1282,27 @@ export const resetProgress = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized." });
     }
 
-    const progress = await getOrCreateProgress(userId);
-
     if (questionId) {
-      progress.solvedQuestions = progress.solvedQuestions.filter(
-        (q) => q.questionId.toString() !== questionId.toString()
+      await PlacementProgress.updateOne(
+        { userId },
+        { $pull: { solvedQuestions: { questionId } } }
       );
     } else if (Array.isArray(questionIds) && questionIds.length > 0) {
-      const qIdSet = new Set(questionIds.map((id) => id.toString()));
-      progress.solvedQuestions = progress.solvedQuestions.filter(
-        (q) => !qIdSet.has(q.questionId.toString())
+      await PlacementProgress.updateOne(
+        { userId },
+        { $pull: { solvedQuestions: { questionId: { $in: questionIds } } } }
       );
     } else if (category && category !== "all") {
-      progress.solvedQuestions = progress.solvedQuestions.filter(
-        (q) => q.category !== category.toLowerCase()
+      await PlacementProgress.updateOne(
+        { userId },
+        { $pull: { solvedQuestions: { category: category.toLowerCase() } } }
       );
     } else {
-      progress.solvedQuestions = [];
+      await PlacementProgress.updateOne(
+        { userId },
+        { $set: { solvedQuestions: [] } }
+      );
     }
-
-    await progress.save();
 
     res.status(200).json({
       success: true,

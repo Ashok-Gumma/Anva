@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   BookOpen,
   ArrowLeft,
@@ -13,6 +14,8 @@ import {
   Check,
   RotateCcw,
   Sparkles,
+  Timer,
+  Layers,
 } from "lucide-react";
 import {
   getPlacementQuestions,
@@ -33,7 +36,6 @@ const EnglishPracticePage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptMap, setAttemptMap] = useState({});
   const [showPomodoro, setShowPomodoro] = useState(false);
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
 
   const { data, isLoading } = useQuery({
     queryKey: ["placementQuestions", companyId, "english", selectedTopic],
@@ -44,25 +46,13 @@ const EnglishPracticePage = () => {
         topic: selectedTopic,
         limit: 100,
       }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const questions = data?.questions || [];
   const topics = data?.availableTopics || [];
   const currentQuestion = questions[currentIndex] || null;
-
-  // Elapsed Timer
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSecondsElapsed((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatTime = (totalSeconds) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
 
   // Reset Progress Mutation
   const { mutate: resetProgressMutation, isPending: isResetting } = useMutation({
@@ -79,15 +69,38 @@ const EnglishPracticePage = () => {
           setSubmissionResult(null);
         }
       }
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+      toast.success("Question reset successfully.");
     },
   });
 
   const handleResetCurrentQuestion = () => {
     if (!currentQuestion || isResetting) return;
-    resetProgressMutation({ questionId: currentQuestion._id });
+    if (!submissionResult && selectedOption !== null) {
+      setSelectedOption(null);
+      return;
+    }
+    resetProgressMutation({
+      company: companyId,
+      category: "english",
+      questionId: currentQuestion._id,
+    });
+  };
+
+  const handleResetDeck = () => {
+    if (isResetting || !questions.length) return;
+    const questionIds = questions.map((q) => q._id);
+    resetProgressMutation({
+      company: companyId,
+      category: "english",
+      questionIds,
+    });
+    setAttemptMap({});
+    setSelectedOption(null);
+    setSubmissionResult(null);
+    setCurrentIndex(0);
+    toast.success("All questions in this deck have been reset! 🔄");
   };
 
   useEffect(() => {
@@ -130,7 +143,6 @@ const EnglishPracticePage = () => {
       setIsSubmitting(false);
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
     },
     onError: () => {
       setIsSubmitting(false);
@@ -190,20 +202,25 @@ const EnglishPracticePage = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Timer Display */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-base-200/80 rounded-2xl text-xs font-mono font-bold text-base-content/80 border border-base-content/5">
-              <Clock className="size-3.5 text-primary" />
-              <span>{formatTime(secondsElapsed)}</span>
-            </div>
+            {/* Reset All Questions in Deck Button */}
+            <button
+              onClick={handleResetDeck}
+              disabled={isResetting || totalSolved === 0}
+              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-error/10 hover:text-error hover:border-error/20 flex items-center gap-1.5 px-3 transition-colors disabled:opacity-40"
+              title="Reset progress for all questions in this deck"
+            >
+              <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+              <span>Reset All</span>
+            </button>
 
-            {/* Pomodoro Focus */}
+            {/* Pomodoro Focus Timer */}
             <button
               onClick={() => setShowPomodoro((prev) => !prev)}
-              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-base-200"
+              className="btn btn-ghost btn-sm rounded-2xl border border-base-content/10 text-xs font-bold hover:bg-base-200 flex items-center gap-2 px-3"
               title="Pomodoro Focus Timer"
             >
-              <span>🍅</span>
-              <span className="hidden md:inline">Focus</span>
+              <Timer className="size-4 text-primary" />
+              <span>Focus Mode</span>
             </button>
           </div>
         </header>
@@ -258,9 +275,11 @@ const EnglishPracticePage = () => {
                     <span className="text-xs text-base-content/30">of {questions.length}</span>
                   </div>
 
-                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-primary/10 text-primary border-primary/20">
-                    {currentQuestion.topic || "Verbal"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-primary/10 text-primary border-primary/20">
+                      {currentQuestion.topic || "Verbal"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -342,13 +361,25 @@ const EnglishPracticePage = () => {
 
                   <div className="flex items-center gap-2">
                     {!submissionResult ? (
-                      <button
-                        onClick={handleSubmitAnswer}
-                        disabled={selectedOption === null || isSubmitting}
-                        className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
-                      >
-                        {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
-                      </button>
+                      <>
+                        {selectedOption !== null && (
+                          <button
+                            onClick={handleResetCurrentQuestion}
+                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 text-base-content/60 hover:text-error hover:bg-error/10"
+                            title="Clear choice"
+                          >
+                            <RotateCcw className="size-3.5" />
+                            <span>Clear</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={handleSubmitAnswer}
+                          disabled={selectedOption === null || isSubmitting}
+                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
+                        >
+                          {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
+                        </button>
+                      </>
                     ) : (
                       <div className="flex items-center gap-2">
                         <button
@@ -358,7 +389,7 @@ const EnglishPracticePage = () => {
                           title="Reset question to try again"
                         >
                           <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
-                          <span>Try Again</span>
+                          <span>Reset &amp; Try Again</span>
                         </button>
                         <button
                           onClick={() => {
@@ -417,53 +448,90 @@ const EnglishPracticePage = () => {
               </div>
             </div>
 
-            {/* Right: Question Navigation Palette (4 cols) */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-xs uppercase tracking-wider text-base-content/70">
-                    Question Palette
-                  </h3>
-                  <span className="text-[11px] font-bold text-primary">
-                    {totalSolved}/{questions.length} Solved
-                  </span>
+            {/* Right: Question Navigation Palette (4 cols, sticky on desktop) */}
+            <div className="lg:col-span-4 space-y-4 sticky top-4 self-start">
+              <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-sm space-y-4 relative z-10">
+                {/* Header */}
+                <div className="flex items-center justify-between pb-1 border-b border-base-content/5">
+                  <div className="flex items-center gap-2">
+                    <Layers className="size-4 text-primary" />
+                    <span className="font-bold text-xs uppercase tracking-wider text-base-content/70">
+                      Question Palette
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {totalSolved > 0 && (
+                      <button
+                        onClick={handleResetDeck}
+                        disabled={isResetting}
+                        className="text-[10px] font-bold text-base-content/40 hover:text-error hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                        title="Reset all questions in this deck"
+                      >
+                        <RotateCcw className="size-2.5" />
+                        <span>Reset All</span>
+                      </button>
+                    )}
+                    <span className="text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                      {totalSolved}/{questions.length} Solved
+                    </span>
+                  </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-base-200 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className="bg-primary h-full transition-all duration-300 rounded-full"
-                    style={{ width: `${(totalSolved / (questions.length || 1)) * 100}%` }}
-                  />
-                </div>
-
-                {/* Palette Grid */}
+                {/* Minimal Question Grid */}
                 <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
                   {questions.map((q, idx) => {
                     const isSolved = attemptMap[q._id]?.isCorrect || q.userAttempt?.isCorrect;
-                    const isAttempted = attemptMap[q._id] || q.userAttempt;
+                    const isAttempted = Boolean(attemptMap[q._id] || q.userAttempt);
                     const isCurrent = idx === currentIndex;
 
-                    let numStyle = "bg-base-200 text-base-content/70 hover:bg-base-300";
+                    let tileClass = "bg-base-200/70 hover:bg-base-200 text-base-content/80 border border-base-content/10 hover:border-base-content/25";
 
                     if (isSolved) {
-                      numStyle = "bg-emerald-600 text-white font-black shadow-xs";
-                    } else if (isAttempted && !isSolved) {
-                      numStyle = "bg-rose-600 text-white font-black shadow-xs";
+                      tileClass = "bg-emerald-600 hover:bg-emerald-700 text-white font-bold border border-emerald-600 shadow-xs";
+                    } else if (isAttempted) {
+                      tileClass = "bg-rose-600 hover:bg-rose-700 text-white font-bold border border-rose-600 shadow-xs";
+                    }
+
+                    if (isCurrent) {
+                      if (isSolved) {
+                        tileClass = "bg-emerald-600 text-white font-black ring-2 ring-primary ring-offset-2 ring-offset-base-100 shadow-sm";
+                      } else if (isAttempted) {
+                        tileClass = "bg-rose-600 text-white font-black ring-2 ring-primary ring-offset-2 ring-offset-base-100 shadow-sm";
+                      } else {
+                        tileClass = "border-2 border-primary bg-primary/15 text-primary font-black shadow-xs";
+                      }
                     }
 
                     return (
                       <button
                         key={idx}
                         onClick={() => setCurrentIndex(idx)}
-                        className={`h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${numStyle} ${
-                          isCurrent ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100 scale-105" : ""
-                        }`}
+                        className={`h-9 w-full rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer flex items-center justify-center ${tileClass}`}
                       >
                         {idx + 1}
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Minimal Status Legend */}
+                <div className="pt-3 border-t border-base-content/10 grid grid-cols-2 gap-2 text-xs">
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full bg-emerald-600 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Solved</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full bg-rose-600 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Incorrect</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full border-2 border-primary bg-primary/20 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Current</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-base-200/40 border border-base-content/5">
+                    <span className="size-2.5 rounded-full bg-base-300 border border-base-content/30 shrink-0" />
+                    <span className="text-base-content/70 text-[11px] font-medium">Unattempted</span>
+                  </div>
                 </div>
               </div>
             </div>

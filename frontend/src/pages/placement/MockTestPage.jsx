@@ -468,26 +468,39 @@ const MockTestPage = () => {
 
               {/* Right: Question Palette */}
               <div className="lg:col-span-4 space-y-4">
-                <div className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between text-xs font-bold text-base-content/70">
-                    <span>Section Questions</span>
-                    <span>{Object.keys(answers).length} Total Answered</span>
+                <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-sm space-y-4 relative z-10">
+                  <div className="flex items-center justify-between pb-1">
+                    <div className="flex items-center gap-2">
+                      <div className="size-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                        <Layers className="size-4" />
+                      </div>
+                      <span className="font-bold text-sm text-base-content">Section Questions</span>
+                    </div>
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                      {Object.keys(answers).length} / {currentQuestions.length} Answered
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2 pt-1">
+                  <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-0.5">
                     {currentQuestions.map((q, idx) => {
                       const isAnswered = answers[q._id] !== undefined;
                       const isCurrent = currentQuestionIndex === idx;
+
+                      let tileClass = "bg-base-200/70 hover:bg-base-200 text-base-content/80 border border-base-content/10 hover:border-base-content/25";
+
+                      if (isAnswered) {
+                        tileClass = "bg-primary text-primary-content font-bold shadow-xs border-transparent";
+                      }
+
+                      if (isCurrent) {
+                        tileClass += " ring-2 ring-primary ring-offset-2 ring-offset-base-100 font-bold scale-[1.03]";
+                      }
 
                       return (
                         <button
                           key={idx}
                           onClick={() => setCurrentQuestionIndex(idx)}
-                          className={`size-10 rounded-xl flex items-center justify-center text-xs font-black transition-all cursor-pointer ${
-                            isAnswered
-                              ? "bg-primary text-primary-content font-bold shadow-xs"
-                              : "bg-base-200 text-base-content/70 hover:bg-base-300"
-                          } ${isCurrent ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100 scale-105" : ""}`}
+                          className={`h-10 rounded-2xl flex items-center justify-center text-xs font-semibold transition-all duration-150 cursor-pointer ${tileClass}`}
                         >
                           {idx + 1}
                         </button>
