@@ -13,7 +13,7 @@ const AuthCardWrapper = ({
   illustrationImage = "/i.png",
 }) => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f3f4f6] p-4 sm:p-6 md:p-8 font-sans selection:bg-indigo-500 selection:text-white">
+    <div data-theme="light" className="min-h-screen flex items-center justify-center bg-[#f3f4f6] p-4 sm:p-6 md:p-8 font-sans selection:bg-indigo-500 selection:text-white">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

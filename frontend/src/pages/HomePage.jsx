@@ -30,6 +30,7 @@ import {
   Sparkles,
   Check,
   Target,
+  Quote,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { capitalize } from "../lib/utils";
@@ -66,6 +67,14 @@ const HomePage = () => {
     const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
     return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
   }, []);
+
+  const { quoteText, quoteAuthor } = useMemo(() => {
+    const parts = (dailyQuote || "").split(" – ");
+    return {
+      quoteText: parts[0] || dailyQuote,
+      quoteAuthor: parts[1] || "Daily Inspiration",
+    };
+  }, [dailyQuote]);
 
   /* ── Notifications popup ── */
   const { data: friendRequests } = useQuery({
@@ -297,22 +306,42 @@ const HomePage = () => {
           variants={itemVariants}
           className="md:col-span-2 lg:col-span-3 relative bg-base-100 p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-base-content/10 overflow-hidden flex flex-col justify-between shadow-lg text-base-content group h-full min-h-[280px]"
         >
-          {/* Subtle Decorative Elements */}
-          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-primary/5 blur-[60px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 rounded-full bg-secondary/5 blur-[50px] pointer-events-none" />
+          {/* Subtle Modern Ambient Lighting & Glows */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-72 h-72 rounded-full bg-primary/10 blur-[70px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-56 h-56 rounded-full bg-secondary/10 blur-[60px] pointer-events-none" />
           
-          <div className="relative z-10 space-y-3 mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-widest text-primary">
-              <BrainCircuit className="size-3.5" />
-              Intelligence Hub
+          {/* Top Section with Greeting and 3D Visual */}
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
+            <div className="space-y-3 max-w-lg">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-widest text-primary backdrop-blur-md">
+                <BrainCircuit className="size-3.5" />
+                Intelligence Hub
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-base-content">
+                Welcome back,<br/>
+                <span className="font-curly font-bold italic text-primary text-4xl sm:text-5xl">{authUser.fullName?.split(" ")[0]}! 👋</span>
+              </h1>
+              <p className="text-sm text-base-content/70 leading-relaxed font-medium">
+                Your compiler is hot. Let&apos;s write code and <span className="font-curly font-bold italic text-secondary text-base">connect with peers</span> today!
+              </p>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tighter leading-tight text-base-content">
-              Welcome back,<br/>
-              <span className="font-curly font-bold italic text-primary text-4xl sm:text-5xl">{authUser.fullName?.split(" ")[0]}! 👋</span>
-            </h1>
-            <p className="text-sm text-base-content/60 leading-relaxed font-medium max-w-md">
-              Your compiler is hot. Let's write code and <span className="font-curly font-bold italic text-secondary text-base">connect with peers</span> today!
-            </p>
+
+            {/* 💬 Daily Motivational Quote Card on Top Right */}
+            <div className="hidden sm:flex flex-col justify-between relative shrink-0 max-w-xs lg:max-w-sm p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-base-content/10 shadow-xs backdrop-blur-md hover:border-primary/30 transition-all duration-300 group/quote">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-1.5 text-primary text-[10px] font-black uppercase tracking-widest">
+                  <Sparkles className="size-3.5" />
+                  Daily Inspiration
+                </div>
+                <Quote className="size-4 text-base-content/30 group-hover/quote:text-primary transition-colors" />
+              </div>
+              <p className="text-xs sm:text-[13px] italic font-medium text-base-content/85 leading-relaxed">
+                &ldquo;{quoteText}&rdquo;
+              </p>
+              <div className="mt-2.5 flex items-center justify-end text-[10px] font-black uppercase tracking-wider text-base-content/50">
+                — {quoteAuthor}
+              </div>
+            </div>
           </div>
 
           {/* Clean Quick Shortcuts */}
@@ -343,89 +372,6 @@ const HomePage = () => {
         {/* ── 2. PROGRESS TILE (Spans 1 col — fills right top corner) ── */}
         <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-1 h-full min-h-[300px]">
           <ProgressDashboard />
-        </motion.div>
-
-        {/* ── 4. ACTIVE CONNECTIONS TILE (Spans full width 4 cols) ── */}
-        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-4 bg-base-100 rounded-[2rem] border border-base-content/10 overflow-hidden shadow-lg flex flex-col group hover:border-primary/20 transition-colors h-full min-h-[200px]">
-          <div className="p-6 border-b border-base-content/5 flex items-center justify-between bg-base-200/30">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
-                <UsersIcon className="size-5" />
-              </div>
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-widest text-base-content leading-tight">
-                  Active Connections
-                </h2>
-                <span className="text-[10px] text-base-content/40 font-bold uppercase tracking-wider">
-                  Your Study Network
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <Link
-                to="/notifications"
-                className="btn btn-ghost btn-xs font-bold uppercase tracking-widest text-[9px] hover:bg-base-200 rounded-lg hidden sm:flex h-8 px-3"
-              >
-                Requests <span className="ml-1 bg-primary text-primary-content px-1.5 rounded-md">{friendRequests?.incomingReqs?.length || 0}</span>
-              </Link>
-              <Link
-                to="/friends"
-                className="btn btn-primary btn-xs font-black uppercase tracking-widest text-[9px] px-4 shadow-md rounded-lg h-8 hover:scale-105 transition-transform"
-              >
-                View Network
-              </Link>
-            </div>
-          </div>
-
-          <div className="p-6 bg-base-100 flex-1 flex items-center justify-between gap-6">
-            <div className="flex items-center min-w-[40%]">
-              {loadingFriends ? (
-                <div className="flex -space-x-4">
-                  {[...Array(5)].map((_, i) => <div key={i} className="size-14 rounded-full bg-base-300 border-2 border-base-100 animate-pulse" />)}
-                </div>
-              ) : friends.length === 0 ? (
-                <p className="text-sm font-medium text-base-content/40 w-full text-center">No active connections yet. Find some below!</p>
-              ) : (
-                <div className="flex -space-x-4 pl-4 pt-4 pb-4">
-                  {friends.slice(0, 6).map((friend) => (
-                    <Link key={friend._id} to={`/user/${friend._id}`} className="relative group/avatar hover:z-10 transition-transform hover:scale-110">
-                      <div className="size-14 rounded-full border-4 border-base-100 bg-base-300 overflow-hidden shadow-sm">
-                        {friend.profilePic ? (
-                          <img src={friend.profilePic} alt={friend.fullName} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="w-full h-full flex items-center justify-center text-lg font-black text-base-content/50 uppercase">
-                            {friend.fullName?.charAt(0)}
-                          </span>
-                        )}
-                      </div>
-                      {/* Tooltip */}
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-neutral text-neutral-content text-[10px] font-bold px-2 py-1 rounded shadow-lg opacity-0 group-hover/avatar:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                        {friend.fullName}
-                      </div>
-                    </Link>
-                  ))}
-                  {friends.length > 6 && (
-                    <div className="size-14 rounded-full border-4 border-base-100 bg-base-200 flex items-center justify-center text-xs font-black text-base-content/50 z-0">
-                      +{friends.length - 6}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Motivational Quote */ }
-            <div className="flex-1 hidden sm:flex flex-col justify-center items-end text-right border-l border-base-content/10 pl-6 my-2">
-              <p className="text-sm font-medium text-base-content/60 italic leading-relaxed">
-                "{dailyQuote.split(" – ")[0]}"
-              </p>
-              {dailyQuote.includes(" – ") && (
-                <span className="text-[10px] font-black uppercase tracking-widest text-base-content/40 mt-2">
-                  — {dailyQuote.split(" – ")[1]}
-                </span>
-              )}
-            </div>
-          </div>
         </motion.div>
 
         {/* ── 5. DISCOVER PARTNERS TILE (Spans full 4 cols on the third row) ── */}

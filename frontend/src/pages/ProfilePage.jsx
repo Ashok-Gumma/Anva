@@ -45,6 +45,9 @@ import {
   Image as ImageIcon,
   LogOut,
   Award,
+  LifeBuoy,
+  HelpCircle,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import useLogout from "../hooks/useLogout";
@@ -775,6 +778,47 @@ const ProfilePage = () => {
                 </>
               )}
             </button>
+          </div>
+
+          {/* Help & Support Desk Card */}
+          <div className="bg-base-100 p-6 rounded-3xl border border-base-content/10 shadow-sm space-y-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-3">
+                <div className="size-9 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
+                  <LifeBuoy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base-content text-sm">Help & Support Desk</h3>
+                  <p className="text-[11px] text-base-content/60">Tickets, FAQs, and platform assistance</p>
+                </div>
+              </div>
+              <Link
+                to="/support"
+                className="btn btn-primary btn-sm rounded-xl font-bold gap-1.5 text-xs shadow-xs"
+              >
+                <span>Open Support</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+            
+            <p className="text-xs text-base-content/70 font-medium leading-relaxed">
+              Have questions regarding placement materials, language tools, account security, or bug reports? Visit the Support Hub to submit a ticket or browse help guides.
+            </p>
+
+            <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+              <div className="p-2.5 rounded-xl bg-base-200/60 border border-base-content/5">
+                <span className="block text-[11px] font-bold text-base-content">🎫 Tickets</span>
+                <span className="text-[10px] text-base-content/50">24/7 Response</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-base-200/60 border border-base-content/5">
+                <span className="block text-[11px] font-bold text-base-content">📚 Guides</span>
+                <span className="text-[10px] text-base-content/50">Step-by-step</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-base-200/60 border border-base-content/5">
+                <span className="block text-[11px] font-bold text-base-content">⚡ Assistance</span>
+                <span className="text-[10px] text-base-content/50">AI & Peers</span>
+              </div>
+            </div>
           </div>
 
           {/* Account & Security Card */}

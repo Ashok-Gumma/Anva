@@ -439,7 +439,7 @@ const AdminPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] text-zinc-900 font-apple-system antialiased selection:bg-black selection:text-white pb-24">
+    <div data-theme="light" className="min-h-screen bg-[#F5F5F7] text-zinc-900 font-apple-system antialiased selection:bg-black selection:text-white pb-24">
       
       {/* ── 1. APPLE LIGHT MINIMAL TOP NAVIGATION ── */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl border-b border-black/[0.08] shadow-2xs">

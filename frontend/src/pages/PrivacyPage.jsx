@@ -5,7 +5,7 @@ import AnvaLogo from "../components/AnvaLogo";
 
 const PrivacyPage = () => {
   return (
-    <div className="min-h-screen bg-white text-black font-sans selection:bg-blue-100 selection:text-blue-900 p-6 sm:p-12">
+    <div data-theme="light" className="min-h-screen bg-white text-black font-sans selection:bg-blue-100 selection:text-blue-900 p-6 sm:p-12">
       <div className="max-w-3xl mx-auto">
         <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-black transition-colors font-bold uppercase tracking-widest text-xs mb-12">
           <ArrowLeft className="w-4 h-4" /> Back to Home

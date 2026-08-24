@@ -555,12 +555,13 @@ const CodingProblemPage = () => {
                 theme={editorTheme}
                 options={{
                   minimap: { enabled: false },
-                  fontSize: 13.5,
+                  fontSize: 15,
+                  lineHeight: 24,
                   wordWrap: "on",
                   automaticLayout: true,
                   scrollBeyondLastLine: false,
-                  padding: { top: 12, bottom: 12 },
-                  fontFamily: "Fira Code, Menlo, Monaco, 'Courier New', monospace",
+                  padding: { top: 14, bottom: 14 },
+                  fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, 'Courier New', monospace",
                   fontLigatures: true,
                 }}
               />

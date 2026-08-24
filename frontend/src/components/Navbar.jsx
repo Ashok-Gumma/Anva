@@ -205,32 +205,6 @@ const Navbar = () => {
                   <span>Placement Hub</span>
                 </Link>
 
-                {/* 5. Support Link */}
-                <Link
-                  to="/support"
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-                    pathname === "/support"
-                      ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
-                      : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
-                  }`}
-                >
-                  <LifeBuoy className="size-4 text-cyan-500" />
-                  <span>Support</span>
-                </Link>
-
-                {/* 5. Profile Link in Header Ribbon */}
-                <Link
-                  to="/profile"
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
-                    pathname === "/profile"
-                      ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
-                      : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
-                  }`}
-                >
-                  <UserIcon className="size-4 text-pink-500" />
-                  <span>Profile</span>
-                </Link>
-
                 {/* Admin Link if applicable */}
                 {isAdmin && (
                   <Link
@@ -270,6 +244,11 @@ const Navbar = () => {
                         label="View Profile & Settings"
                         labelIcon={<UserIcon className="w-4 h-4 text-pink-500" />}
                         href="/profile"
+                      />
+                      <UserButton.Link
+                        label="Help & Support"
+                        labelIcon={<LifeBuoy className="w-4 h-4 text-cyan-500" />}
+                        href="/support"
                       />
                     </UserButton.MenuItems>
                   </UserButton>

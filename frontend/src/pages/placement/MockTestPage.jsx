@@ -690,7 +690,10 @@ const MockTestPage = () => {
                       theme="vs-dark"
                       options={{
                         minimap: { enabled: false },
-                        fontSize: 13,
+                        fontSize: 15,
+                        lineHeight: 24,
+                        fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, 'Courier New', monospace",
+                        fontLigatures: true,
                         lineNumbers: "on",
                         scrollBeyondLastLine: false,
                         automaticLayout: true,

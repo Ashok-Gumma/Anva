@@ -241,63 +241,98 @@ const SupportPage = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-6 rounded-3xl bg-error/10 border border-error/30 shadow-lg space-y-5"
+          className="p-6 sm:p-7 rounded-3xl bg-base-100 border border-red-500/30 shadow-xl space-y-5 relative overflow-hidden"
         >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-error/20 text-error rounded-2xl shrink-0">
-                <Lock className="w-6 h-6 animate-pulse" />
+          {/* Top Indicator Accent */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-amber-500" />
+
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="flex items-start sm:items-center gap-4">
+              {/* User Avatar */}
+              <div className="relative size-14 rounded-2xl p-0.5 bg-zinc-200 border border-zinc-300 dark:border-zinc-700 shadow-sm shrink-0 flex items-center justify-center">
+                <div className="size-full rounded-[14px] overflow-hidden bg-base-200 flex items-center justify-center text-base-content font-bold text-lg">
+                  {authUser?.profilePic ? (
+                    <img
+                      src={authUser.profilePic}
+                      alt={authUser?.fullName}
+                      className="size-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <span>{authUser?.fullName?.charAt(0)?.toUpperCase() || "U"}</span>
+                  )}
+                </div>
               </div>
-              <div>
-                <span className="px-2.5 py-0.5 bg-error/20 text-error border border-error/30 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                  15-Day Account Restriction Active
-                </span>
-                <h2 className="font-curly text-3xl font-bold text-error tracking-wide">
-                  Account Currently Suspended
+
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 rounded-full text-[11px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5">
+                    <ShieldAlert className="size-3.5" /> Account Suspended
+                  </span>
+                  <span className="text-xs text-base-content/50 font-medium">
+                    Suspended on {suspensionData.suspendedAtDate}
+                  </span>
+                </div>
+                
+                <h2 className="text-xl sm:text-2xl font-black text-base-content tracking-tight">
+                  We suspended your account, {authUser?.fullName}
                 </h2>
-                <p className="text-xs text-base-content/70 font-medium">
-                  Other pages are locked. Use this Support & Appeal Desk to review guidelines or submit an official appeal.
+                <p className="text-xs sm:text-sm text-base-content/70 font-medium">
+                  {suspensionData.daysLeft} days left to appeal or we&apos;ll permanently disable your account.
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 setFormData((prev) => ({ ...prev, category: "Account Appeal" }));
                 setActiveTab("submit");
                 setIsAppealModalOpen(true);
               }}
-              className="btn btn-error btn-sm rounded-xl text-white font-bold gap-1 text-xs uppercase cursor-pointer shrink-0 shadow-md hover:scale-105 transition-all"
+              className="btn bg-[#0095f6] hover:bg-[#1877f2] border-none text-white font-bold text-xs uppercase px-5 py-2.5 rounded-xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0 flex items-center gap-2 w-full sm:w-auto justify-center cursor-pointer"
             >
-              <ShieldAlert className="w-4 h-4" /> Submit Appeal Ticket
+              <ShieldAlert className="w-4 h-4" />
+              <span>Submit Appeal Ticket</span>
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* Real-time Live Digital Clock */}
-          <div className="grid grid-cols-4 gap-2 text-center pt-2 border-t border-error/20">
-            <div className="bg-base-100/90 p-3 rounded-2xl border border-error/20">
-              <div className="font-curly text-2xl sm:text-3xl font-bold text-error">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center pt-2">
+            <div className="bg-base-200/60 p-3 sm:p-4 rounded-2xl border border-base-content/10">
+              <div className="font-mono text-2xl sm:text-3xl font-black text-base-content">
                 {suspensionData.daysLeft}
               </div>
-              <div className="text-[10px] uppercase font-bold text-base-content/50">Days</div>
-            </div>
-            <div className="bg-base-100/90 p-3 rounded-2xl border border-error/20">
-              <div className="font-curly text-2xl sm:text-3xl font-bold text-error">
-                {suspensionData.hoursLeft}
+              <div className="text-[10px] uppercase font-extrabold tracking-widest text-base-content/50 mt-0.5">
+                Days
               </div>
-              <div className="text-[10px] uppercase font-bold text-base-content/50">Hours</div>
             </div>
-            <div className="bg-base-100/90 p-3 rounded-2xl border border-error/20">
-              <div className="font-curly text-2xl sm:text-3xl font-bold text-error">
-                {suspensionData.minutesLeft}
+            <div className="bg-base-200/60 p-3 sm:p-4 rounded-2xl border border-base-content/10">
+              <div className="font-mono text-2xl sm:text-3xl font-black text-base-content">
+                {String(suspensionData.hoursLeft).padStart(2, "0")}
               </div>
-              <div className="text-[10px] uppercase font-bold text-base-content/50">Mins</div>
+              <div className="text-[10px] uppercase font-extrabold tracking-widest text-base-content/50 mt-0.5">
+                Hours
+              </div>
             </div>
-            <div className="bg-base-100/90 p-3 rounded-2xl border border-error/20">
-              <div className="font-curly text-2xl sm:text-3xl font-bold text-error animate-pulse">
-                {suspensionData.secondsLeft}
+            <div className="bg-base-200/60 p-3 sm:p-4 rounded-2xl border border-base-content/10">
+              <div className="font-mono text-2xl sm:text-3xl font-black text-base-content">
+                {String(suspensionData.minutesLeft).padStart(2, "0")}
               </div>
-              <div className="text-[10px] uppercase font-bold text-base-content/50">Secs</div>
+              <div className="text-[10px] uppercase font-extrabold tracking-widest text-base-content/50 mt-0.5">
+                Mins
+              </div>
+            </div>
+            <div className="bg-base-200/60 p-3 sm:p-4 rounded-2xl border border-base-content/10">
+              <div className="font-mono text-2xl sm:text-3xl font-black text-red-500">
+                {String(suspensionData.secondsLeft).padStart(2, "0")}
+              </div>
+              <div className="text-[10px] uppercase font-extrabold tracking-widest text-base-content/50 mt-0.5">
+                Secs
+              </div>
             </div>
           </div>
         </motion.div>
@@ -705,9 +740,11 @@ const SupportPage = () => {
               className="bg-base-100 rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-error/30 shadow-2xl space-y-5"
             >
               <div className="flex items-center justify-between border-b border-base-content/10 pb-4">
-                <div className="flex items-center gap-2 text-error">
-                  <ShieldAlert className="w-6 h-6" />
-                  <h3 className="font-curly text-2xl font-bold">Submit Account Appeal</h3>
+                <div className="flex items-center gap-2.5 text-zinc-900 dark:text-white">
+                  <div className="p-2 rounded-xl bg-red-500/10 text-red-500">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold tracking-tight">Submit Account Appeal</h3>
                 </div>
                 <button
                   type="button"

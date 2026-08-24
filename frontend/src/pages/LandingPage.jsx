@@ -190,7 +190,7 @@ const LandingPage = () => {
   const currentTab = showcaseTabs.find((t) => t.id === activeTab) || showcaseTabs[0];
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-base-content font-sans antialiased relative z-10 selection:bg-primary selection:text-primary-content overflow-x-hidden">
+    <div data-theme="light" className="min-h-screen bg-[#fafaf9] text-base-content font-sans antialiased relative z-10 selection:bg-primary selection:text-primary-content overflow-x-hidden">
       {/* Interactive Particle Physics Canvas Background */}
       <ParticleBackground />
 
