@@ -139,10 +139,36 @@ const EnglishPracticePage = () => {
             userChoice: selectedOption,
           },
         }));
+
+        // Optimistically update query cache for instant persistence
+        queryClient.setQueryData(
+          ["placementQuestions", companyId, "english", selectedTopic],
+          (old) => {
+            if (!old?.questions) return old;
+            return {
+              ...old,
+              questions: old.questions.map((q) => {
+                if (q._id === currentQuestion._id) {
+                  return {
+                    ...q,
+                    isSolved: res.isCorrect,
+                    userAttempt: {
+                      isCorrect: res.isCorrect,
+                      userChoice: selectedOption,
+                      correctAnswer: res.correctAnswer,
+                      explanation: res.explanation,
+                    },
+                  };
+                }
+                return q;
+              }),
+            };
+          }
+        );
       }
       setIsSubmitting(false);
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
-      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId], refetchType: "none" });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"], refetchType: "none" });
     },
     onError: () => {
       setIsSubmitting(false);

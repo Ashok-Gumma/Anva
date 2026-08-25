@@ -29,6 +29,7 @@ const TIERS = [
   { id: "popular", label: "🔥 Popular" },
   { id: "FAANG / Top Product", label: "FAANG / Top Product" },
   { id: "Product Giant", label: "Product Giants" },
+  { id: "Fintech & Startups", label: "Fintech & Banking" },
   { id: "IT & Consulting Leader", label: "IT & Consulting" },
 ];
 
@@ -53,11 +54,15 @@ const PlacementLandingPage = () => {
   const { data: companiesData, isLoading: loadingCompanies } = useQuery({
     queryKey: ["placementCompanies"],
     queryFn: getPlacementCompanies,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const { data: progressData } = useQuery({
     queryKey: ["placementUserProgress"],
     queryFn: getPlacementUserProgress,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const companies = companiesData?.companies || [];

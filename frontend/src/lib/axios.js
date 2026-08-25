@@ -1,18 +1,35 @@
 import axios from "axios";
 
-const BASE_URL =
+export const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:5001/api"
     : "/api";
 
 export const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
 // Mutable ref to Clerk's getToken — set synchronously during render by AxiosClerkInterceptor
 let _clerkGetToken = null;
-export const setClerkGetToken = (fn) => { _clerkGetToken = fn; };
+export const setClerkGetToken = (fn) => {
+  _clerkGetToken = fn;
+};
+
+export const getAuthToken = async () => {
+  if (_clerkGetToken) {
+    try {
+      const token = await Promise.race([
+        _clerkGetToken(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 2500)),
+      ]);
+      if (token) return token;
+    } catch {
+      // Cookie-based fallback
+    }
+  }
+  return null;
+};
 
 // Module-level request interceptor — registered once at import time, always active
 axiosInstance.interceptors.request.use(async (config) => {
@@ -21,7 +38,7 @@ axiosInstance.interceptors.request.use(async (config) => {
       // Race with 2500ms timeout so Clerk JWT token loads reliably for requests
       const token = await Promise.race([
         _clerkGetToken(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 2500))
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Clerk timeout")), 2500)),
       ]);
       if (token) {
         config.headers["Authorization"] = `Bearer ${token}`;

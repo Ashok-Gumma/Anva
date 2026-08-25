@@ -87,6 +87,8 @@ const CodingProblemPage = () => {
     queryKey: ["placementQuestion", problemId],
     queryFn: () => getPlacementQuestionById(problemId),
     enabled: !!problemId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 
   const question = data?.question || null;
@@ -155,9 +157,9 @@ const CodingProblemPage = () => {
     onSuccess: (res) => {
       setIsSubmitting(false);
       setSubmissionResult(res);
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
-      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
-      queryClient.invalidateQueries({ queryKey: ["placementQuestion", problemId] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId], refetchType: "none" });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"], refetchType: "none" });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestion", problemId], refetchType: "none" });
     },
     onError: (err) => {
       setIsSubmitting(false);

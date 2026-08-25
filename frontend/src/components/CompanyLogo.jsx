@@ -154,6 +154,64 @@ const InlineLogos = {
       <polygon points="50,46.7 65.6,82 52.4,82 46.8,68 34.6,68" fill="#FFFFFF" />
     </svg>
   ),
+  netflix: () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#000000" />
+      <path fill="#E50914" d="M38 24h15v72H38z" />
+      <path fill="#E50914" d="M67 24h15v72H67z" />
+      <path fill="#B81D24" d="M38 24h15l29 72H67z" />
+    </svg>
+  ),
+  "goldman-sachs": () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#7399C6" />
+      <text x="60" y="55" textAnchor="middle" fill="#FFFFFF" fontSize="16" fontWeight="900" fontFamily="serif" letterSpacing="0.5">Goldman</text>
+      <text x="60" y="78" textAnchor="middle" fill="#FFFFFF" fontSize="16" fontWeight="900" fontFamily="serif" letterSpacing="0.5">Sachs</text>
+    </svg>
+  ),
+  jpmorgan: () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#002D62" />
+      <text x="60" y="55" textAnchor="middle" fill="#FFFFFF" fontSize="14" fontWeight="900" fontFamily="serif" letterSpacing="-0.5">J.P. Morgan</text>
+      <text x="60" y="76" textAnchor="middle" fill="#C59B27" fontSize="11" fontWeight="800" fontFamily="sans-serif" letterSpacing="1">CHASE & CO.</text>
+    </svg>
+  ),
+  cisco: () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#005073" />
+      <g fill="#00BCEB">
+        <rect x="25" y="52" width="6" height="22" rx="3" />
+        <rect x="37" y="38" width="6" height="36" rx="3" />
+        <rect x="49" y="46" width="6" height="28" rx="3" />
+        <rect x="61" y="32" width="6" height="42" rx="3" />
+        <rect x="73" y="46" width="6" height="28" rx="3" />
+        <rect x="85" y="38" width="6" height="36" rx="3" />
+        <rect x="97" y="52" width="6" height="22" rx="3" />
+      </g>
+      <text x="64" y="96" textAnchor="middle" fill="#FFFFFF" fontSize="16" fontWeight="900" fontFamily="sans-serif" letterSpacing="1">CISCO</text>
+    </svg>
+  ),
+  uber: () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#000000" />
+      <text x="60" y="70" textAnchor="middle" fill="#FFFFFF" fontSize="26" fontWeight="900" fontFamily="sans-serif" letterSpacing="-1">Uber</text>
+    </svg>
+  ),
+  salesforce: () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#00A1E0" />
+      <path fill="#FFFFFF" d="M50 35c4-6 11-10 19-10 11 0 20 7 23 17 4 1 8 4 10 9 3 5 2 12-2 16-3 4-8 5-13 5H36c-6 0-11-2-15-7-4-4-5-10-3-15 2-5 7-9 13-10 3-7 10-12 19-12v7z" opacity="0.9" />
+      <text x="60" y="94" textAnchor="middle" fill="#FFFFFF" fontSize="13" fontWeight="900" fontFamily="sans-serif" letterSpacing="-0.2">salesforce</text>
+    </svg>
+  ),
+  qualcomm: () => (
+    <svg viewBox="0 0 120 120" className="w-full h-full object-contain">
+      <rect width="120" height="120" rx="26" fill="#1C355E" />
+      <text x="60" y="68" textAnchor="middle" fill="#3253DC" fontSize="17" fontWeight="900" fontFamily="sans-serif" letterSpacing="-0.5">
+        <tspan fill="#3253DC">Qual</tspan><tspan fill="#FFFFFF">comm</tspan>
+      </text>
+    </svg>
+  ),
 };
 
 const CompanyLogo = ({ slug, name, size = "md", className = "" }) => {

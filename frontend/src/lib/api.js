@@ -1,4 +1,4 @@
-import { axiosInstance } from "./axios";
+import { axiosInstance, API_BASE_URL, getAuthToken } from "./axios";
 
 export const signup = async (signupData) => {
   const response = await axiosInstance.post("/auth/signup", signupData);
@@ -54,6 +54,66 @@ export const sendPing = async () => {
 export const checkGrammar = async (text) => {
   const response = await axiosInstance.post("/assistant/grammar", { text });
   return response.data;
+};
+
+export const streamAssistantChat = async ({
+  message,
+  image,
+  onChunk,
+  signal,
+}) => {
+  const token = await getAuthToken();
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/assistant/chat/stream`, {
+    method: "POST",
+    headers,
+    credentials: "include",
+    body: JSON.stringify({ message, image }),
+    signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Stream request failed with status ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let fullReply = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith(":")) continue;
+      if (trimmed.startsWith("data: ")) {
+        try {
+          const data = JSON.parse(trimmed.slice(6));
+          if (data.delta) {
+            fullReply += data.delta;
+            if (onChunk) onChunk(data.delta, fullReply);
+          }
+          if (data.done) {
+            return data.reply || fullReply;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  return fullReply;
 };
 
 

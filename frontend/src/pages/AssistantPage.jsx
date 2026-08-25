@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { axiosInstance } from "../lib/axios";
+import { streamAssistantChat } from "../lib/api";
 import {
   Send,
   X,
-  BrainCircuit,
   Sparkles,
   Mic,
   Plus,
@@ -19,40 +19,85 @@ import {
   VolumeX,
   Award,
   RotateCcw,
-  CheckCircle,
-  Play,
+  BookOpen,
+  Terminal,
+  Layers,
+  ChevronRight,
+  FileText,
+  Clock,
+  Flame,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import useAuthUser from "../hooks/useAuthUser";
-import AnvaBrandLogo from "../components/AnvaBrandLogo";
 import { capitalize } from "../lib/utils";
 
-// Quick prompt suggestions
+// Notion-style Quick Command suggestions
+const NOTION_COMMANDS = [
+  {
+    cmd: "/explain",
+    label: "Explain Concept",
+    desc: "Break down complex topics with analogies",
+    prompt: "Can you explain how [topic] works with a simple step-by-step intuition and real-world analogy?",
+    icon: BookOpen,
+  },
+  {
+    cmd: "/code",
+    label: "Write Solution",
+    desc: "Generate clean, production-grade code",
+    prompt: "Write a clean, optimized implementation in JavaScript / Python for [problem] with time & space complexity analysis.",
+    icon: Code,
+  },
+  {
+    cmd: "/debug",
+    label: "Debug Code",
+    desc: "Find and fix bugs in your code snippet",
+    prompt: "Here is my code snippet with a bug. Can you analyze what is wrong and show the fixed version?\n\n```\n// paste code here\n```",
+    icon: Terminal,
+  },
+  {
+    cmd: "/sql",
+    label: "SQL Query",
+    desc: "Design database queries and schemas",
+    prompt: "Explain how to write an efficient SQL query for [use case] including indexing tips.",
+    icon: Database,
+  },
+  {
+    cmd: "/summarize",
+    label: "Summarize Notes",
+    desc: "Condense long text into key takeaways",
+    prompt: "Please summarize the following study material into structured bullet points with key formulas and takeaways:\n\n",
+    icon: FileText,
+  },
+];
+
+// Quick prompt suggestions for blank page
 const SUGGESTIONS = [
   {
     title: "React State & Lifecycle",
     prompt: "Explain how React state updating works under the hood and why state updates are asynchronous.",
     icon: Code,
-    color: "text-primary bg-primary/10 border-primary/20",
+    category: "Frontend",
   },
   {
     title: "Python List Comprehensions",
     prompt: "Explain Python list comprehensions and write an example of filtering and mapping with an if-else statement.",
     icon: Code,
-    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+    category: "Python",
   },
   {
     title: "SQL Joins Explained",
     prompt: "Can you explain the difference between INNER JOIN and LEFT JOIN with a simple database table example?",
     icon: Database,
-    color: "text-purple-500 bg-purple-500/10 border-purple-500/20",
+    category: "Databases",
   },
   {
-    title: "BST Tree Traversal",
-    prompt: "Show me a JavaScript recursive in-order traversal function for a Binary Search Tree and explain its complexity.",
+    title: "Binary Tree Traversal",
+    prompt: "Show me a recursive in-order and level-order traversal function for a Binary Tree and explain its complexity.",
     icon: GitBranch,
-    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+    category: "DSA",
   },
 ];
 
@@ -63,7 +108,7 @@ const INITIAL_MOCK_SESSIONS = [
     title: "Active Doubt Session",
     isCurrent: true,
     icon: Sparkles,
-    date: "Current Session",
+    date: "Just now",
   },
   {
     id: "react-hook",
@@ -75,12 +120,12 @@ const INITIAL_MOCK_SESSIONS = [
       {
         role: "user",
         content:
-          "Hey! Why is my React state not updating immediately after I call `setCount`? In my handler I call `setCount(count + 1)` and then `console.log(count)` prints the old value.",
+          "Why is my React state not updating immediately after I call `setCount`? In my handler I call `setCount(count + 1)` and then `console.log(count)` prints the old value.",
       },
       {
         role: "assistant",
         content:
-          "React's state setters (like `setCount`) do not immediately update the state in-place. Instead, they schedule a state transition.\n\nWhen you call `setCount(count + 1)`, React schedules a re-render with the new value, but the current execution context still holds the current state.\n\n### Solution\n\n1. **Use a local variable**:\n```javascript\nconst newCount = count + 1;\nsetCount(newCount);\nconsole.log(newCount);\n```\n\n2. **Use functional updater**:\n```javascript\nsetCount(prev => prev + 1);\n```",
+          "React's state setters (like `setCount`) do not immediately update the state in-place. Instead, they schedule a state transition.\n\nWhen you call `setCount(count + 1)`, React schedules a re-render with the new value, but the current execution context still holds the current state.\n\n### 💡 Key Takeaways\n\n1. **Use a local variable**:\n```javascript\nconst newCount = count + 1;\nsetCount(newCount);\nconsole.log(newCount);\n```\n\n2. **Use functional updater**:\n```javascript\nsetCount(prev => prev + 1);\n```",
       },
     ],
   },
@@ -105,69 +150,158 @@ const INITIAL_MOCK_SESSIONS = [
   },
 ];
 
-// Helper to format code blocks & backticks in assistant messages
-const formatMessageContent = (text) => {
-  if (!text) return "";
-  const parts = text.split(/(```[\s\S]*?```)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith("```") && part.endsWith("```")) {
-      const match = part.match(/```(\w*)\n([\s\S]*?)```/);
-      const language = match ? match[1] : "";
-      const code = match ? match[2] : part.slice(3, -3);
-      return (
-        <div
-          key={index}
-          className="my-3 rounded-2xl overflow-hidden border border-base-content/10 bg-base-300/90 text-left font-mono shadow-sm"
-        >
-          {language && (
-            <div className="bg-base-300 px-4 py-2 text-[10px] font-extrabold text-base-content/70 uppercase border-b border-base-content/10 flex justify-between items-center tracking-wider">
-              <span>{language}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(code.trim());
-                  toast.success("Code copied to clipboard!");
-                }}
-                className="hover:text-primary transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1"
-              >
-                <Copy className="w-3 h-3" /> Copy
-              </button>
-            </div>
-          )}
-          <pre className="p-4 overflow-x-auto text-xs leading-relaxed text-base-content font-mono">
-            <code>{code.trim()}</code>
-          </pre>
-        </div>
-      );
-    }
+// Rich Notion-style Markdown & Code renderer
+const MarkdownContent = ({ content }) => {
+  if (!content) return null;
 
-    const inlineParts = part.split(/(`[^`\n]+`)/g);
-    return (
-      <span key={index}>
-        {inlineParts.map((subPart, subIndex) => {
-          if (subPart.startsWith("`") && subPart.endsWith("`")) {
+  return (
+    <div className="markdown-content text-xs sm:text-sm leading-relaxed text-base-content/90 space-y-3 font-sans">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1({ children }) {
+            return (
+              <h1 className="text-lg sm:text-xl font-black text-base-content tracking-tight mt-5 mb-2 pb-1 border-b border-base-content/10 flex items-center gap-2">
+                {children}
+              </h1>
+            );
+          },
+          h2({ children }) {
+            return (
+              <h2 className="text-base sm:text-lg font-extrabold text-base-content tracking-tight mt-4 mb-1.5 flex items-center gap-1.5">
+                {children}
+              </h2>
+            );
+          },
+          h3({ children }) {
+            return (
+              <h3 className="text-sm sm:text-base font-bold text-base-content tracking-tight mt-3 mb-1">
+                {children}
+              </h3>
+            );
+          },
+          p({ children }) {
+            return <p className="my-2 leading-relaxed">{children}</p>;
+          },
+          ul({ children }) {
+            return (
+              <ul className="list-disc list-outside my-2 space-y-1 pl-5 text-base-content/90">
+                {children}
+              </ul>
+            );
+          },
+          ol({ children }) {
+            return (
+              <ol className="list-decimal list-outside my-2 space-y-1 pl-5 text-base-content/90">
+                {children}
+              </ol>
+            );
+          },
+          li({ children }) {
+            return <li className="leading-relaxed pl-1">{children}</li>;
+          },
+          blockquote({ children }) {
+            return (
+              <blockquote className="border-l-3 border-primary bg-base-200/60 px-4 py-2.5 my-3 rounded-r-2xl italic text-base-content/85 text-xs sm:text-sm">
+                {children}
+              </blockquote>
+            );
+          },
+          table({ children }) {
+            return (
+              <div className="my-3.5 overflow-x-auto rounded-2xl border border-base-content/15 bg-base-100 shadow-2xs">
+                <table className="w-full text-left text-xs border-collapse font-sans">
+                  {children}
+                </table>
+              </div>
+            );
+          },
+          th({ children }) {
+            return (
+              <th className="bg-base-200/90 px-3.5 py-2.5 font-bold text-base-content uppercase tracking-wider text-[11px] border-b border-base-content/15">
+                {children}
+              </th>
+            );
+          },
+          td({ children }) {
+            return (
+              <td className="px-3.5 py-2.5 border-b border-base-content/10 text-base-content/90 text-xs">
+                {children}
+              </td>
+            );
+          },
+          hr() {
+            return <hr className="my-4 border-base-content/15" />;
+          },
+          a({ href, children }) {
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary font-bold underline hover:text-primary-focus transition-colors"
+              >
+                {children}
+              </a>
+            );
+          },
+          strong({ children }) {
+            return <strong className="font-bold text-base-content">{children}</strong>;
+          },
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || "");
+            const lang = match ? match[1] : "";
+            const codeString = String(children).replace(/\n$/, "");
+
+            if (!inline && (match || codeString.includes("\n") || codeString.length > 50)) {
+              return (
+                <div className="my-3.5 rounded-2xl overflow-hidden border border-base-content/15 bg-base-300/80 text-left font-mono shadow-sm">
+                  {/* Notion-style Code Header Bar */}
+                  <div className="bg-base-300/90 px-4 py-2 text-[10px] font-extrabold text-base-content/70 uppercase border-b border-base-content/10 flex justify-between items-center tracking-wider">
+                    <span className="flex items-center gap-1.5">
+                      <Code className="size-3 text-primary" />
+                      <span>{lang || "code"}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(codeString);
+                        toast.success("Code copied to clipboard!");
+                      }}
+                      className="hover:text-primary transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1 bg-base-100/80 hover:bg-base-100 px-2 py-0.5 rounded-md border border-base-content/10"
+                    >
+                      <Copy className="size-3" /> Copy
+                    </button>
+                  </div>
+                  <pre className="p-4 overflow-x-auto text-xs leading-relaxed text-base-content font-mono">
+                    <code>{codeString}</code>
+                  </pre>
+                </div>
+              );
+            }
+
             return (
               <code
-                key={subIndex}
-                className="px-1.5 py-0.5 rounded-md bg-base-300 text-primary font-mono text-xs border border-base-content/10 font-bold"
+                className="px-1.5 py-0.5 rounded-md bg-base-300/90 text-primary font-mono text-[11px] sm:text-xs border border-base-content/10 font-bold"
+                {...props}
               >
-                {subPart.slice(1, -1)}
+                {children}
               </code>
             );
-          }
-          return subPart;
-        })}
-      </span>
-    );
-  });
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 };
 
-// Pronunciation Coach Practice Dataset by Language
+// Pronunciation Coach Practice Dataset
 const PRACTICE_PHRASES = {
   spanish: [
     { phrase: "Hola, ¿cómo estás hoy? Me encanta aprender idiomas con Anva.", phonetic: "OH-lah, KOH-moh ess-TAHS oy? meh en-KAHN-tah ah-pren-DAIR ee-DYOH-mahs...", translation: "Hello, how are you today? I love learning languages with Anva." },
     { phrase: "El éxito es la suma de pequeños esfuerzos repetidos cada día.", phonetic: "el EK-see-toh ess lah SOO-mah deh peh-KAY-nyohs ess-FWAIRe-sohs...", translation: "Success is the sum of small efforts repeated every day." },
-    { phrase: "La práctica constante hace al maestro.", phonetic: "lah PRAHK-tee-kah kohn-STAHN-teh AH-say ahl my-ESS-troh.", translation: "Constant practice makes the master." },
   ],
   french: [
     { phrase: "Bonjour ! Comment allez-vous aujourd'hui ?", phonetic: "bohn-ZHOOR ! koh-mahn tah-lay VOO oh-zhoor-DWEE ?", translation: "Hello! How are you today?" },
@@ -175,11 +309,9 @@ const PRACTICE_PHRASES = {
   ],
   german: [
     { phrase: "Guten Tag! Ich freue mich, heute Deutsch zu üben.", phonetic: "GOO-ten tahk! ikh FROY-eh mikh, HOY-teh DOYTCH tsoo OO-ben.", translation: "Good day! I am happy to practice German today." },
-    { phrase: "Übung macht den Meister.", phonetic: "OO-boong mahkht dayn MYS-ter.", translation: "Practice makes master." },
   ],
   japanese: [
     { phrase: "こんにちは、お元気ですか？今日も一緒に勉強しましょう。", phonetic: "Konnichiwa, o-genki desu ka? Kyou mo issho ni benkyou shimashou.", translation: "Hello, how are you? Let's study together today too." },
-    { phrase: "継続は力なり。", phonetic: "Keizoku wa chikara nari.", translation: "Continuity is strength." },
   ],
   default: [
     { phrase: "Hello! Practice makes perfect, and consistency is the key to mastery.", phonetic: "heh-LOH! PRAK-tis mayks PUR-fikt, and kahn-SIS-tuhn-see is kee...", translation: "Practice and consistency lead to mastery." },
@@ -196,9 +328,7 @@ const getSpeechLangCode = (langName) => {
   if (name.includes("japanese")) return "ja-JP";
   if (name.includes("italian")) return "it-IT";
   if (name.includes("portuguese")) return "pt-BR";
-  if (name.includes("russian")) return "ru-RU";
-  if (name.includes("chinese") || name.includes("mandarin")) return "zh-CN";
-  if (name.includes("arabic")) return "ar-SA";
+  if (name.includes("chinese")) return "zh-CN";
   if (name.includes("hindi")) return "hi-IN";
   if (name.includes("korean")) return "ko-KR";
   return "en-US";
@@ -242,13 +372,11 @@ const AssistantPage = () => {
   const recognitionRef = useRef(null);
   const coachRecognitionRef = useRef(null);
 
-  // Active target phrases for the user's learning language
   const targetLanguageKey = (authUser?.learningLanguage || "default").toLowerCase();
   const activePracticePhrases = PRACTICE_PHRASES[targetLanguageKey] || PRACTICE_PHRASES.default;
   const currentPracticePhrase = customCoachPhrase || activePracticePhrases[coachPhraseIndex % activePracticePhrases.length]?.phrase || activePracticePhrases[0].phrase;
   const currentPracticeItem = activePracticePhrases[coachPhraseIndex % activePracticePhrases.length] || activePracticePhrases[0];
 
-  // Speech-to-Speech Playback handler
   const handleSpeakMessage = (content, index) => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
       toast.error("Speech playback is not supported on this device.");
@@ -282,7 +410,6 @@ const AssistantPage = () => {
     window.speechSynthesis.speak(utterance);
   };
 
-  // Pronunciation Evaluation Algorithm
   const evaluatePronunciation = (target, spoken) => {
     const normalize = (str) =>
       str
@@ -317,7 +444,7 @@ const AssistantPage = () => {
     }
   };
 
-  // Fetch live active chat history on mount
+  // Fetch chat history on mount
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -328,7 +455,7 @@ const AssistantPage = () => {
           setDbMessages([
             {
               role: "assistant",
-              content: `Hello ${authUser?.fullName || ""}! 👋 I am your AI Study Assistant. What concept or code question can I help you clear today?`,
+              content: `Hello ${authUser?.fullName || ""}! 👋 I am your AI Study Workspace Assistant. What concept or code doubt can I help you break down today?`,
             },
           ]);
         }
@@ -337,7 +464,7 @@ const AssistantPage = () => {
         setDbMessages([
           {
             role: "assistant",
-            content: "Hello! 👋 I am your AI Study Assistant. What question can I help you with today?",
+            content: "Hello! 👋 I am your AI Study Assistant. What doubt or coding challenge can I help you solve today?",
           },
         ]);
       }
@@ -349,119 +476,99 @@ const AssistantPage = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [dbMessages, loading, selectedSessionId]);
 
-  const clearHistory = async () => {
-    try {
-      await axiosInstance.delete("/assistant/history");
-      setDbMessages([
-        {
-          role: "assistant",
-          content: "Hello! 👋 I am your AI Study Assistant. What question can I help you with today?",
-        },
-      ]);
-
-      const allMockIds = INITIAL_MOCK_SESSIONS.filter((s) => s.id !== "active").map((s) => s.id);
-      localStorage.setItem("anva_assistant_deleted_sessions", JSON.stringify(allMockIds));
-      setSessions(INITIAL_MOCK_SESSIONS.filter((s) => s.id === "active"));
-      setSelectedSessionId("active");
-
-      toast.success("Chat history cleared!");
-    } catch (err) {
-      console.error("Failed to clear history:", err);
-      toast.error("Failed to clear chat history.");
-    }
-  };
-
-  // Voice Recognition Setup
-  useEffect(() => {
-    if (typeof window !== "undefined" && (window.webkitSpeechRecognition || window.SpeechRecognition)) {
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = "en-US";
-
-      recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.onerror = () => setIsRecording(false);
-      recognitionRef.current.onend = () => setIsRecording(false);
-    }
-  }, []);
-
+  // Voice recording
   const toggleRecording = () => {
-    if (!recognitionRef.current) {
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
       toast.error("Speech recognition is not supported in this browser.");
       return;
     }
-    if (isRecording) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = getSpeechLangCode(authUser?.learningLanguage);
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    };
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setIsRecording(false);
+      toast.error("Could not capture speech. Please try again.");
+    };
+    recognition.onend = () => setIsRecording(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
   };
 
+  // Coach Voice Recording
   const toggleCoachRecording = () => {
-    if (typeof window === "undefined" || (!window.webkitSpeechRecognition && !window.SpeechRecognition)) {
-      toast.error("Speech recognition is not supported in this browser.");
-      return;
-    }
-
     if (isCoachRecording) {
-      if (coachRecognitionRef.current) coachRecognitionRef.current.stop();
+      coachRecognitionRef.current?.stop();
       setIsCoachRecording(false);
       return;
     }
 
-    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
-    const coachRec = new SpeechRecognition();
-    coachRec.continuous = false;
-    coachRec.interimResults = false;
-    coachRec.lang = getSpeechLangCode(authUser?.learningLanguage);
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition is not supported in this browser.");
+      return;
+    }
 
-    coachRec.onstart = () => {
+    const recognition = new SpeechRecognition();
+    recognition.lang = getSpeechLangCode(authUser?.learningLanguage);
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
       setIsCoachRecording(true);
       setCoachSpokenText("");
       setCoachScore(null);
       setCoachFeedback("");
     };
 
-    coachRec.onresult = (event) => {
+    recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setCoachSpokenText(transcript);
       evaluatePronunciation(currentPracticePhrase, transcript);
-      setIsCoachRecording(false);
     };
 
-    coachRec.onerror = (e) => {
-      console.error("Coach recognition error:", e);
+    recognition.onerror = (event) => {
+      console.error("Coach speech error:", event.error);
       setIsCoachRecording(false);
-      toast.error("Could not capture speech. Please speak closer to the mic.");
+      toast.error("Speech error. Try speaking closer to the microphone.");
     };
 
-    coachRec.onend = () => {
-      setIsCoachRecording(false);
-    };
-
-    coachRecognitionRef.current = coachRec;
-    coachRec.start();
+    recognition.onend = () => setIsCoachRecording(false);
+    coachRecognitionRef.current = recognition;
+    recognition.start();
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size should be less than 5MB");
-        return;
-      }
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (PNG, JPEG, WebP)");
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImage(reader.result);
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = () => {
@@ -470,42 +577,105 @@ const AssistantPage = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const clearHistory = async () => {
+    if (!window.confirm("Are you sure you want to clear this workspace chat history?")) return;
+    try {
+      await axiosInstance.delete("/assistant/history");
+      setDbMessages([
+        {
+          role: "assistant",
+          content: `Workspace cleared! ✨ How can I assist your study today, ${authUser?.fullName || ""}?`,
+        },
+      ]);
+      toast.success("Active session history cleared.");
+    } catch {
+      toast.error("Failed to clear chat history.");
+    }
+  };
+
   const sendMessage = async () => {
     if ((!input.trim() && !selectedImage) || loading) return;
 
     if (selectedSessionId !== "active") {
-      toast.error("This is an archived session. Click 'New Doubt' to ask live questions.");
-      return;
+      setSelectedSessionId("active");
     }
+
+    const currentInput = input.trim();
+    const currentImage = selectedImage;
 
     const userMessage = {
       role: "user",
-      content: input.trim(),
-      image: imagePreview,
+      content: currentInput,
+      image: currentImage,
     };
 
     setDbMessages((prev) => [...prev, userMessage]);
-    const currentInput = input;
-    const currentImage = imagePreview;
-
     setInput("");
-    removeImage();
+    setSelectedImage(null);
+    setImagePreview(null);
     setLoading(true);
 
-    try {
-      const res = await axiosInstance.post("/assistant/chat", {
-        message: currentInput,
-        image: currentImage,
-      });
+    const assistantPlaceholder = {
+      role: "assistant",
+      content: "",
+    };
+    setDbMessages((prev) => [...prev, assistantPlaceholder]);
 
-      const reply = res.data.reply || "No reply from assistant.";
-      setDbMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch (err) {
-      console.error("Assistant error:", err);
-      setDbMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "❌ Error connecting to AI assistant." },
-      ]);
+    let accumulatedReply = "";
+
+    try {
+      await streamAssistantChat(
+        currentInput,
+        currentImage,
+        (token) => {
+          accumulatedReply += token;
+          setDbMessages((prev) => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
+            if (updated[lastIndex]?.role === "assistant") {
+              updated[lastIndex] = {
+                ...updated[lastIndex],
+                content: accumulatedReply,
+              };
+            }
+            return updated;
+          });
+        },
+        () => setLoading(false)
+      );
+    } catch (streamErr) {
+      console.warn("SSE stream fallback to REST /assistant/chat:", streamErr);
+      try {
+        const res = await axiosInstance.post("/assistant/chat", {
+          message: currentInput,
+          image: currentImage,
+        });
+
+        const reply = res.data.reply || "No reply from assistant.";
+        setDbMessages((prev) => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (updated[lastIndex]?.role === "assistant") {
+            updated[lastIndex] = { ...updated[lastIndex], content: reply };
+          } else {
+            updated.push({ role: "assistant", content: reply });
+          }
+          return updated;
+        });
+      } catch (err) {
+        console.error("Assistant error:", err);
+        setDbMessages((prev) => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (updated[lastIndex]?.role === "assistant" && !accumulatedReply) {
+            updated[lastIndex] = {
+              role: "assistant",
+              content: "❌ Error connecting to AI assistant. Please try again.",
+            };
+          }
+          return updated;
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -525,7 +695,7 @@ const AssistantPage = () => {
       setDbMessages([
         {
           role: "assistant",
-          content: `Hello ${authUser?.fullName || ""}! 👋 How can I assist your learning today?`,
+          content: `Hello ${authUser?.fullName || ""}! 👋 Starting a fresh workspace page. What shall we learn?`,
         },
       ]);
       toast.success("Started a new doubt session!");
@@ -533,7 +703,7 @@ const AssistantPage = () => {
       setDbMessages([
         {
           role: "assistant",
-          content: "Hello! 👋 How can I assist your learning today?",
+          content: "Hello! 👋 Starting a fresh workspace page. What shall we learn?",
         },
       ]);
     }
@@ -563,7 +733,7 @@ const AssistantPage = () => {
     }
 
     if (selectedSessionId === id) setSelectedSessionId("active");
-    toast.success("Thread deleted.");
+    toast.success("Page deleted from workspace.");
   };
 
   const handleSuggestionClick = (prompt) => {
@@ -578,29 +748,6 @@ const AssistantPage = () => {
     return sessions.filter((s) => s.title?.toLowerCase().includes(q));
   }, [sessions, searchQuery]);
 
-  // Clean User Avatar
-  const UserAvatar = () => {
-    const initials = authUser?.fullName ? authUser.fullName.charAt(0).toUpperCase() : "U";
-    return (
-      <div className="size-9 rounded-2xl bg-secondary text-secondary-content flex items-center justify-center font-bold text-xs border border-base-content/10 shadow-sm overflow-hidden shrink-0">
-        {authUser?.profilePic ? (
-          <img src={authUser.profilePic} alt="User Avatar" className="size-full object-cover" />
-        ) : (
-          <span>{initials}</span>
-        )}
-      </div>
-    );
-  };
-
-  // Modern AI Assistant Badge
-  const AssistantAvatar = () => {
-    return (
-      <div className="size-9 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent text-white flex items-center justify-center shadow-md border border-white/20 shrink-0">
-        <Sparkles className="size-4 text-white fill-white/20" />
-      </div>
-    );
-  };
-
   const activeMessages =
     selectedSessionId === "active"
       ? dbMessages
@@ -608,62 +755,79 @@ const AssistantPage = () => {
 
   const isNewChat = selectedSessionId === "active" && dbMessages.length <= 1;
 
+  // ── NOTION-STYLE SIDEBAR COMPONENT ──
   const renderSidebarContent = () => (
-    <div className="flex flex-col h-full bg-base-100 w-full select-none">
-      {/* Brand Header */}
-      <div className="p-4 sm:p-5 border-b border-base-content/10 bg-base-100 shrink-0 font-minimal">
-        <div className="flex items-center justify-between mb-3.5">
-          <AnvaBrandLogo badgeSize="size-9" textSize="text-xl" />
+    <div className="flex flex-col h-full bg-base-100 w-full select-none font-sans">
+      {/* Workspace Header */}
+      <div className="p-4 border-b border-base-content/10 bg-base-100 shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold border border-primary/20">
+              <Sparkles className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xs font-black text-base-content truncate uppercase tracking-wider">
+                Anva Workspace
+              </h2>
+              <span className="text-[10px] text-base-content/50 font-bold block">
+                AI Knowledge Hub
+              </span>
+            </div>
+          </div>
+
           {mobileMenuOpen && (
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-2 text-base-content/60 hover:text-base-content hover:bg-base-200 rounded-xl transition-colors cursor-pointer"
+              className="p-1.5 text-base-content/60 hover:text-base-content hover:bg-base-200 rounded-lg transition-colors cursor-pointer"
               aria-label="Close"
             >
-              <X className="size-5" />
+              <X className="size-4" />
             </button>
           )}
         </div>
 
-        {/* New Doubt Button */}
+        {/* Notion-style "+ New Page" Button */}
         <button
           type="button"
           onClick={handleNewDoubt}
-          className="w-full py-2.5 bg-primary text-primary-content text-xs font-bold uppercase tracking-wider rounded-2xl hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer mb-3"
+          className="w-full py-2 px-3 bg-base-200/80 hover:bg-primary hover:text-primary-content text-base-content text-xs font-bold rounded-xl transition-all flex items-center justify-between group cursor-pointer mb-2.5 border border-base-content/10"
         >
-          <Plus className="size-4 stroke-[2.5]" />
-          New Doubt Session
+          <span className="flex items-center gap-2">
+            <Plus className="size-3.5" />
+            <span>New Doubt Page</span>
+          </span>
+          <span className="text-[10px] opacity-50 group-hover:opacity-100 font-mono">⌘N</span>
         </button>
 
-        {/* Search Input */}
+        {/* Search Bar */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-base-content/40" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-base-content/40" />
           <input
             type="text"
-            placeholder="Search doubt history..."
+            placeholder="Search pages & notes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-base-200/60 border border-base-content/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/40 font-medium text-base-content placeholder:text-base-content/40 transition-all"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-base-200/50 border border-base-content/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/40 font-medium text-base-content placeholder:text-base-content/40 transition-all"
           />
         </div>
       </div>
 
-      {/* Threads List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar font-minimal">
-        <div className="flex items-center justify-between px-2 mb-2">
-          <h2 className="text-[10px] font-black text-base-content/40 uppercase tracking-[0.2em]">
-            Doubt Sessions
-          </h2>
+      {/* Notion Document Tree */}
+      <div className="flex-1 overflow-y-auto p-2.5 space-y-1 custom-scrollbar">
+        <div className="flex items-center justify-between px-2 py-1">
+          <span className="text-[10px] font-black text-base-content/40 uppercase tracking-widest">
+            Pages & Sessions
+          </span>
           <span className="text-[10px] font-mono text-base-content/40">{filteredSessions.length}</span>
         </div>
 
         {filteredSessions.length === 0 ? (
-          <p className="text-xs text-base-content/40 text-center py-6 font-medium">No sessions found</p>
+          <p className="text-xs text-base-content/40 text-center py-6 font-medium">No pages found</p>
         ) : (
           filteredSessions.map((sess) => {
             const isSelected = selectedSessionId === sess.id;
-            const SessIcon = sess.icon || Code;
+            const SessIcon = sess.icon || FileText;
 
             return (
               <div
@@ -677,40 +841,42 @@ const AssistantPage = () => {
                     handleSelectSession(sess.id);
                   }
                 }}
-                className={`w-full p-3 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between text-left group relative ${
+                className={`w-full px-2.5 py-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between text-left group ${
                   isSelected
-                    ? "bg-primary/10 border-primary/30 text-primary shadow-xs"
-                    : "bg-base-100 border-base-content/5 text-base-content hover:bg-base-200/70 hover:border-base-content/10 active:scale-[0.98]"
+                    ? "bg-primary/10 border-primary/20 text-primary font-bold shadow-2xs"
+                    : "bg-transparent border-transparent hover:bg-base-200/80 text-base-content/80 hover:text-base-content"
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <div
-                    className={`size-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                    className={`size-6 rounded-lg flex items-center justify-center shrink-0 text-xs ${
                       isSelected
                         ? "bg-primary text-primary-content"
                         : "bg-base-200 text-base-content/60 group-hover:text-base-content"
                     }`}
                   >
-                    <SessIcon className="size-4" />
+                    <SessIcon className="size-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-xs font-bold truncate ${isSelected ? "text-primary" : "text-base-content"}`}>
+                    <p className={`text-xs truncate ${isSelected ? "font-bold text-primary" : "font-medium"}`}>
                       {sess.title}
-                    </p>
-                    <p className="text-[9px] text-base-content/40 uppercase font-semibold">
-                      {sess.date}
                     </p>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={(e) => deleteSession(sess.id, e)}
-                  className="p-1.5 text-base-content/40 hover:text-error hover:bg-error/10 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer ml-1 shrink-0"
-                  title="Remove session"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[9px] text-base-content/40 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                    {sess.date}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => deleteSession(sess.id, e)}
+                    className="p-1 text-base-content/40 hover:text-error hover:bg-error/10 rounded-md transition-all opacity-0 group-hover:opacity-100 cursor-pointer ml-1"
+                    title="Delete page"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
               </div>
             );
           })
@@ -720,18 +886,17 @@ const AssistantPage = () => {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] bg-base-200 text-base-content overflow-hidden font-minimal w-full">
+    <div className="flex h-[calc(100dvh-4rem)] bg-base-100 text-base-content overflow-hidden font-sans w-full">
       {/* Desktop Sidebar */}
-      <aside className="w-80 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
+      <aside className="w-64 lg:w-72 border-r border-base-content/10 bg-base-100 hidden md:flex flex-col shrink-0">
         {renderSidebarContent()}
       </aside>
 
-      {/* Mobile Slide-in Drawer via Portal (escapes all stacking/overflow constraints) */}
+      {/* Mobile Slide-in Drawer via Portal */}
       {createPortal(
         <AnimatePresence>
           {mobileMenuOpen && (
             <>
-              {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -750,7 +915,6 @@ const AssistantPage = () => {
                 }}
               />
 
-              {/* Drawer Sheet */}
               <motion.div
                 initial={{ x: "-100%" }}
                 animate={{ x: 0 }}
@@ -761,7 +925,7 @@ const AssistantPage = () => {
                   top: 0,
                   left: 0,
                   bottom: 0,
-                  width: "320px",
+                  width: "300px",
                   maxWidth: "85vw",
                   height: "100dvh",
                   zIndex: 99999,
@@ -777,75 +941,82 @@ const AssistantPage = () => {
         document.body
       )}
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col relative chat-wallpaper w-full overflow-hidden">
-
-        {/* Sticky Chat Header */}
-        <header className="px-3 sm:px-6 py-3 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-25 w-full shrink-0 flex items-center justify-between min-h-[64px] font-minimal gap-2">
-          <div className="flex items-center gap-2">
+      {/* Main Notion Canvas Area */}
+      <div className="flex-1 flex flex-col relative w-full overflow-hidden bg-base-100">
+        {/* Notion Top Breadcrumb Header */}
+        <header className="px-4 sm:px-8 py-2.5 bg-base-100/90 backdrop-blur-md border-b border-base-content/10 sticky top-0 z-20 w-full shrink-0 flex items-center justify-between min-h-[52px] gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-extrabold tracking-wide transition-all cursor-pointer shadow-2xs"
-              title="Open Doubt Sessions Sidebar"
+              className="md:hidden p-1.5 rounded-lg bg-base-200 hover:bg-base-300 text-base-content/80 transition-colors"
+              title="Open Pages"
             >
-              <BrainCircuit className="size-4" />
-              <span>Sessions</span>
+              <Layers className="size-4" />
             </button>
 
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-success animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-wider text-base-content/80">
-                {selectedSessionId === "active" ? "AI Assistant (Online)" : "Archived Session"}
+            {/* Notion Breadcrumbs */}
+            <div className="flex items-center gap-1.5 text-xs text-base-content/60 font-medium truncate">
+              <span className="hover:text-base-content cursor-pointer">Anva Workspace</span>
+              <ChevronRight className="size-3 text-base-content/40 shrink-0" />
+              <span className="font-bold text-base-content truncate">
+                {selectedSessionId === "active" ? "AI Study Assistant" : "Archived Doubt Note"}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowCoachModal(true)}
-              className="px-3 py-1.5 bg-gradient-to-r from-primary/15 via-secondary/10 to-accent/15 hover:from-primary/25 hover:to-accent/25 border border-primary/30 text-primary rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs hover:scale-102 transition-all cursor-pointer"
-              title="Open Pronunciation & Speaking Coach"
+              className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              title="Pronunciation & Speech Coach"
             >
-              <Award className="size-4 text-primary" />
+              <Award className="size-3.5" />
               <span className="hidden sm:inline">Pronunciation Coach</span>
-              <span className="sm:hidden">Coach</span>
             </button>
 
             <button
               type="button"
               onClick={clearHistory}
-              className="px-3 py-1.5 bg-base-200 hover:bg-error/10 hover:text-error hover:border-error/30 border border-base-content/10 rounded-xl text-xs font-bold text-base-content transition-all cursor-pointer flex items-center gap-1.5"
-              title="Clear Active Chat"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 bg-base-200/80 hover:bg-error/10 hover:text-error rounded-xl text-xs font-bold text-base-content/70 transition-all cursor-pointer flex items-center gap-1 border border-base-content/5"
+              title="Clear Canvas History"
             >
               <Trash2 className="size-3.5" />
-              <span className="hidden sm:inline">Clear Chat</span>
+              <span className="hidden sm:inline">Clear</span>
             </button>
           </div>
         </header>
 
-        {/* Chat Feed Area */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 md:py-8 space-y-6 scrollbar-thin relative pb-36 font-minimal">
-          <div className="max-w-3xl mx-auto space-y-6 md:space-y-8">
-            {/* Welcome Screen */}
+        {/* Notion Document Canvas */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-10 md:px-16 py-8 space-y-6 custom-scrollbar bg-base-100 flex flex-col items-center">
+          <div className="w-full max-w-4xl space-y-6">
+            {/* Clean Notion Page Header */}
+            <div className="space-y-2 pb-2">
+              <div className="flex items-center gap-3">
+                <div className="size-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs text-xl">
+                  🧠
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-black text-base-content tracking-tight">
+                    AI Doubt Solver & Study Workspace
+                  </h1>
+                  <p className="text-xs text-base-content/50 font-medium">
+                    Powered by OpenRouter High-Speed Cascade & Multi-Modal Vision
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Welcome Prompts on Empty Page */}
             {isNewChat && (
               <motion.div
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center text-center py-10 md:py-14 px-4"
+                className="space-y-4 pt-1"
               >
-                <div className="size-16 rounded-3xl bg-gradient-to-tr from-primary via-secondary to-accent text-white flex items-center justify-center shadow-xl border border-white/20 mb-5">
-                  <Sparkles className="size-8 text-white fill-white/20" />
-                </div>
-                <h2 className="text-2xl md:text-3xl font-extrabold text-base-content tracking-tight mb-2">
-                  How can I help you <span className="font-curly italic text-primary font-bold">study today?</span>
-                </h2>
-                <p className="text-xs md:text-sm text-base-content/60 font-medium max-w-md mb-8 leading-relaxed">
-                  Ask study questions, clarify code concepts, check grammar, or get help with assignments.
-                </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-2xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
                   {SUGGESTIONS.map((sug, idx) => {
                     const SugIcon = sug.icon;
                     return (
@@ -853,16 +1024,19 @@ const AssistantPage = () => {
                         key={idx}
                         type="button"
                         onClick={() => handleSuggestionClick(sug.prompt)}
-                        className="p-4 rounded-2xl bg-base-100 border border-base-content/10 hover:border-primary/40 hover:bg-base-200/60 hover:-translate-y-0.5 hover:shadow-md transition-all text-left flex gap-3 group cursor-pointer"
+                        className="p-4 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-content/10 hover:border-primary/40 transition-all text-left flex gap-3.5 group cursor-pointer shadow-2xs"
                       >
-                        <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 border ${sug.color}`}>
-                          <SugIcon className="size-4" />
+                        <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <SugIcon className="size-4.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-bold text-base-content group-hover:text-primary transition-colors">
-                            {sug.title}
-                          </h4>
-                          <p className="text-[11px] text-base-content/60 font-medium mt-0.5 line-clamp-2 leading-relaxed">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-xs sm:text-sm font-bold text-base-content group-hover:text-primary transition-colors">
+                              {sug.title}
+                            </h4>
+                            <span className="text-[10px] text-base-content/40 font-semibold">{sug.category}</span>
+                          </div>
+                          <p className="text-xs text-base-content/60 font-medium line-clamp-2 leading-relaxed">
                             {sug.prompt}
                           </p>
                         </div>
@@ -873,99 +1047,166 @@ const AssistantPage = () => {
               </motion.div>
             )}
 
-            {/* Chat Messages */}
+            {/* Document Messages Stream */}
             {!isNewChat && (
-              <AnimatePresence initial={false}>
+              <div className="space-y-6 pt-2">
                 {activeMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
-                  return (
+
+                  return isUser ? (
+                    /* Notion-style User Callout Block */
                     <motion.div
                       key={index}
-                      initial={{ opacity: 0, y: 15 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`flex gap-3 sm:gap-4 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+                      className="p-4 sm:p-5 rounded-2xl bg-base-200/80 hover:bg-base-200 border border-base-content/10 space-y-2.5 transition-colors shadow-2xs text-left"
                     >
-                      {isUser ? <UserAvatar /> : <AssistantAvatar />}
-
-                      <div className={`flex flex-col max-w-[85%] sm:max-w-[80%] ${isUser ? "items-end" : "items-start"}`}>
-                        <div
-                          className={`p-4 sm:p-5 rounded-3xl text-xs sm:text-sm leading-relaxed shadow-sm transition-all text-left ${
-                            isUser
-                              ? "bg-primary text-primary-content rounded-tr-none"
-                              : "bg-base-100 border border-base-content/10 text-base-content rounded-tl-none"
-                          }`}
-                        >
-                          {msg.image && (
-                            <div className="mb-3 rounded-2xl overflow-hidden border border-base-content/10 max-h-64">
-                              <img src={msg.image} alt="Attached Context" className="max-h-64 w-auto object-cover" />
-                            </div>
-                          )}
-                          <div className="whitespace-pre-wrap font-medium">
-                            {formatMessageContent(msg.content)}
+                      <div className="flex items-center justify-between text-xs font-bold text-base-content/60 border-b border-base-content/5 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="size-6 rounded-lg bg-primary text-primary-content font-black text-[11px] flex items-center justify-center">
+                            {authUser?.fullName ? authUser.fullName.charAt(0).toUpperCase() : "U"}
                           </div>
+                          <span className="text-base-content font-bold">{authUser?.fullName || "You"}</span>
                         </div>
-
-                        {!isUser ? (
-                          <div className="flex items-center gap-2 mt-1 px-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSpeakMessage(msg.content, index)}
-                              className="text-[10px] font-bold text-base-content/60 hover:text-primary flex items-center gap-1 transition-colors cursor-pointer"
-                              title={speakingMsgIndex === index ? "Stop Speaking" : "Listen to audio pronunciation"}
-                            >
-                              {speakingMsgIndex === index ? (
-                                <>
-                                  <VolumeX className="size-3 text-error" />
-                                  <span className="text-error font-extrabold">Stop</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Volume2 className="size-3 text-primary" />
-                                  <span>Listen</span>
-                                </>
-                              )}
-                            </button>
-                            <span className="text-[10px] text-base-content/30">•</span>
-                            <span className="text-[10px] font-bold text-base-content/40 uppercase">Anva AI</span>
-                          </div>
-                        ) : (
-                          <span className="mt-1 px-2 text-[10px] font-bold text-base-content/40 uppercase">
-                            {authUser?.fullName || "You"}
-                          </span>
-                        )}
+                        <span className="text-[10px] font-mono text-base-content/40">Doubt Prompt</span>
                       </div>
+
+                      {msg.image && (
+                        <div className="my-2 rounded-xl overflow-hidden border border-base-content/10 max-h-64 shadow-xs">
+                          <img src={msg.image} alt="Context" className="max-h-64 w-auto object-cover" />
+                        </div>
+                      )}
+
+                      <p className="text-xs sm:text-sm font-medium text-base-content leading-relaxed whitespace-pre-wrap">
+                        {msg.content}
+                      </p>
+                    </motion.div>
+                  ) : (
+                    /* Notion-style AI Document Section */
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-5 sm:p-6 rounded-3xl bg-base-100 border border-base-content/10 space-y-3.5 shadow-xs text-left"
+                    >
+                      <div className="flex items-center justify-between border-b border-base-content/10 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="size-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                            <Sparkles className="size-3.5" />
+                          </div>
+                          <span className="text-xs font-black text-base-content">Anva AI Explanation</span>
+                        </div>
+                        <span className="badge badge-xs font-bold bg-primary/10 text-primary border-transparent uppercase text-[9px]">
+                          Verified Tutor
+                        </span>
+                      </div>
+
+                      {msg.image && (
+                        <div className="mb-3 rounded-2xl overflow-hidden border border-base-content/10 max-h-64">
+                          <img src={msg.image} alt="Context" className="max-h-64 w-auto object-cover" />
+                        </div>
+                      )}
+
+                      {msg.content ? (
+                        <MarkdownContent content={msg.content} />
+                      ) : (
+                        <div className="flex items-center gap-2 text-primary font-bold text-xs py-2">
+                          <Sparkles className="size-4 animate-spin" />
+                          <span>Structuring explanation in real-time...</span>
+                        </div>
+                      )}
+
+                      {/* Notion Block Action Bar */}
+                      {msg.content && (
+                        <div className="flex items-center gap-3 pt-3 border-t border-base-content/5 text-[11px] font-semibold text-base-content/50">
+                          <button
+                            type="button"
+                            onClick={() => handleSpeakMessage(msg.content, index)}
+                            className="hover:text-primary flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            {speakingMsgIndex === index ? (
+                              <>
+                                <VolumeX className="size-3.5 text-error" />
+                                <span className="text-error font-bold">Stop Audio</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="size-3.5 text-primary" />
+                                <span>Listen (TTS)</span>
+                              </>
+                            )}
+                          </button>
+                          <span className="text-base-content/20">•</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(msg.content);
+                              toast.success("Explanation copied to clipboard!");
+                            }}
+                            className="hover:text-primary flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Copy className="size-3" />
+                            <span>Copy Markdown</span>
+                          </button>
+                        </div>
+                      )}
                     </motion.div>
                   );
                 })}
-              </AnimatePresence>
+              </div>
             )}
 
-            {/* Loading Indicator */}
-            {loading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start gap-3">
-                <AssistantAvatar />
-                <div className="p-3.5 rounded-2xl bg-base-100 border border-base-content/10 shadow-sm flex items-center gap-2 text-xs font-bold text-base-content/60">
-                  <Sparkles className="w-4 h-4 text-primary animate-spin" />
-                  <span>Thinking...</span>
-                </div>
+            {/* Loading placeholder */}
+            {loading && activeMessages.length > 0 && activeMessages[activeMessages.length - 1]?.role !== "assistant" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-4 rounded-2xl bg-base-100 border border-base-content/10 shadow-xs flex items-center gap-2 text-xs font-bold text-base-content/70 text-left"
+              >
+                <Sparkles className="size-4 text-primary animate-spin" />
+                <span>Thinking & querying knowledge base...</span>
               </motion.div>
             )}
+
             <div ref={bottomRef} className="h-4" />
           </div>
         </main>
 
-        {/* Floating Capsule Bottom Input Area */}
-        <footer className="w-full bg-gradient-to-t from-base-100 via-base-100/70 to-transparent pt-6 pb-safe px-4 absolute bottom-0 left-0 right-0 z-10 pointer-events-none font-minimal" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.5rem)' }}>
-          <div className="max-w-3xl mx-auto pointer-events-auto relative">
+        {/* Notion Slash Command Bar & Input Capsule */}
+        <footer className="shrink-0 w-full bg-base-100 border-t border-base-content/10 p-3 sm:p-4 z-20">
+          <div className="max-w-4xl mx-auto space-y-2">
+            {/* Slash Command Quick Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-[11px]">
+              <span className="text-[10px] font-extrabold uppercase text-base-content/40 shrink-0 mr-1">
+                Quick Prompts:
+              </span>
+              {NOTION_COMMANDS.map((cmd, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setInput(cmd.prompt);
+                    textareaRef.current?.focus();
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-base-200/70 hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-base-content/10 text-base-content/70 font-semibold transition-all shrink-0 cursor-pointer flex items-center gap-1"
+                >
+                  <span className="font-mono text-primary font-bold">{cmd.cmd}</span>
+                  <span>{cmd.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Image Preview if attached */}
             <AnimatePresence>
               {imagePreview && (
                 <motion.div
-                  initial={{ scale: 0.9, opacity: 0, y: 10 }}
+                  initial={{ scale: 0.9, opacity: 0, y: 6 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, y: 10 }}
-                  className="absolute -top-20 left-0 p-2.5 bg-base-100 border border-base-content/20 rounded-2xl flex items-center gap-3 z-20 shadow-xl"
+                  exit={{ scale: 0.9, opacity: 0, y: 6 }}
+                  className="p-2 bg-base-200 rounded-2xl border border-base-content/10 inline-flex items-center gap-3"
                 >
                   <img src={imagePreview} alt="Preview" className="size-12 object-cover rounded-xl" />
+                  <span className="text-xs font-semibold text-base-content/70">Image attached</span>
                   <button
                     type="button"
                     onClick={removeImage}
@@ -977,7 +1218,8 @@ const AssistantPage = () => {
               )}
             </AnimatePresence>
 
-            <div className="relative border border-base-content/10 rounded-3xl bg-base-100/95 backdrop-blur-md transition-all focus-within:ring-2 focus-within:ring-primary/40 shadow-xl p-2 flex items-center gap-2">
+            {/* Input Capsule */}
+            <div className="relative border border-base-content/15 rounded-2xl bg-base-200/50 focus-within:bg-base-100 focus-within:border-primary/60 transition-all shadow-xs p-1.5 sm:p-2 flex items-center gap-2">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -989,29 +1231,29 @@ const AssistantPage = () => {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2.5 text-base-content/60 hover:text-primary hover:bg-base-200 rounded-2xl transition-colors cursor-pointer shrink-0"
-                title="Attach screenshot or image"
+                className="p-2 text-base-content/60 hover:text-primary hover:bg-base-200 rounded-xl transition-colors cursor-pointer shrink-0"
+                title="Attach screenshot or problem image"
               >
-                <Paperclip className="size-5" />
+                <Paperclip className="size-4" />
               </button>
 
               <button
                 type="button"
                 onClick={toggleRecording}
-                className={`p-2.5 rounded-2xl transition-all cursor-pointer shrink-0 ${
+                className={`p-2 rounded-xl transition-all cursor-pointer shrink-0 ${
                   isRecording
                     ? "bg-error text-white animate-pulse"
                     : "text-base-content/60 hover:text-primary hover:bg-base-200"
                 }`}
                 title={isRecording ? "Listening... click to stop" : "Voice dictation"}
               >
-                <Mic className="size-5" />
+                <Mic className="size-4" />
               </button>
 
               <textarea
                 ref={textareaRef}
                 rows={1}
-                placeholder="Ask Anva AI any study question or code doubt..."
+                placeholder="Ask any doubt, explain code, or type '/' for commands..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1020,16 +1262,17 @@ const AssistantPage = () => {
                     sendMessage();
                   }
                 }}
-                className="flex-1 px-2 py-2 bg-transparent text-base-content text-xs sm:text-sm font-medium focus:outline-none resize-none placeholder:text-base-content/40"
+                className="flex-1 px-2 py-1.5 bg-transparent text-base-content text-xs sm:text-sm font-medium focus:outline-none resize-none placeholder:text-base-content/40 max-h-32 min-h-[2rem]"
               />
 
               <button
                 type="button"
                 onClick={sendMessage}
                 disabled={loading || (!input.trim() && !selectedImage)}
-                className="btn btn-primary btn-circle btn-sm shrink-0 shadow-md cursor-pointer"
+                className="btn btn-primary btn-sm rounded-xl px-4 font-bold shrink-0 shadow-xs cursor-pointer disabled:opacity-40 gap-1.5"
               >
-                <Send className="size-4" />
+                <Send className="size-3.5" />
+                <span className="hidden sm:inline">Ask</span>
               </button>
             </div>
           </div>
@@ -1040,7 +1283,6 @@ const AssistantPage = () => {
           <AnimatePresence>
             {showCoachModal && (
               <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4">
-                {/* Backdrop */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -1049,13 +1291,12 @@ const AssistantPage = () => {
                   className="fixed inset-0 bg-black/60 backdrop-blur-sm"
                 />
 
-                {/* Modal Window */}
                 <motion.div
                   initial={{ scale: 0.95, opacity: 0, y: 20 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
                   exit={{ scale: 0.95, opacity: 0, y: 20 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  className="relative bg-base-100 border border-base-content/15 rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 space-y-6 overflow-hidden z-10 font-minimal"
+                  className="relative bg-base-100 border border-base-content/15 rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 space-y-6 overflow-hidden z-10 font-sans"
                 >
                   {/* Modal Header */}
                   <div className="flex items-center justify-between border-b border-base-content/10 pb-4">
@@ -1148,7 +1389,6 @@ const AssistantPage = () => {
                       </p>
                     </div>
 
-                    {/* Detected Speech & Score */}
                     {coachSpokenText && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}

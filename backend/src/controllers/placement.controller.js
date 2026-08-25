@@ -41,20 +41,23 @@ const getOrCreateProgress = async (userId) => {
 export const getCompanies = async (req, res) => {
   try {
     const userId = req.user?._id;
-    const companies = await PlacementCompany.find({ active: true }).sort({ order: 1, name: 1 });
 
-    const progress = userId ? await PlacementProgress.findOne({ userId }) : null;
+    const [companies, progress, allQuestions] = await Promise.all([
+      PlacementCompany.find({ active: true }).sort({ order: 1, name: 1 }).lean(),
+      userId
+        ? PlacementProgress.findOne({ userId }).select("solvedQuestions").lean()
+        : Promise.resolve(null),
+      PlacementQuestion.find({}).select("_id category companies difficulty").lean(),
+    ]);
+
     const solvedSet = new Set(
       (progress?.solvedQuestions || [])
-        .filter((q) => q.isCorrect)
-        .map((q) => q.questionId.toString())
+        .filter((q) => q?.isCorrect)
+        .map((q) => q?.questionId?.toString())
     );
 
-    // Fetch all questions to calculate real-time company statistics
-    const allQuestions = await PlacementQuestion.find({}).select("_id category companies difficulty");
-
     const enrichedCompanies = companies.map((comp) => {
-      const compQuestions = allQuestions.filter((q) => q.companies.includes(comp.slug));
+      const compQuestions = allQuestions.filter((q) => (q.companies || []).includes(comp.slug));
       const totalCount = compQuestions.length;
       const totalCoding = compQuestions.filter((q) => q.category === "coding").length;
 
@@ -62,7 +65,7 @@ export const getCompanies = async (req, res) => {
       const readinessPercent = totalCount > 0 ? Math.min(100, Math.round((solvedCount / totalCount) * 100)) : 0;
 
       return {
-        ...comp.toObject(),
+        ...comp,
         stats: {
           ...comp.stats,
           totalQuestions: totalCount,
@@ -94,20 +97,26 @@ export const getCompanyDetails = async (req, res) => {
   try {
     const { slug } = req.params;
     const userId = req.user?._id;
+    const compSlug = slug.toLowerCase();
 
-    const company = await PlacementCompany.findOne({ slug: slug.toLowerCase() });
+    const [company, progress, questions] = await Promise.all([
+      PlacementCompany.findOne({ slug: compSlug }).lean(),
+      userId
+        ? PlacementProgress.findOne({ userId }).select("solvedQuestions").lean()
+        : Promise.resolve(null),
+      PlacementQuestion.find({ companies: compSlug }).select("_id category topics").lean(),
+    ]);
+
     if (!company) {
       return res.status(404).json({ success: false, message: "Company not found." });
     }
 
-    const progress = userId ? await getOrCreateProgress(userId) : null;
     const solvedMap = new Map();
     (progress?.solvedQuestions || []).forEach((item) => {
-      solvedMap.set(item.questionId.toString(), item);
+      if (item?.questionId) {
+        solvedMap.set(item.questionId.toString(), item);
+      }
     });
-
-    // Get all questions tagged with this company
-    const questions = await PlacementQuestion.find({ companies: slug.toLowerCase() });
 
     const categories = ["aptitude", "english", "technical", "coding", "interview"];
     const categoryStats = {};
@@ -312,7 +321,15 @@ export const getQuestionById = async (req, res) => {
     const { id } = req.params;
     const userId = req.user?._id;
 
-    const question = await PlacementQuestion.findById(id);
+    const [question, progress] = await Promise.all([
+      PlacementQuestion.findById(id).lean(),
+      userId
+        ? PlacementProgress.findOne({ userId })
+            .select("solvedQuestions bookmarkedQuestions")
+            .lean()
+        : Promise.resolve(null),
+    ]);
+
     if (!question) {
       return res.status(404).json({ success: false, message: "Question not found." });
     }
@@ -321,26 +338,23 @@ export const getQuestionById = async (req, res) => {
     let isBookmarked = false;
     let userAttempt = null;
 
-    if (userId) {
-      const progress = await PlacementProgress.findOne({ userId });
-      if (progress) {
-        const attempt = progress.solvedQuestions.find(
-          (item) => item.questionId.toString() === id
-        );
-        if (attempt) {
-          isSolved = attempt.isCorrect;
-          userAttempt = attempt;
-        }
-        isBookmarked = progress.bookmarkedQuestions.some(
-          (bId) => bId.toString() === id
-        );
+    if (progress) {
+      const attempt = (progress.solvedQuestions || []).find(
+        (item) => item?.questionId?.toString() === id
+      );
+      if (attempt) {
+        isSolved = attempt.isCorrect;
+        userAttempt = attempt;
       }
+      isBookmarked = (progress.bookmarkedQuestions || []).some(
+        (bId) => (bId?._id || bId).toString() === id
+      );
     }
 
     res.status(200).json({
       success: true,
       question: {
-        ...question.toObject(),
+        ...question,
         isSolved,
         isBookmarked,
         userAttempt,
@@ -375,7 +389,7 @@ export const submitAnswer = async (req, res) => {
 
     const isCorrect = Number(userChoice) === Number(question.correctAnswer);
 
-    // Persist progress asynchronously via atomic operations
+    // Fast atomic progress persistence
     if (userId) {
       const attemptEntry = {
         questionId: question._id,
@@ -385,22 +399,20 @@ export const submitAnswer = async (req, res) => {
         attemptedAt: new Date(),
       };
 
-      PlacementProgress.updateOne(
+      await PlacementProgress.updateOne(
         { userId },
         {
           $pull: { solvedQuestions: { questionId: question._id } },
         },
         { upsert: true }
-      )
-        .then(() => {
-          return PlacementProgress.updateOne(
-            { userId },
-            {
-              $push: { solvedQuestions: attemptEntry },
-            }
-          );
-        })
-        .catch((err) => console.error("Error saving progress attempt:", err));
+      );
+
+      await PlacementProgress.updateOne(
+        { userId },
+        {
+          $push: { solvedQuestions: attemptEntry },
+        }
+      );
     }
 
     // Return instant validation result
@@ -1044,15 +1056,20 @@ export const getBookmarks = async (req, res) => {
 export const getUserProgress = async (req, res) => {
   try {
     const userId = req.user?._id;
-    const progress = await getOrCreateProgress(userId);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized." });
+    }
 
-    const allQuestions = await PlacementQuestion.find({});
+    const [progress, allQuestions] = await Promise.all([
+      PlacementProgress.findOne({ userId }).lean(),
+      PlacementQuestion.find({}).select("_id difficulty topics").lean(),
+    ]);
+
     const totalQuestionsCount = allQuestions.length;
+    const solvedItems = progress?.solvedQuestions || [];
+    const correctItems = solvedItems.filter((q) => q?.isCorrect);
 
-    const solvedItems = progress.solvedQuestions || [];
-    const correctItems = solvedItems.filter((q) => q.isCorrect);
-
-    const solvedQuestionIds = new Set(correctItems.map((q) => q.questionId.toString()));
+    const solvedQuestionIds = new Set(correctItems.map((q) => q?.questionId?.toString()));
 
     const easyCount = allQuestions.filter((q) => q.difficulty === "Easy" && solvedQuestionIds.has(q._id.toString())).length;
     const mediumCount = allQuestions.filter((q) => q.difficulty === "Medium" && solvedQuestionIds.has(q._id.toString())).length;
@@ -1062,11 +1079,14 @@ export const getUserProgress = async (req, res) => {
       ? Math.round((correctItems.length / solvedItems.length) * 100)
       : 0;
 
+    const questionMap = new Map();
+    allQuestions.forEach((q) => questionMap.set(q._id.toString(), q));
+
     const weakTopicsMap = {};
     solvedItems
       .filter((q) => !q.isCorrect)
       .forEach((attempt) => {
-        const fullQ = allQuestions.find((q) => q._id.toString() === attempt.questionId.toString());
+        const fullQ = questionMap.get(attempt?.questionId?.toString());
         (fullQ?.topics || []).forEach((t) => {
           weakTopicsMap[t] = (weakTopicsMap[t] || 0) + 1;
         });
@@ -1095,8 +1115,8 @@ export const getUserProgress = async (req, res) => {
           hard: hardCount,
         },
         weakTopics,
-        mockTestHistory: progress.mockTestHistory || [],
-        bookmarksCount: progress.bookmarkedQuestions.length,
+        mockTestHistory: progress?.mockTestHistory || [],
+        bookmarksCount: progress?.bookmarkedQuestions?.length || 0,
       },
     });
   } catch (error) {
@@ -1107,35 +1127,48 @@ export const getUserProgress = async (req, res) => {
 
 /**
  * 11. POST /api/placement/mock-test/start
- * Assembles a timed mock assessment for the specified company
+ * Assembles a timed, randomized mock assessment for the specified company
  */
 export const startMockTest = async (req, res) => {
   try {
     const { companySlug } = req.body;
     const slug = (companySlug || "google").toLowerCase();
 
-    const company = await PlacementCompany.findOne({ slug });
+    // Helper to fetch random questions from database
+    const getRandomQuestions = async (category, count) => {
+      // 1. Try finding questions tagged with this company
+      let questions = await PlacementQuestion.aggregate([
+        { $match: { companies: slug, category } },
+        { $sample: { size: count } },
+      ]);
 
-    // Select questions: 5 Aptitude, 4 English, 5 Technical, 2 Coding
-    const aptQuestions = await PlacementQuestion.find({
-      companies: slug,
-      category: "aptitude",
-    }).limit(5);
+      // 2. If not enough questions tagged with company, fill with general category questions
+      if (questions.length < count) {
+        const existingIds = questions.map((q) => q._id);
+        const additional = await PlacementQuestion.aggregate([
+          { $match: { category, _id: { $nin: existingIds } } },
+          { $sample: { size: count - questions.length } },
+        ]);
+        questions = [...questions, ...additional];
+      }
 
-    const engQuestions = await PlacementQuestion.find({
-      companies: slug,
-      category: "english",
-    }).limit(4);
+      return questions;
+    };
 
-    const techQuestions = await PlacementQuestion.find({
-      companies: slug,
-      category: "technical",
-    }).limit(5);
+    const [company, aptQuestions, engQuestions, techQuestions, codeQuestions] = await Promise.all([
+      PlacementCompany.findOne({ slug }).lean(),
+      getRandomQuestions("aptitude", 5),
+      getRandomQuestions("english", 4),
+      getRandomQuestions("technical", 5),
+      getRandomQuestions("coding", 2),
+    ]);
 
-    const codeQuestions = await PlacementQuestion.find({
-      companies: slug,
-      category: "coding",
-    }).limit(2);
+    const allQuestionIds = [
+      ...aptQuestions.map((q) => q._id.toString()),
+      ...engQuestions.map((q) => q._id.toString()),
+      ...techQuestions.map((q) => q._id.toString()),
+      ...codeQuestions.map((q) => q._id.toString()),
+    ];
 
     const testSections = [
       {
@@ -1168,7 +1201,8 @@ export const startMockTest = async (req, res) => {
       success: true,
       company: company || { name: slug.toUpperCase(), slug },
       durationMinutes: 90,
-      totalQuestions: aptQuestions.length + engQuestions.length + techQuestions.length + codeQuestions.length,
+      totalQuestions: allQuestionIds.length,
+      allQuestionIds,
       sections: testSections,
     });
   } catch (error) {
@@ -1183,10 +1217,21 @@ export const startMockTest = async (req, res) => {
  */
 export const submitMockTest = async (req, res) => {
   try {
-    const { companySlug, answers, timeTakenSeconds } = req.body;
+    const { companySlug, answers, allQuestionIds, timeTakenSeconds } = req.body;
     const userId = req.user?._id;
 
-    const company = await PlacementCompany.findOne({ slug: (companySlug || "").toLowerCase() });
+    // Evaluate all test questions (both answered and unanswered)
+    const questionIdsToGrade =
+      Array.isArray(allQuestionIds) && allQuestionIds.length > 0
+        ? allQuestionIds
+        : Object.keys(answers || {});
+
+    const [company, questions] = await Promise.all([
+      PlacementCompany.findOne({ slug: (companySlug || "").toLowerCase() }).lean(),
+      PlacementQuestion.find({ _id: { $in: questionIdsToGrade } })
+        .select("correctAnswer category topics")
+        .lean(),
+    ]);
 
     let totalScore = 0;
     let totalMaxScore = 0;
@@ -1199,23 +1244,29 @@ export const submitMockTest = async (req, res) => {
       coding: { score: 0, total: 0 },
     };
 
-    // Evaluate answers
-    const questionIds = Object.keys(answers || {});
-    const questions = await PlacementQuestion.find({ _id: { $in: questionIds } });
-
     for (const q of questions) {
-      const userAns = answers[q._id.toString()];
-      const cat = q.category;
+      const userAns = (answers || {})[q._id.toString()];
+      const cat = q.category || "aptitude";
       const weight = cat === "coding" ? 10 : 2;
+
+      if (!categoryBreakdown[cat]) {
+        categoryBreakdown[cat] = { score: 0, total: 0 };
+      }
 
       categoryBreakdown[cat].total += weight;
       totalMaxScore += weight;
 
       let isCorrect = false;
-      if (cat === "coding") {
-        isCorrect = userAns?.isAccepted === true;
-      } else {
-        isCorrect = Number(userAns) === Number(q.correctAnswer);
+
+      if (userAns !== undefined && userAns !== null) {
+        if (cat === "coding") {
+          // Coding question is only marked correct if tests were actually run and passed
+          isCorrect = userAns?.isAccepted === true && (userAns?.passedCount > 0 || userAns?.allPassed === true);
+        } else {
+          // MCQ question
+          const choice = typeof userAns === "object" ? userAns?.userChoice : userAns;
+          isCorrect = Number(choice) === Number(q.correctAnswer);
+        }
       }
 
       if (isCorrect) {

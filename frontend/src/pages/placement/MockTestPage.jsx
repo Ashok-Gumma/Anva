@@ -77,16 +77,18 @@ const MockTestPage = () => {
   const [secondsRemaining, setSecondsRemaining] = useState(90 * 60);
 
   // Coding question compiler state
+  const [testSessionSeed] = useState(() => Date.now());
   const [selectedLanguage, setSelectedLanguage] = useState("java");
   const [codeMap, setCodeMap] = useState({}); // questionId -> code string
   const [customInput, setCustomInput] = useState("");
   const [activeCodingTab, setActiveCodingTab] = useState("editor"); // "editor" | "output"
-  const [runResult, setRunResult] = useState(null);
+  const [runResultMap, setRunResultMap] = useState({}); // questionId -> runResult object
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["placementMockTestStart", companyId],
+    queryKey: ["placementMockTestStart", companyId, testSessionSeed],
     queryFn: () => startPlacementMockTest(companyId),
-    staleTime: Infinity,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const sections = data?.sections || [];
@@ -94,7 +96,10 @@ const MockTestPage = () => {
   const currentQuestions = currentSection?.questions || [];
   const currentQuestion = currentQuestions[currentQuestionIndex] || null;
 
-  // Initialize code when switching to a coding question
+  // Active run result for the currently selected question
+  const runResult = currentQuestion ? runResultMap[currentQuestion._id] || null : null;
+
+  // Initialize code and tab when switching questions
   useEffect(() => {
     if (currentQuestion && currentQuestion.category === "coding") {
       const qId = currentQuestion._id;
@@ -108,8 +113,12 @@ const MockTestPage = () => {
       if (currentQuestion.testCases?.[0]?.input) {
         setCustomInput(currentQuestion.testCases[0].input);
       }
+      // If this question has not been executed yet, default tab to testcase editor
+      if (!runResultMap[qId]) {
+        setActiveCodingTab("editor");
+      }
     }
-  }, [currentQuestion, selectedLanguage]);
+  }, [currentQuestion?._id, selectedLanguage]);
 
   // Countdown timer
   useEffect(() => {
@@ -151,8 +160,22 @@ const MockTestPage = () => {
   const { mutate: executeCode, isPending: isExecutingCode } = useMutation({
     mutationFn: runPlacementCode,
     onSuccess: (res) => {
-      setRunResult(res);
-      setActiveCodingTab("output");
+      if (currentQuestion) {
+        const qId = currentQuestion._id;
+        setRunResultMap((prev) => ({ ...prev, [qId]: res }));
+        setActiveCodingTab("output");
+        const hasPassed = res.allPassed === true;
+        setAnswers((prev) => ({
+          ...prev,
+          [qId]: {
+            isAccepted: hasPassed,
+            passedCount: hasPassed ? (res.passedTests || 2) : 0,
+            totalTests: res.totalTests || 2,
+            language: selectedLanguage,
+            code: codeMap[qId] || "",
+          },
+        }));
+      }
       if (res.customRun) {
         if (res.error) {
           toast.error("Execution finished with errors / stderr.");
@@ -192,15 +215,23 @@ const MockTestPage = () => {
       currentQuestion.starterCode?.[selectedLanguage] ||
       CODE_TEMPLATES[selectedLanguage];
 
+    const hasPassed = runResult?.allPassed === true;
+
     setAnswers((prev) => ({
       ...prev,
       [currentQuestion._id]: {
-        isAccepted: true,
+        isAccepted: hasPassed,
+        passedCount: hasPassed ? (runResult?.passedTests || 2) : 0,
+        totalTests: runResult?.totalTests || 2,
         language: selectedLanguage,
         code: currentCode,
       },
     }));
-    toast.success("Code solution saved to assessment! 💻");
+    if (hasPassed) {
+      toast.success("Accepted code solution saved to assessment! 💻✓");
+    } else {
+      toast.success("Code draft saved to assessment. (Run code to test correctness) 💻");
+    }
   };
 
   const handleAutoSubmit = () => {
@@ -208,6 +239,7 @@ const MockTestPage = () => {
     submitMockMutation({
       companySlug: companyId,
       answers,
+      allQuestionIds: data?.allQuestionIds || [],
       timeTakenSeconds: 90 * 60 - secondsRemaining,
     });
   };
@@ -217,6 +249,7 @@ const MockTestPage = () => {
       submitMockMutation({
         companySlug: companyId,
         answers,
+        allQuestionIds: data?.allQuestionIds || [],
         timeTakenSeconds: 90 * 60 - secondsRemaining,
       });
     }
@@ -442,70 +475,115 @@ const MockTestPage = () => {
                   })}
                 </div>
 
-                {/* Navigation */}
-                <div className="flex items-center justify-between pt-4 border-t border-base-content/5">
+                {/* Navigation Controls */}
+                <div className="flex items-center justify-between pt-4 border-t border-base-content/10 gap-3">
                   <button
-                    onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
-                    disabled={currentQuestionIndex === 0}
-                    className="btn btn-ghost btn-sm rounded-xl font-bold gap-1 text-xs"
+                    onClick={() => {
+                      if (currentQuestionIndex > 0) {
+                        setCurrentQuestionIndex((prev) => prev - 1);
+                      } else if (activeSectionIndex > 0) {
+                        const prevSec = activeSectionIndex - 1;
+                        setActiveSectionIndex(prevSec);
+                        setCurrentQuestionIndex(sections[prevSec].questions.length - 1);
+                      }
+                    }}
+                    disabled={currentQuestionIndex === 0 && activeSectionIndex === 0}
+                    className="btn btn-ghost btn-sm rounded-2xl font-bold gap-1 text-xs"
                   >
                     <ChevronLeft className="size-4" />
-                    Previous
+                    <span>Previous</span>
                   </button>
 
-                  <button
-                    onClick={() =>
-                      setCurrentQuestionIndex((prev) => Math.min(currentQuestions.length - 1, prev + 1))
-                    }
-                    disabled={currentQuestionIndex === currentQuestions.length - 1}
-                    className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6"
-                  >
-                    <span>Next Question</span>
-                    <ChevronRight className="size-4" />
-                  </button>
+                  {currentQuestionIndex < currentQuestions.length - 1 ? (
+                    <button
+                      onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
+                      className="btn btn-primary btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-sm gap-1"
+                    >
+                      <span>Next Question</span>
+                      <ChevronRight className="size-4" />
+                    </button>
+                  ) : activeSectionIndex < sections.length - 1 ? (
+                    <button
+                      onClick={() => {
+                        const nextSec = activeSectionIndex + 1;
+                        setActiveSectionIndex(nextSec);
+                        setCurrentQuestionIndex(0);
+                        toast.success(`Advanced to Section ${nextSec + 1}: ${sections[nextSec]?.sectionName}`);
+                      }}
+                      className="btn btn-secondary text-secondary-content btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-md gap-1.5"
+                    >
+                      <span>Next Section: {sections[activeSectionIndex + 1]?.category?.toUpperCase()}</span>
+                      <ChevronRight className="size-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleManualSubmit}
+                      disabled={isSubmitting}
+                      className="btn btn-success text-white btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-md gap-1.5"
+                    >
+                      <Send className="size-3.5" />
+                      <span>{isSubmitting ? "Submitting..." : "Submit OA Assessment"}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Right: Question Palette */}
               <div className="lg:col-span-4 space-y-4">
                 <div className="bg-base-100 rounded-3xl p-5 border border-base-content/10 shadow-sm space-y-4 relative z-10">
-                  <div className="flex items-center justify-between pb-1">
+                  <div className="flex items-center justify-between pb-1 border-b border-base-content/5">
                     <div className="flex items-center gap-2">
-                      <div className="size-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                      <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
                         <Layers className="size-4" />
                       </div>
                       <span className="font-bold text-sm text-base-content">Section Questions</span>
                     </div>
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
-                      {Object.keys(answers).length} / {currentQuestions.length} Answered
+                    <span className="text-xs font-bold px-3 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20">
+                      {currentQuestions.filter((q) => answers[q._id] !== undefined).length} / {currentQuestions.length} Answered
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar p-0.5">
+                  <div className="flex flex-wrap gap-2.5 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
                     {currentQuestions.map((q, idx) => {
                       const isAnswered = answers[q._id] !== undefined;
                       const isCurrent = currentQuestionIndex === idx;
 
-                      let tileClass = "bg-base-200/70 hover:bg-base-200 text-base-content/80 border border-base-content/10 hover:border-base-content/25";
+                      let tileClass = "bg-base-200 hover:bg-base-300 text-base-content/70 hover:text-base-content border border-base-content/10 font-bold";
 
                       if (isAnswered) {
-                        tileClass = "bg-primary text-primary-content font-bold shadow-xs border-transparent";
+                        tileClass = "bg-success text-success-content font-bold shadow-xs hover:brightness-105 border-transparent";
                       }
 
                       if (isCurrent) {
-                        tileClass += " ring-2 ring-primary ring-offset-2 ring-offset-base-100 font-bold scale-[1.03]";
+                        tileClass = "bg-primary text-primary-content font-black shadow-md scale-105 ring-2 ring-primary/40 ring-offset-2 ring-offset-base-100 border-transparent";
                       }
 
                       return (
                         <button
                           key={idx}
                           onClick={() => setCurrentQuestionIndex(idx)}
-                          className={`h-10 rounded-2xl flex items-center justify-center text-xs font-semibold transition-all duration-150 cursor-pointer ${tileClass}`}
+                          className={`size-10 sm:size-11 rounded-2xl flex items-center justify-center text-xs sm:text-sm transition-all duration-150 cursor-pointer ${tileClass}`}
                         >
                           {idx + 1}
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Palette Status Legend */}
+                  <div className="flex items-center justify-between pt-3 border-t border-base-content/10 text-[11px] font-bold text-base-content/60">
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-full bg-primary ring-2 ring-primary/30" />
+                      <span>Current</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-full bg-success" />
+                      <span>Answered</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-full bg-base-300 border border-base-content/20" />
+                      <span>Unanswered</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -579,16 +657,18 @@ const MockTestPage = () => {
                   )}
                 </div>
 
-                {/* Section Question Switcher */}
-                <div className="pt-4 border-t border-base-content/5 flex items-center justify-between">
+                {/* Section Question Switcher & Action */}
+                <div className="pt-4 border-t border-base-content/10 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-1.5">
                     {currentQuestions.map((q, idx) => (
                       <button
                         key={idx}
                         onClick={() => setCurrentQuestionIndex(idx)}
-                        className={`size-8 rounded-xl text-xs font-black transition-all ${
+                        className={`size-8 rounded-xl text-xs font-black transition-all cursor-pointer ${
                           currentQuestionIndex === idx
-                            ? "bg-primary text-primary-content font-bold shadow-xs"
+                            ? "bg-primary text-primary-content font-bold shadow-xs scale-105"
+                            : answers[q._id]?.isAccepted
+                            ? "bg-success/20 text-success border border-success/30 font-bold"
                             : "bg-base-200 text-base-content/70 hover:bg-base-300"
                         }`}
                       >
@@ -597,17 +677,37 @@ const MockTestPage = () => {
                     ))}
                   </div>
 
-                  <button
-                    onClick={handleSaveCodingAnswer}
-                    className={`btn btn-sm rounded-xl font-bold gap-1.5 ${
-                      answers[currentQuestion._id]?.isAccepted
-                        ? "btn-success text-white"
-                        : "btn-primary"
-                    }`}
-                  >
-                    <Send className="size-3.5" />
-                    <span>{answers[currentQuestion._id]?.isAccepted ? "Code Saved ✓" : "Save Solution"}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveCodingAnswer}
+                      className={`btn btn-sm rounded-xl font-bold gap-1.5 ${
+                        answers[currentQuestion._id]?.isAccepted
+                          ? "btn-success text-white shadow-sm"
+                          : "btn-primary"
+                      }`}
+                    >
+                      <Send className="size-3.5" />
+                      <span>{answers[currentQuestion._id]?.isAccepted ? "Code Saved ✓" : "Save Solution"}</span>
+                    </button>
+
+                    {currentQuestionIndex < currentQuestions.length - 1 ? (
+                      <button
+                        onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
+                        className="btn btn-neutral btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-3"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="size-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleManualSubmit}
+                        disabled={isSubmitting}
+                        className="btn btn-success text-white btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-4 shadow-md"
+                      >
+                        <span>Finish OA</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
