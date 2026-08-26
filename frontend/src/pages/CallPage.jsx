@@ -182,9 +182,29 @@ const CallPage = () => {
   const [searchParams] = useSearchParams();
   const isCallerParam = searchParams.get("isCaller") === "true";
   const isCalleeParam = searchParams.get("isCallee") === "true";
-  const peerId = searchParams.get("peerId") || "";
-  const peerName = searchParams.get("peerName") || "Peer";
-  const peerPic = searchParams.get("peerPic") || "";
+
+  // Safely resolve peer details from query params with sessionStorage fallback
+  const peerMeta = (() => {
+    let cached = {};
+    try {
+      const stored = sessionStorage.getItem(`anva_call_peer_${callId}`);
+      if (stored) cached = JSON.parse(stored);
+    } catch {}
+
+    const urlPeerId = searchParams.get("peerId") || "";
+    const urlPeerName = searchParams.get("peerName") || "";
+    const urlPeerPic = searchParams.get("peerPic") || "";
+
+    const id = urlPeerId || cached.peerId || "";
+    const name = urlPeerName || cached.peerName || "Peer";
+    const pic = urlPeerPic || cached.peerPic || "";
+
+    return { peerId: id, peerName: name, peerPic: pic };
+  })();
+
+  const peerId = peerMeta.peerId;
+  const peerName = peerMeta.peerName;
+  const peerPic = peerMeta.peerPic;
 
   const [client, setClient] = useState(null);
   const [call, setCall] = useState(null);
@@ -601,9 +621,17 @@ const CallPage = () => {
                   src={peerPic}
                   alt={peerName}
                   className="size-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(peerName)}`;
+                  }}
                 />
               ) : (
-                <User className="size-20 text-zinc-500" />
+                <img
+                  src={`https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(peerName)}`}
+                  alt={peerName}
+                  className="size-full object-cover"
+                />
               )}
             </div>
           </div>
@@ -940,6 +968,19 @@ const CallContent = ({ callId }) => {
   const codeDebounceTimerRef = useRef(null);
   const notesDebounceTimerRef = useRef(null);
   const stdinDebounceTimerRef = useRef(null);
+
+  // Whiteboard drawing states & synchronization
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [brushColor, setBrushColor] = useState("#ffffff");
+  const [brushSize, setBrushSize] = useState(3);
+  const [isEraser, setIsEraser] = useState(false);
+  const prevCoordRef = useRef(null); // { nx: number, ny: number }
+  const whiteboardHistoryRef = useRef([]); // array of normalized strokes: { prev: { nx, ny }, curr: { nx, ny }, color, size, isEraser }
+  const drawBatchRef = useRef([]);
+  const drawBatchTimerRef = useRef(null);
+  const workspaceBcRef = useRef(null);
+
   const latestStateRef = useRef({
     codeContent: CODE_LANGUAGES.javascript.defaultCode,
     selectedLang: "javascript",
@@ -961,46 +1002,94 @@ const CallContent = ({ callId }) => {
     };
   }, [codeContent, selectedLang, stdin, output, isRunning, notes]);
 
-  // Broadcast helper function
-  const broadcastCustomEvent = async (actionType, payload = {}) => {
-    if (!call) return;
-    try {
-      await call.sendCustomEvent({
+  // Helper to draw a single stroke segment on any canvas context
+  const drawStrokeSegment = (ctx, canvasWidth, canvasHeight, stroke) => {
+    if (!ctx || !stroke || !stroke.prev || !stroke.curr) return;
+    const { prev, curr, color, size, isEraser: eraser } = stroke;
+    const x1 = prev.nx * canvasWidth;
+    const y1 = prev.ny * canvasHeight;
+    const x2 = curr.nx * canvasWidth;
+    const y2 = curr.ny * canvasHeight;
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = eraser ? "#000000" : (color || "#ffffff");
+    ctx.lineWidth = eraser ? (size || 3) * 5 : (size || 3);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  };
+
+  // Redraw all whiteboard history without clearing state on layout changes
+  const redrawAllWhiteboardStrokes = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const w = canvas.offsetWidth || canvas.clientWidth || 800;
+    const h = canvas.offsetHeight || canvas.clientHeight || 600;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const history = whiteboardHistoryRef.current || [];
+    for (const stroke of history) {
+      drawStrokeSegment(ctx, canvas.width, canvas.height, stroke);
+    }
+  }, []);
+
+  // Broadcast helper function (dual broadcast across Stream Video SDK & local BroadcastChannel)
+  const broadcastCustomEvent = useCallback(
+    async (actionType, payload = {}) => {
+      const eventData = {
         actionType,
         senderId: authUser?._id,
         senderName: authUser?.fullName || "Peer",
         timestamp: Date.now(),
         ...payload,
-      });
-    } catch (err) {
-      console.error("Error sending custom event:", err);
-    }
-  };
+      };
 
-  // Real-time synchronization event listener
+      // 1. Send via Stream Video Call Custom Events (for remote peers)
+      if (call) {
+        try {
+          await call.sendCustomEvent(eventData);
+        } catch (err) {
+          console.error("Error sending Stream custom event:", err);
+        }
+      }
+
+      // 2. Send via BroadcastChannel (for local multi-window / multi-tab cross-sync)
+      try {
+        workspaceBcRef.current?.postMessage(eventData);
+      } catch {
+        // no-op
+      }
+    },
+    [call, authUser]
+  );
+
+  // Real-time synchronization event listener (Stream Video & BroadcastChannel)
   useEffect(() => {
-    if (!call) return;
-
-    const unsubscribe = call.on("custom", (event) => {
-      const data = event.custom;
+    const handleEventData = (data) => {
       if (!data || !data.actionType) return;
-
-      // Ignore events sent by self
       if (data.senderId && data.senderId === authUser?._id) return;
 
       const senderName = data.senderName || "Peer";
 
       switch (data.actionType) {
         case "WORKSPACE_STATE_REQUEST": {
-          // Send our latest state back to the newly joined peer
-          const currentState = latestStateRef.current;
-          call.sendCustomEvent({
-            actionType: "WORKSPACE_STATE_SYNC",
-            senderId: authUser?._id,
-            senderName: authUser?.fullName || "Peer",
-            timestamp: Date.now(),
-            state: currentState,
-          }).catch(console.error);
+          // Send full state including code, notes, and whiteboard history to newly connected peer
+          const currentState = {
+            ...latestStateRef.current,
+            whiteboardHistory: whiteboardHistoryRef.current,
+          };
+          broadcastCustomEvent("WORKSPACE_STATE_SYNC", { state: currentState });
           break;
         }
 
@@ -1014,6 +1103,13 @@ const CallContent = ({ callId }) => {
             if (data.state.isRunning !== undefined) setIsRunning(data.state.isRunning);
             if (data.state.notes !== undefined) setNotes(data.state.notes);
 
+            if (Array.isArray(data.state.whiteboardHistory)) {
+              whiteboardHistoryRef.current = [...data.state.whiteboardHistory];
+              if (activeTab === "whiteboard") {
+                redrawAllWhiteboardStrokes();
+              }
+            }
+
             setLastPeerActivity({
               name: senderName,
               action: "Synced workspace",
@@ -1021,6 +1117,51 @@ const CallContent = ({ callId }) => {
             });
             toast.success(`Connected to ${senderName}'s live workspace!`, { id: "workspace-sync" });
           }
+          break;
+        }
+
+        case "WHITEBOARD_DRAW_BATCH": {
+          if (Array.isArray(data.strokes) && data.strokes.length > 0) {
+            const canvas = canvasRef.current;
+            const ctx = canvas ? canvas.getContext("2d") : null;
+
+            for (const stroke of data.strokes) {
+              whiteboardHistoryRef.current.push(stroke);
+              if (ctx && canvas) {
+                drawStrokeSegment(ctx, canvas.width, canvas.height, stroke);
+              }
+            }
+
+            if (whiteboardHistoryRef.current.length > 5000) {
+              whiteboardHistoryRef.current.splice(0, 1000);
+            }
+
+            setLastPeerActivity({
+              name: senderName,
+              action: "Drawing on whiteboard",
+              time: Date.now(),
+            });
+          }
+          break;
+        }
+
+        case "WHITEBOARD_CLEAR": {
+          whiteboardHistoryRef.current = [];
+          drawBatchRef.current = [];
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              ctx.fillStyle = "#000000";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+          }
+          setLastPeerActivity({
+            name: senderName,
+            action: "Cleared whiteboard",
+            time: Date.now(),
+          });
+          toast(`${senderName} cleared the whiteboard`, { icon: "🧹" });
           break;
         }
 
@@ -1122,18 +1263,41 @@ const CallContent = ({ callId }) => {
         default:
           break;
       }
-    });
+    };
+
+    // 1. Stream Video SDK custom event subscription
+    let unsubscribeStream = null;
+    if (call) {
+      unsubscribeStream = call.on("custom", (event) => {
+        handleEventData(event.custom);
+      });
+    }
+
+    // 2. BroadcastChannel subscription for multi-window / local cross-sync
+    try {
+      const bc = new BroadcastChannel(`anva_call_workspace_${callId}`);
+      workspaceBcRef.current = bc;
+      bc.onmessage = (event) => {
+        handleEventData(event.data);
+      };
+    } catch (err) {
+      console.warn("Workspace BroadcastChannel error:", err);
+    }
 
     // Request the latest workspace state from peers when entering
     const initialSyncTimer = setTimeout(() => {
       broadcastCustomEvent("WORKSPACE_STATE_REQUEST");
-    }, 1000);
+    }, 800);
 
     return () => {
       clearTimeout(initialSyncTimer);
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeStream) unsubscribeStream();
+      if (workspaceBcRef.current) {
+        workspaceBcRef.current.close();
+        workspaceBcRef.current = null;
+      }
     };
-  }, [call, authUser]);
+  }, [call, authUser, callId, activeTab, broadcastCustomEvent, redrawAllWhiteboardStrokes]);
 
   // Code editor change handler
   const handleCodeChange = (newCode) => {
@@ -1188,13 +1352,6 @@ const CallContent = ({ callId }) => {
     }, 250);
   };
 
-  // Whiteboard drawing states
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [brushColor, setBrushColor] = useState("#ffffff");
-  const [brushSize, setBrushSize] = useState(3);
-  const [isEraser, setIsEraser] = useState(false);
-
   // Call duration timer
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
@@ -1219,18 +1376,130 @@ const CallContent = ({ callId }) => {
     }
   }, [activeTab, workspaceOpen, splitPercent, hideVideo]);
 
-  // Setup whiteboard canvas dimensions
+  // Setup whiteboard canvas dimensions & redraw saved history without wiping
   useEffect(() => {
     if (activeTab === "whiteboard" && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const timer = setTimeout(() => {
+        redrawAllWhiteboardStrokes();
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [activeTab, workspaceOpen, splitPercent, hideVideo]);
+  }, [activeTab, workspaceOpen, splitPercent, hideVideo, redrawAllWhiteboardStrokes]);
 
+  // Flush queued strokes to peer
+  const flushDrawBatch = useCallback(() => {
+    if (drawBatchRef.current.length === 0) return;
+    const batch = [...drawBatchRef.current];
+    drawBatchRef.current = [];
+    broadcastCustomEvent("WHITEBOARD_DRAW_BATCH", { strokes: batch });
+  }, [broadcastCustomEvent]);
+
+  // Normalize coordinates between 0 and 1
+  const getNormalizedCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+    if (clientX === undefined || clientY === undefined) return null;
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const w = canvas.width || rect.width || 1;
+    const h = canvas.height || rect.height || 1;
+
+    const nx = Math.max(0, Math.min(1, x / w));
+    const ny = Math.max(0, Math.min(1, y / h));
+    return { x, y, nx, ny };
+  };
+
+  // Canvas Handlers
+  const startDrawing = (e) => {
+    const coords = getNormalizedCoordinates(e);
+    if (!coords) return;
+    prevCoordRef.current = { nx: coords.nx, ny: coords.ny };
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing || !prevCoordRef.current) return;
+    const coords = getNormalizedCoordinates(e);
+    if (!coords) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const prev = prevCoordRef.current;
+    const curr = { nx: coords.nx, ny: coords.ny };
+
+    const stroke = {
+      prev,
+      curr,
+      color: isEraser ? "#000000" : brushColor,
+      size: isEraser ? brushSize * 5 : brushSize,
+      isEraser,
+    };
+
+    // Draw locally immediately
+    drawStrokeSegment(ctx, canvas.width, canvas.height, stroke);
+
+    // Save to local stroke history
+    whiteboardHistoryRef.current.push(stroke);
+    if (whiteboardHistoryRef.current.length > 5000) {
+      whiteboardHistoryRef.current.splice(0, 1000);
+    }
+
+    // Queue in batch
+    drawBatchRef.current.push(stroke);
+    prevCoordRef.current = curr;
+
+    // Send batch quickly (throttled ~30ms)
+    if (!drawBatchTimerRef.current) {
+      drawBatchTimerRef.current = setTimeout(() => {
+        drawBatchTimerRef.current = null;
+        flushDrawBatch();
+      }, 30);
+    }
+  };
+
+  const stopDrawing = () => {
+    if (isDrawing) {
+      setIsDrawing(false);
+      prevCoordRef.current = null;
+      if (drawBatchTimerRef.current) {
+        clearTimeout(drawBatchTimerRef.current);
+        drawBatchTimerRef.current = null;
+      }
+      flushDrawBatch();
+    }
+  };
+
+  const clearCanvas = () => {
+    whiteboardHistoryRef.current = [];
+    drawBatchRef.current = [];
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    broadcastCustomEvent("WHITEBOARD_CLEAR");
+    toast.success("Canvas cleared!");
+  };
+
+  const downloadCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `Anva-Whiteboard-${callId}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    toast.success("Whiteboard saved as image!");
+  };
   // Close window or navigate back to chat if call ended
   useEffect(() => {
     if (callingState === CallingState.LEFT) {
@@ -1248,10 +1517,6 @@ const CallContent = ({ callId }) => {
     const secs = totalSeconds % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
-
-  if (callingState === CallingState.LEFT) {
-    return null;
-  }
 
   // Drag Resizer Handlers
   const handleMouseDown = (e) => {
@@ -1336,59 +1601,9 @@ const CallContent = ({ callId }) => {
     toast.success("Code copied to clipboard!");
   };
 
-  // Canvas Handlers
-  const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.strokeStyle = isEraser ? "#000000" : brushColor;
-    ctx.lineWidth = isEraser ? brushSize * 5 : brushSize;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    setIsDrawing(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-    const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    toast.success("Canvas cleared!");
-  };
-
-  const downloadCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `Anva-Whiteboard-${callId}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    toast.success("Whiteboard saved as image!");
-  };
+  if (callingState === CallingState.LEFT) {
+    return null;
+  }
 
   return (
     <StreamTheme className="h-full w-full flex flex-col overflow-hidden bg-black">

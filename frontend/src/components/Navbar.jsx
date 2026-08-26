@@ -26,7 +26,7 @@ import {
 import ThemeSelector from "./ThemeSelector";
 import NotificationBadge from "./NotificationBadge";
 import { UserButton, useAuth } from "@clerk/clerk-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "../store/useThemeStore";
@@ -59,6 +59,25 @@ const Navbar = () => {
   const isCommunityActive = communityLinks.some(l => pathname.startsWith(l.to));
   const isLearningActive = learningLinks.some(l => pathname.startsWith(l.to));
 
+  const [activeMenu, setActiveMenu] = useState(null);
+  const menuTimeoutRef = useRef(null);
+
+  const handleMenuEnter = (menuName) => {
+    if (menuTimeoutRef.current) clearTimeout(menuTimeoutRef.current);
+    setActiveMenu(menuName);
+  };
+
+  const handleMenuLeave = () => {
+    menuTimeoutRef.current = setTimeout(() => {
+      setActiveMenu(null);
+    }, 150);
+  };
+
+  // Close menus on route change
+  useEffect(() => {
+    setActiveMenu(null);
+  }, [pathname]);
+
   const handleMobileNav = (to) => {
     navigate(to);
     setDrawerOpen(false);
@@ -66,7 +85,7 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="bg-base-100/90 backdrop-blur-xl border-b border-base-content/10 sticky top-0 z-40 h-16 flex items-center shadow-xs font-minimal select-none">
+      <header className="bg-base-100 border-b border-base-content/10 sticky top-0 z-[100] h-16 flex items-center shadow-xs font-minimal select-none">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between w-full gap-4">
             
@@ -79,11 +98,15 @@ const Navbar = () => {
 
             {/* Desktop Center Dropdown Navigation Header */}
             {isAuthenticated && (
-              <nav className="hidden md:flex items-center gap-1.5 lg:gap-2.5 mx-auto">
+              <nav 
+                className="hidden md:flex items-center gap-1.5 lg:gap-2.5 mx-auto relative"
+                onMouseLeave={handleMenuLeave}
+              >
                 
                 {/* 1. Home Direct Link */}
                 <Link
                   to="/"
+                  onClick={() => setActiveMenu(null)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
                     pathname === "/"
                       ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
@@ -95,106 +118,131 @@ const Navbar = () => {
                 </Link>
 
                 {/* 2. Community & Feeds Dropdown */}
-                <div className="dropdown dropdown-hover">
-                  <div
-                    tabIndex={0}
-                    role="button"
+                <div 
+                  className="relative"
+                  onMouseEnter={() => handleMenuEnter("community")}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu(activeMenu === "community" ? null : "community")}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                      isCommunityActive
+                      isCommunityActive || activeMenu === "community"
                         ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
                         : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
                     }`}
                   >
                     <UsersIcon className="size-4" />
                     <span>Community</span>
-                    <ChevronDown className="size-3.5 opacity-60" />
-                  </div>
-                  <div
-                    tabIndex={0}
-                    className="dropdown-content z-50 pt-2 w-72"
-                  >
-                    <div className="p-2 shadow-xl bg-base-100 rounded-2xl border border-base-content/10 flex flex-col gap-1 backdrop-blur-2xl">
-                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                        Community & Network
-                      </div>
-                      {communityLinks.map(({ to, icon: Icon, label, desc }) => {
-                        const isActive = pathname === to || pathname.startsWith(to);
-                        return (
-                          <Link
-                            key={to}
-                            to={to}
-                            className={`flex items-start gap-3 p-2.5 rounded-xl transition-colors ${
-                              isActive
-                                ? "bg-primary/10 text-primary"
-                                : "hover:bg-base-200/80 text-base-content"
-                            }`}
-                          >
-                            <div className="p-2 rounded-lg bg-base-200 text-base-content shrink-0 mt-0.5">
-                              <Icon className="size-4" />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-xs leading-tight">{label}</span>
-                              <span className="text-[10px] text-base-content/60 leading-tight mt-0.5 truncate">{desc}</span>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    <ChevronDown className={`size-3.5 opacity-60 transition-transform duration-200 ${activeMenu === "community" ? "rotate-180" : ""}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {activeMenu === "community" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="absolute left-0 top-full pt-2 z-[110] w-80"
+                      >
+                        <div className="p-2.5 shadow-2xl bg-base-100 rounded-2xl border border-base-content/15 flex flex-col gap-1 ring-1 ring-black/5">
+                          <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/40 border-b border-base-content/5 mb-1">
+                            Community & Network
+                          </div>
+                          {communityLinks.map(({ to, icon: Icon, label, desc }) => {
+                            const isActive = pathname === to || (to !== "/" && pathname.startsWith(to));
+                            return (
+                              <Link
+                                key={to}
+                                to={to}
+                                onClick={() => setActiveMenu(null)}
+                                className={`flex items-start gap-3 p-2.5 rounded-xl transition-all ${
+                                  isActive
+                                    ? "bg-primary/10 text-primary"
+                                    : "hover:bg-base-200 text-base-content"
+                                }`}
+                              >
+                                <div className="p-2 rounded-lg bg-base-200 text-base-content shrink-0 mt-0.5 shadow-2xs">
+                                  <Icon className="size-4" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-bold text-xs leading-tight">{label}</span>
+                                  <span className="text-[11px] text-base-content/60 leading-snug mt-0.5 font-normal line-clamp-2">{desc}</span>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* 3. Learning Tools Dropdown */}
-                <div className="dropdown dropdown-hover">
-                  <div
-                    tabIndex={0}
-                    role="button"
+                <div 
+                  className="relative"
+                  onMouseEnter={() => handleMenuEnter("learning")}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu(activeMenu === "learning" ? null : "learning")}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                      isLearningActive
+                      isLearningActive || activeMenu === "learning"
                         ? "bg-primary/10 text-primary border-primary/20 shadow-xs"
                         : "text-base-content/70 hover:bg-base-200/80 hover:text-base-content border-transparent"
                     }`}
                   >
                     <Sparkles className="size-4 text-secondary" />
                     <span>Learning Tools</span>
-                    <ChevronDown className="size-3.5 opacity-60" />
-                  </div>
-                  <div
-                    tabIndex={0}
-                    className="dropdown-content z-50 pt-2 w-72"
-                  >
-                    <div className="p-2 shadow-xl bg-base-100 rounded-2xl border border-base-content/10 flex flex-col gap-1 backdrop-blur-2xl">
-                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/40">
-                        Interactive Studio
-                      </div>
-                      {learningLinks.map(({ to, icon: Icon, label, desc }) => {
-                        const isActive = pathname === to || pathname.startsWith(to);
-                        return (
-                          <Link
-                            key={to}
-                            to={to}
-                            className={`flex items-start gap-3 p-2.5 rounded-xl transition-colors ${
-                              isActive
-                                ? "bg-primary/10 text-primary"
-                                : "hover:bg-base-200/80 text-base-content"
-                            }`}
-                          >
-                            <div className="p-2 rounded-lg bg-base-200 text-base-content shrink-0 mt-0.5">
-                              <Icon className="size-4" />
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-bold text-xs leading-tight">{label}</span>
-                              <span className="text-[10px] text-base-content/60 leading-tight mt-0.5 truncate">{desc}</span>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    <ChevronDown className={`size-3.5 opacity-60 transition-transform duration-200 ${activeMenu === "learning" ? "rotate-180" : ""}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {activeMenu === "learning" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="absolute left-0 top-full pt-2 z-[110] w-80"
+                      >
+                        <div className="p-2.5 shadow-2xl bg-base-100 rounded-2xl border border-base-content/15 flex flex-col gap-1 ring-1 ring-black/5">
+                          <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-base-content/40 border-b border-base-content/5 mb-1">
+                            Interactive Studio
+                          </div>
+                          {learningLinks.map(({ to, icon: Icon, label, desc }) => {
+                            const isActive = pathname === to || pathname.startsWith(to);
+                            return (
+                              <Link
+                                key={to}
+                                to={to}
+                                onClick={() => setActiveMenu(null)}
+                                className={`flex items-start gap-3 p-2.5 rounded-xl transition-all ${
+                                  isActive
+                                    ? "bg-primary/10 text-primary"
+                                    : "hover:bg-base-200 text-base-content"
+                                }`}
+                              >
+                                <div className="p-2 rounded-lg bg-base-200 text-base-content shrink-0 mt-0.5 shadow-2xs">
+                                  <Icon className="size-4" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-bold text-xs leading-tight">{label}</span>
+                                  <span className="text-[11px] text-base-content/60 leading-snug mt-0.5 font-normal line-clamp-2">{desc}</span>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* 4. Placement Hub Direct Link (After Learning Tools) */}
                 <Link
                   to="/placement"
+                  onClick={() => setActiveMenu(null)}
                   className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
                     pathname.startsWith("/placement")
                       ? "bg-primary text-primary-content border-primary shadow-xs font-black"
@@ -209,6 +257,7 @@ const Navbar = () => {
                 {isAdmin && (
                   <Link
                     to="/admin"
+                    onClick={() => setActiveMenu(null)}
                     className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
                       pathname === "/admin"
                         ? "bg-primary text-primary-content border-primary shadow-xs"

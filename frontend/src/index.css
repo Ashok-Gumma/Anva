@@ -2,54 +2,147 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Typography Design System ── */
+/* ── Multi-Theme Dynamic Typography Design System ── */
 :root,
 [data-theme] {
-  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-serif: "Young Serif", "Lora", Georgia, serif;
+  --theme-font: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --theme-font-heading: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+}
+
+/* 1. Cyberpunk & Acid: High-Tech Cyber Futurist */
+[data-theme="cyberpunk"],
+[data-theme="acid"] {
+  --theme-font: "Orbitron", "Space Grotesk", sans-serif;
+  --theme-font-heading: "Orbitron", sans-serif;
+}
+
+/* 2. Synthwave & Retro: 80s Arcade & Retro-Future Synth */
+[data-theme="synthwave"],
+[data-theme="retro"] {
+  --theme-font: "Space Grotesk", "VT323", monospace, sans-serif;
+  --theme-font-heading: "Space Grotesk", sans-serif;
+}
+
+/* 3. Luxury, Dracula & Sunset: High-End Editorial & Regal Serif */
+[data-theme="luxury"],
+[data-theme="dracula"],
+[data-theme="sunset"] {
+  --theme-font: "Playfair Display", "Lora", Georgia, serif;
+  --theme-font-heading: "Playfair Display", Georgia, serif;
+}
+
+/* 4. Cupcake, Pastel & Valentine: Sweet, Soft & Bubbly Rounded */
+[data-theme="cupcake"],
+[data-theme="pastel"],
+[data-theme="valentine"] {
+  --theme-font: "Quicksand", "Comfortaa", "Nunito", sans-serif;
+  --theme-font-heading: "Quicksand", sans-serif;
+}
+
+/* 5. Coffee & Autumn: Warm Cafe & Cozy Literary Serif */
+[data-theme="coffee"],
+[data-theme="autumn"] {
+  --theme-font: "Lora", "Young Serif", Georgia, serif;
+  --theme-font-heading: "Young Serif", "Lora", Georgia, serif;
+}
+
+/* 6. Bumblebee & Lemonade: Playful, Bright & Energetic */
+[data-theme="bumblebee"],
+[data-theme="lemonade"] {
+  --theme-font: "Fredoka", "Nunito", sans-serif;
+  --theme-font-heading: "Fredoka", sans-serif;
+}
+
+/* 7. Forest, Garden & Emerald: Clean Organic & Botanical Modern */
+[data-theme="forest"],
+[data-theme="garden"],
+[data-theme="emerald"] {
+  --theme-font: "Outfit", "Plus Jakarta Sans", sans-serif;
+  --theme-font-heading: "Outfit", sans-serif;
+}
+
+/* 8. Aqua, Winter & Fantasy: Crystalline Oceanic Modern */
+[data-theme="aqua"],
+[data-theme="winter"],
+[data-theme="fantasy"] {
+  --theme-font: "Outfit", "Inter", sans-serif;
+  --theme-font-heading: "Outfit", sans-serif;
+}
+
+/* 9. Nord, Lofi, CMYK & Wireframe: Scandinavian Minimalist & Monoline */
+[data-theme="nord"],
+[data-theme="lofi"],
+[data-theme="wireframe"],
+[data-theme="cmyk"] {
+  --theme-font: "Space Grotesk", "Inter", sans-serif;
+  --theme-font-heading: "Space Grotesk", sans-serif;
+}
+
+/* 10. Corporate & Business: High-Precision Enterprise Sans */
+[data-theme="corporate"],
+[data-theme="business"] {
+  --theme-font: "Inter", system-ui, -apple-system, sans-serif;
+  --theme-font-heading: "Inter", sans-serif;
+}
+
+/* 11. Light, Dark, Black, Night, Dim: Clean Apple / Modern Flagship */
+[data-theme="light"],
+[data-theme="dark"],
+[data-theme="black"],
+[data-theme="night"],
+[data-theme="dim"] {
+  --theme-font: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --theme-font-heading: "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
 @layer base {
   *, *::before, *::after {
-    font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--theme-font);
   }
   code, pre, .font-mono, kbd, samp {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
   }
 }
 
-html, body, button, input, select, textarea {
-  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+html, 
+body, 
+button, 
+input, 
+select, 
+option, 
+optgroup, 
+textarea, 
+p, 
+span, 
+a, 
+label, 
+div,
+.select,
+.select option,
+.input,
+.btn {
+  font-family: var(--theme-font) !important;
   @apply antialiased;
   scroll-behavior: smooth;
+}
+
+select option,
+.select option {
+  font-family: var(--theme-font) !important;
+  background-color: var(--fallback-b1, oklch(var(--b1) / 1));
+  color: var(--fallback-bc, oklch(var(--bc) / 1));
+}
+
+h1, h2, h3, .font-heading {
+  font-family: var(--theme-font-heading) !important;
 }
 
 html {
   @apply selection:bg-primary selection:text-primary-content;
 }
 
-/* Quincy-style warm serif for headlines, brand text & curly accents */
-.font-curly,
-.font-serif,
-.font-quincy {
-  font-family: "Young Serif", "Lora", Georgia, serif !important;
-}
-
-.font-apple,
-.font-minimal,
-.font-sans {
-  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-}
-
-/* Authentic Apple SF Pro Font System */
-.font-sf,
-.font-apple-system {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Inter", system-ui, -apple-system, sans-serif !important;
-  letter-spacing: -0.015em;
-}
-
 /* Monospace fonts for editor and snippets */
-code, pre, .font-mono, .monaco-editor {
+code, pre, .font-mono, .monaco-editor, code *, pre * {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
 }
 
@@ -240,25 +333,36 @@ select,
   height: 100% !important;
   width: 100% !important;
   font-family: inherit !important;
+  background: transparent !important;
 }
 
-.chat-wallpaper,
-.str-chat__channel {
+.chat-wallpaper {
   display: flex !important;
   flex-direction: column !important;
   height: 100% !important;
   width: 100% !important;
-  background-color: var(--fallback-b2, oklch(var(--b2))) !important;
+  background-color: var(--fallback-b2, oklch(var(--b2) / 1)) !important;
   background-image: url("/chat-doodle.svg") !important;
   background-repeat: repeat !important;
-  background-size: 320px 320px !important;
+  background-size: 260px 260px !important;
   background-position: center !important;
+}
+
+.str-chat__channel {
+  display: flex !important;
+  flex-direction: row !important;
+  height: 100% !important;
+  width: 100% !important;
+  background: transparent !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
 .str-chat__container,
 .str-chat__window,
 .str-chat__main-panel {
-  max-width: 100% !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
   width: 100% !important;
   height: 100% !important;
   margin: 0 !important;
@@ -267,6 +371,96 @@ select,
   background: transparent !important;
   display: flex !important;
   flex-direction: column !important;
+  position: relative !important;
+}
+
+/* ─── Modern Slide-Out Thread Panel ───────────────────────── */
+.str-chat__thread {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--fallback-b1, oklch(var(--b1) / 0.98)) !important;
+  backdrop-filter: blur(20px) !important;
+  border-left: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.12)) !important;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12) !important;
+  z-index: 30 !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  width: 380px !important;
+  max-width: 100% !important;
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .str-chat__thread {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    z-index: 50 !important;
+    background: var(--fallback-b1, oklch(var(--b1) / 1)) !important;
+  }
+}
+
+.str-chat__thread-header {
+  background: var(--fallback-b2, oklch(var(--b2) / 0.85)) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.12)) !important;
+  padding: 12px 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 56px !important;
+  flex-shrink: 0 !important;
+}
+
+.str-chat__thread-header-title {
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  color: var(--fallback-bc, oklch(var(--bc) / 1)) !important;
+  letter-spacing: -0.01em !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.str-chat__thread-header-close-button,
+.str-chat__thread-header-button {
+  background: var(--fallback-b3, oklch(var(--b3) / 0.7)) !important;
+  border-radius: 9999px !important;
+  width: 30px !important;
+  height: 30px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--fallback-bc, oklch(var(--bc) / 0.7)) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  border: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.1)) !important;
+}
+
+.str-chat__thread-header-close-button:hover,
+.str-chat__thread-header-button:hover {
+  background: var(--fallback-p, oklch(var(--p) / 0.2)) !important;
+  color: var(--fallback-p, oklch(var(--p) / 1)) !important;
+  transform: scale(1.08) !important;
+}
+
+.str-chat__thread-list {
+  background: transparent !important;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+}
+
+.str-chat__thread-start {
+  border-bottom: 1px dashed var(--fallback-bc, oklch(var(--bc) / 0.15)) !important;
+  margin-bottom: 14px !important;
+  padding-bottom: 14px !important;
 }
 
 /* Header */
@@ -327,8 +521,8 @@ select,
 }
 
 .str-chat__message-simple-text-inner {
-  border-radius: 18px !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
   padding: 10px 16px !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
@@ -339,6 +533,7 @@ select,
   background: var(--fallback-p, oklch(var(--p)/1)) !important;
   color: var(--fallback-pc, oklch(var(--pc)/1)) !important;
   border-top-right-radius: 4px !important;
+  font-weight: 500 !important;
 }
 
 .str-chat__message--me .str-chat__message-simple-text-inner a {
@@ -350,14 +545,37 @@ select,
 .str-chat__message--other .str-chat__message-simple-text-inner {
   background: var(--fallback-b1, oklch(var(--b1)/1)) !important;
   color: var(--fallback-bc, oklch(var(--bc)/1)) !important;
-  border: 1px solid oklch(var(--bc) / 0.1) !important;
+  border: 1px solid oklch(var(--bc) / 0.12) !important;
   border-top-left-radius: 4px !important;
+  font-weight: 500 !important;
 }
 
 .str-chat__message--other .str-chat__message-simple-text-inner a {
   color: var(--fallback-p, oklch(var(--p)/1)) !important;
   text-decoration: underline !important;
   font-weight: 700 !important;
+}
+
+/* Replies button badge on message */
+.str-chat__message-replies-count-button {
+  background: var(--fallback-p, oklch(var(--p) / 0.12)) !important;
+  color: var(--fallback-p, oklch(var(--p) / 1)) !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  border-radius: 12px !important;
+  padding: 4px 10px !important;
+  border: 1px solid var(--fallback-p, oklch(var(--p) / 0.25)) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  margin-top: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.str-chat__message-replies-count-button:hover {
+  background: var(--fallback-p, oklch(var(--p) / 0.22)) !important;
+  transform: translateY(-1px) !important;
 }
 
 /* ─── Stream Chat Link Previews & Attachment Cards Theme Overrides ─── */
@@ -419,22 +637,118 @@ select,
   border-bottom: 1px solid oklch(var(--bc) / 0.1) !important;
 }
 
-/* Message Input Area */
+/* ─── Premium Message Input Area (Both Main Window and Thread) ─── */
 .str-chat__message-input,
-.str-chat__message-input-flat {
-  @apply bg-base-100/95 backdrop-blur-md border-t border-base-content/10 p-3 shrink-0 shadow-lg z-20 !important;
+.str-chat__message-input-flat,
+.str-chat__small-message-input {
+  background: var(--fallback-b1, oklch(var(--b1) / 0.95)) !important;
+  backdrop-filter: blur(20px) !important;
+  border-top: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.1)) !important;
+  padding: 12px 18px !important;
+  flex-shrink: 0 !important;
+  z-index: 20 !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03) !important;
 }
 
+.str-chat__message-input-inner,
+.str-chat__input-flat {
+  background: var(--fallback-b2, oklch(var(--b2) / 0.8)) !important;
+  border: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.15)) !important;
+  border-radius: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px 8px 4px 14px !important;
+  flex: 1 1 0% !important;
+  min-height: 48px !important;
+  transition: all 0.2s ease !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.str-chat__message-input-inner:focus-within,
+.str-chat__input-flat:focus-within {
+  border-color: var(--fallback-p, oklch(var(--p) / 0.8)) !important;
+  box-shadow: 0 0 0 3px var(--fallback-p, oklch(var(--p) / 0.2)) !important;
+  background: var(--fallback-b1, oklch(var(--b1) / 1)) !important;
+}
+
+.str-chat__textarea,
 .str-chat__textarea textarea {
-  @apply bg-base-200/50 border border-base-content/10 rounded-xl p-3 text-base-content text-sm placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans transition-all !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--fallback-bc, oklch(var(--bc) / 1)) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  padding: 8px 4px !important;
+  resize: none !important;
+  width: 100% !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.str-chat__textarea textarea::placeholder {
+  color: var(--fallback-bc, oklch(var(--bc) / 0.45)) !important;
+  font-weight: 400 !important;
+}
+
+.str-chat__file-input-button,
+.str-chat__file-upload-button,
+.str-chat__attachment-button {
+  background: var(--fallback-b3, oklch(var(--b3) / 0.6)) !important;
+  border-radius: 9999px !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--fallback-bc, oklch(var(--bc) / 0.75)) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+  border: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.08)) !important;
+  margin-right: 6px !important;
+}
+
+.str-chat__file-input-button:hover,
+.str-chat__file-upload-button:hover,
+.str-chat__attachment-button:hover {
+  background: var(--fallback-p, oklch(var(--p) / 0.18)) !important;
+  color: var(--fallback-p, oklch(var(--p) / 1)) !important;
+  transform: scale(1.08) !important;
 }
 
 .str-chat__send-button {
-  @apply btn btn-primary btn-circle btn-sm shadow-md hover:scale-105 active:scale-95 transition-all ml-2 shrink-0 !important;
+  background: var(--fallback-p, oklch(var(--p) / 1)) !important;
+  border-radius: 9999px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--fallback-pc, oklch(var(--pc) / 1)) !important;
+  cursor: pointer !important;
+  border: none !important;
+  box-shadow: 0 4px 14px var(--fallback-p, oklch(var(--p) / 0.35)) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  flex-shrink: 0 !important;
+  margin-left: 6px !important;
+}
+
+.str-chat__send-button:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 18px var(--fallback-p, oklch(var(--p) / 0.45)) !important;
+}
+
+.str-chat__send-button:active {
+  transform: scale(0.94) !important;
 }
 
 .str-chat__send-button svg {
-  @apply text-primary-content !important;
+  color: var(--fallback-pc, oklch(var(--pc) / 1)) !important;
+  fill: currentColor !important;
+  width: 16px !important;
+  height: 16px !important;
 }
 
 /* ─── IDE Panel Styling ─────────────────────────────────────── */

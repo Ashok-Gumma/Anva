@@ -35,6 +35,7 @@ import ChatLoader from "../components/ChatLoader";
 import CallButton from "../components/CallButton";
 import PostAttachment from "../components/PostAttachment";
 import CallHistoryAttachment from "../components/CallHistoryAttachment";
+import WhatsAppChatView from "../components/WhatsAppChatView";
 import { openVideoCallPopup } from "../lib/callWindow";
 import { useCallContext } from "../context/CallContext";
 
@@ -600,22 +601,17 @@ const ChatPage = () => {
           </div>
         </header>
 
-        {/* Stream Chat Area */}
+        {/* WhatsApp / Instagram Style Real-time Chat Feed */}
         <div
           onClickCapture={handleChatContainerClick}
           className="flex-1 w-full h-full relative overflow-hidden flex flex-col"
         >
-          <Chat client={chatClient}>
-            <Channel channel={channel} Attachment={CustomAttachment} Message={CustomMessage}>
-              <div className="w-full h-full flex flex-col relative overflow-hidden">
-                <Window>
-                  <MessageList Message={CustomMessage} />
-                  <MessageInput focus />
-                </Window>
-              </div>
-              <Thread />
-            </Channel>
-          </Chat>
+          <WhatsAppChatView
+            channel={channel}
+            chatClient={chatClient}
+            authUser={authUser}
+            targetUser={currentFriend || targetUser}
+          />
         </div>
       </div>
 

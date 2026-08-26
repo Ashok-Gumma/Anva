@@ -1,6 +1,7 @@
 import { Video, PhoneMissed, PhoneOff, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { useCallContext } from "../context/CallContext";
 import useAuthUser from "../hooks/useAuthUser";
+import toast from "react-hot-toast";
 
 const formatCallDuration = (seconds) => {
   if (!seconds || seconds <= 0) return null;
@@ -20,7 +21,7 @@ const formatTime = (timestamp) => {
   }
 };
 
-const CallHistoryAttachment = ({ attachment, message }) => {
+const CallHistoryAttachment = ({ attachment, message, targetUser, channel }) => {
   const { initiateCall } = useCallContext();
   const { authUser } = useAuthUser();
 
@@ -35,24 +36,52 @@ const CallHistoryAttachment = ({ attachment, message }) => {
   const timeStr = formatTime(att.timestamp || message?.created_at);
 
   const handleCallBack = (e) => {
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
 
-    // Determine the target peer to call
+    // 1. Determine target peer to call
     let peerId = null;
     let peerName = "Peer";
     let peerPic = "";
 
-    if (message?.user?.id && message.user.id !== authUser?._id) {
+    if (targetUser?._id) {
+      peerId = targetUser._id;
+      peerName = targetUser.fullName || targetUser.name || "Peer";
+      peerPic = targetUser.profilePic || targetUser.image || "";
+    } else if (message?.user?.id && message.user.id !== authUser?._id) {
       peerId = message.user.id;
       peerName = message.user.name || "Peer";
       peerPic = message.user.image || "";
     } else if (att.target_user_id && att.target_user_id !== authUser?._id) {
       peerId = att.target_user_id;
       peerName = att.target_user_name || "Peer";
-    } else if (message?.channel_id) {
-      const parts = message.channel_id.split("-");
-      peerId = parts.find((id) => id !== authUser?._id);
+    } else if (att.caller_id && att.caller_id !== authUser?._id) {
+      peerId = att.caller_id;
+      peerName = att.caller_name || "Peer";
+    } else if (channel?.state?.members) {
+      const memberIds = Object.keys(channel.state.members);
+      peerId = memberIds.find((id) => id !== authUser?._id);
+      if (peerId && channel.state.members[peerId]?.user) {
+        const u = channel.state.members[peerId].user;
+        peerName = u.name || peerName;
+        peerPic = u.image || peerPic;
+      }
+    } else if (channel?.data?.members) {
+      const memberIds = Object.keys(channel.data.members);
+      peerId = memberIds.find((id) => id !== authUser?._id);
+    } else if (message?.cid || message?.channel_id || channel?.id) {
+      const rawCid = (message.cid || message.channel_id || channel?.id || "").replace("messaging:", "");
+      const parts = rawCid.split("-");
+      peerId = parts.find((id) => id && id !== authUser?._id);
     }
+
+    if (!peerId && targetUser?._id) {
+      peerId = targetUser._id;
+    }
+
+    const channelId = channel?.id || message?.channel_id || (peerId ? [authUser?._id, peerId].sort().join("-") : null);
 
     if (peerId) {
       initiateCall({
@@ -61,30 +90,33 @@ const CallHistoryAttachment = ({ attachment, message }) => {
           fullName: peerName,
           profilePic: peerPic,
         },
-        channelId: message?.channel_id,
+        channelId,
+        channel,
       });
+    } else {
+      toast.error("Could not find peer to call.");
     }
   };
 
   // 1. MISSED CALL (Red Theme)
   if (callStatus === "missed") {
     return (
-      <div className="w-full max-w-[290px] sm:max-w-[310px] rounded-2xl border border-red-500/30 bg-zinc-900/95 text-white shadow-lg p-3 select-none backdrop-blur-md">
+      <div className="w-full max-w-[280px] sm:max-w-[300px] rounded-2xl border border-error/20 bg-base-100 text-base-content shadow-sm p-2.5 sm:p-3 select-none backdrop-blur-md">
         <div className="flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-9 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
-              <PhoneMissed className="size-4.5" />
+            <div className="size-8 sm:size-9 rounded-xl bg-error/10 border border-error/20 flex items-center justify-center text-error shrink-0">
+              <PhoneMissed className="size-4" />
             </div>
             <div className="min-w-0">
-              <h4 className="text-xs font-black text-red-400 truncate flex items-center gap-1">
+              <h4 className="text-xs font-bold text-error truncate flex items-center gap-1">
                 <span>{isCaller ? "No Answer" : "Missed Video Call"}</span>
                 {isCaller ? (
-                  <ArrowUpRight className="size-3 text-red-400" />
+                  <ArrowUpRight className="size-3 text-error" />
                 ) : (
-                  <ArrowDownLeft className="size-3 text-red-400" />
+                  <ArrowDownLeft className="size-3 text-error" />
                 )}
               </h4>
-              <p className="text-[11px] text-zinc-400 font-medium truncate">
+              <p className="text-[11px] text-base-content/60 font-medium truncate">
                 {timeStr ? `${timeStr}` : "Missed"}
               </p>
             </div>
@@ -93,11 +125,11 @@ const CallHistoryAttachment = ({ attachment, message }) => {
           <button
             type="button"
             onClick={handleCallBack}
-            className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/40 rounded-xl text-xs font-black flex items-center gap-1 transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95 shadow-sm"
+            className="px-2.5 py-1.5 bg-error/10 hover:bg-error text-error hover:text-white border border-error/20 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95 shadow-2xs"
             title="Call back"
           >
             <Video className="size-3.5" />
-            <span>Call Back</span>
+            <span>Call</span>
           </button>
         </div>
       </div>
@@ -107,22 +139,22 @@ const CallHistoryAttachment = ({ attachment, message }) => {
   // 2. DECLINED CALL (Amber Theme)
   if (callStatus === "declined") {
     return (
-      <div className="w-full max-w-[290px] sm:max-w-[310px] rounded-2xl border border-amber-500/30 bg-zinc-900/95 text-white shadow-lg p-3 select-none backdrop-blur-md">
+      <div className="w-full max-w-[280px] sm:max-w-[300px] rounded-2xl border border-warning/20 bg-base-100 text-base-content shadow-sm p-2.5 sm:p-3 select-none backdrop-blur-md">
         <div className="flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-              <PhoneOff className="size-4.5" />
+            <div className="size-8 sm:size-9 rounded-xl bg-warning/10 border border-warning/20 flex items-center justify-center text-warning shrink-0">
+              <PhoneOff className="size-4" />
             </div>
             <div className="min-w-0">
-              <h4 className="text-xs font-black text-amber-400 truncate flex items-center gap-1">
+              <h4 className="text-xs font-bold text-warning truncate flex items-center gap-1">
                 <span>{isCaller ? "Call Declined" : "Declined Call"}</span>
                 {isCaller ? (
-                  <ArrowUpRight className="size-3 text-amber-400" />
+                  <ArrowUpRight className="size-3 text-warning" />
                 ) : (
-                  <ArrowDownLeft className="size-3 text-amber-400" />
+                  <ArrowDownLeft className="size-3 text-warning" />
                 )}
               </h4>
-              <p className="text-[11px] text-zinc-400 font-medium truncate">
+              <p className="text-[11px] text-base-content/60 font-medium truncate">
                 {timeStr ? `${timeStr}` : "Unavailable"}
               </p>
             </div>
@@ -131,37 +163,36 @@ const CallHistoryAttachment = ({ attachment, message }) => {
           <button
             type="button"
             onClick={handleCallBack}
-            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 rounded-xl text-xs font-black flex items-center gap-1 transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95 shadow-sm"
+            className="px-2.5 py-1.5 bg-warning/10 hover:bg-warning text-warning hover:text-white border border-warning/20 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95 shadow-2xs"
             title="Call back"
           >
             <Video className="size-3.5" />
-            <span>Call Back</span>
+            <span>Call</span>
           </button>
         </div>
       </div>
     );
   }
 
-  // 3. COMPLETED / VIDEO CALL LOG (WhatsApp Signature Dark Pill with Emerald Accent)
+  // 3. COMPLETED / VIDEO CALL LOG (Theme Aligned)
   return (
-    <div className="w-full max-w-[290px] sm:max-w-[310px] rounded-2xl border border-zinc-800 bg-zinc-950 text-white shadow-xl p-3 select-none backdrop-blur-md">
+    <div className="w-full max-w-[280px] sm:max-w-[300px] rounded-2xl border border-base-content/10 bg-base-100 text-base-content shadow-sm p-2.5 sm:p-3 select-none backdrop-blur-md">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="size-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
-            <Video className="size-4.5 text-emerald-400" />
+          <div className="size-8 sm:size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <Video className="size-4" />
           </div>
           <div className="min-w-0">
-            <h4 className="text-xs font-bold text-zinc-100 truncate flex items-center gap-1">
-              <span>Video call</span>
+            <h4 className="text-xs font-bold text-base-content truncate flex items-center gap-1">
+              <span>Video Call</span>
               {isCaller ? (
-                <ArrowUpRight className="size-3.5 text-emerald-400" title="Outgoing call" />
+                <ArrowUpRight className="size-3 text-primary" />
               ) : (
-                <ArrowDownLeft className="size-3.5 text-emerald-400" title="Incoming call" />
+                <ArrowDownLeft className="size-3 text-primary" />
               )}
             </h4>
-            <p className="text-[11px] text-zinc-400 font-medium truncate flex items-center gap-1">
-              {durationText ? <span>{durationText}</span> : <span>Ended</span>}
-              {timeStr && <span>• {timeStr}</span>}
+            <p className="text-[11px] text-base-content/60 font-medium truncate">
+              {durationText ? `Ended • ${durationText}` : timeStr ? `Ended • ${timeStr}` : "Ended"}
             </p>
           </div>
         </div>
@@ -169,10 +200,10 @@ const CallHistoryAttachment = ({ attachment, message }) => {
         <button
           type="button"
           onClick={handleCallBack}
-          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black rounded-xl text-xs flex items-center gap-1 transition-all cursor-pointer shrink-0 shadow-md shadow-emerald-500/20 hover:scale-105 active:scale-95"
-          title="Start video call"
+          className="px-2.5 py-1.5 bg-primary hover:opacity-90 text-primary-content rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95 shadow-xs"
+          title="Call again"
         >
-          <Video className="size-3.5 fill-black" />
+          <Video className="size-3.5" />
           <span>Call</span>
         </button>
       </div>

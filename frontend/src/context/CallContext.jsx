@@ -326,6 +326,35 @@ export const CallProvider = ({ children }) => {
     [incomingCall, streamClient]
   );
 
+const createSafeCallUrl = (channelId, { isCaller = false, isCallee = false, peerId = "", peerName = "", peerPic = "" }) => {
+  // Store rich peer information into sessionStorage so CallPage can retrieve full profile image even if it's base64
+  try {
+    sessionStorage.setItem(
+      `anva_call_peer_${channelId}`,
+      JSON.stringify({
+        peerId,
+        peerName: peerName || "Peer",
+        peerPic: peerPic || "",
+      })
+    );
+  } catch (err) {
+    console.warn("Could not cache call peer info in sessionStorage:", err);
+  }
+
+  const params = new URLSearchParams();
+  if (isCaller) params.set("isCaller", "true");
+  if (isCallee) params.set("isCallee", "true");
+  if (peerId) params.set("peerId", peerId);
+  if (peerName) params.set("peerName", peerName);
+
+  // ONLY attach peerPic to URL if it's a short URL string (< 500 chars) and NOT a raw data URI
+  if (peerPic && typeof peerPic === "string" && !peerPic.startsWith("data:") && peerPic.length < 500) {
+    params.set("peerPic", peerPic);
+  }
+
+  return `/call/${channelId}?${params.toString()}`;
+};
+
   /**
    * Callee accepts the call: stops ringtone, opens call window synchronously, and notifies caller
    */
@@ -342,7 +371,12 @@ export const CallProvider = ({ children }) => {
       setIncomingCall(null);
 
       // 1. Synchronously open video call popup window in Callee mode
-      const callUrl = `/call/${currentCall.callId}?isCallee=true&peerId=${currentCall.caller?._id || ""}&peerName=${encodeURIComponent(currentCall.caller?.fullName || "")}&peerPic=${encodeURIComponent(currentCall.caller?.profilePic || "")}`;
+      const callUrl = createSafeCallUrl(currentCall.callId, {
+        isCallee: true,
+        peerId: currentCall.caller?._id || "",
+        peerName: currentCall.caller?.fullName || "",
+        peerPic: currentCall.caller?.profilePic || "",
+      });
       const popup = openVideoCallPopup(callUrl);
       if (!popup) {
         // If browser popup blocker blocked it, use navigation fallback
@@ -462,7 +496,12 @@ export const CallProvider = ({ children }) => {
       };
 
       // 1. Synchronously open dedicated call window in Caller mode
-      const callPopupUrl = `/call/${channelId}?isCaller=true&peerId=${targetUser._id}&peerName=${encodeURIComponent(targetUser.fullName || "")}&peerPic=${encodeURIComponent(targetUser.profilePic || "")}`;
+      const callPopupUrl = createSafeCallUrl(channelId, {
+        isCaller: true,
+        peerId: targetUser._id,
+        peerName: targetUser.fullName || "",
+        peerPic: targetUser.profilePic || "",
+      });
       const popup = openVideoCallPopup(callPopupUrl);
       if (!popup) {
         if (navigateFallback) {
