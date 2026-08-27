@@ -191,8 +191,15 @@ const LandingPage = () => {
 
   return (
     <div data-theme="light" className="min-h-screen bg-[#fafaf9] text-base-content font-sans antialiased relative z-10 selection:bg-primary selection:text-primary-content overflow-x-hidden">
-      {/* Interactive Particle Physics Canvas Background */}
+      {/* Interactive Constellation Particle Canvas Background */}
       <ParticleBackground />
+
+      {/* Modern Ambient Mesh Aura Glows (Depth & Polish) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="absolute -top-[20%] left-1/2 -translate-x-1/2 w-[700px] sm:w-[950px] h-[450px] bg-gradient-to-br from-blue-400/15 via-indigo-400/10 to-violet-400/5 blur-[120px] rounded-full" />
+        <div className="absolute top-[40%] -left-[15%] w-[500px] h-[500px] bg-gradient-to-tr from-cyan-400/10 via-blue-400/10 to-transparent blur-[110px] rounded-full" />
+        <div className="absolute top-[60%] -right-[15%] w-[550px] h-[550px] bg-gradient-to-bl from-purple-400/10 via-pink-400/10 to-transparent blur-[120px] rounded-full" />
+      </div>
 
       {/* ── 1. CLEAN TOP NAVIGATION ── */}
       <header className="sticky top-0 z-50 bg-base-100/90 backdrop-blur-xl border-b border-base-content/10 h-16 flex items-center shadow-xs">
