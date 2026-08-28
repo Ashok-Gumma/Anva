@@ -24,11 +24,17 @@ import {
   Terminal,
   Sparkles,
   Send,
+  Lightbulb,
+  Bug,
+  Bot,
+  User,
+  Loader2,
 } from "lucide-react";
 import {
   startPlacementMockTest,
   submitPlacementMockTest,
   runPlacementCode,
+  askPlacementAiCopilot,
 } from "../../lib/placementApi";
 import toast from "react-hot-toast";
 
@@ -48,18 +54,13 @@ using namespace std;
 
 int main() {
     // Write your solution here
-    string s;
-    if (cin >> s) cout << s << endl;
     return 0;
 }`,
-  java: `import java.util.Scanner;
+  java: `import java.util.*;
 
-public class Main {
+public class Solution {
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        if (sc.hasNext()) {
-            System.out.println(sc.next());
-        }
+        // Write your solution here
     }
 }`,
 };
@@ -69,35 +70,207 @@ const MockTestPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // questionId -> option index or coding object
+  const storageKey = `anva_mock_test_${companyId}`;
+
+  // Helper to load persistent state on page load / refresh
+  const loadSavedTestState = () => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Failed to load saved mock test state:", e);
+    }
+    return null;
+  };
+
+  const initialSaved = loadSavedTestState();
+
+  const [testSessionSeed] = useState(() => initialSaved?.testSessionSeed || Date.now());
+  const [activeSectionIndex, setActiveSectionIndex] = useState(() => initialSaved?.activeSectionIndex ?? 0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => initialSaved?.currentQuestionIndex ?? 0);
+  const [answers, setAnswers] = useState(() => initialSaved?.answers || {}); // questionId -> choice or coding object
   const [isTestSubmitted, setIsTestSubmitted] = useState(false);
   const [testReport, setTestReport] = useState(null);
-  const [secondsRemaining, setSecondsRemaining] = useState(90 * 60);
 
   // Coding question compiler state
-  const [testSessionSeed] = useState(() => Date.now());
-  const [selectedLanguage, setSelectedLanguage] = useState("java");
-  const [codeMap, setCodeMap] = useState({}); // questionId -> code string
+  const [selectedLanguage, setSelectedLanguage] = useState(() => initialSaved?.selectedLanguage || "java");
+  const [codingLeftTab, setCodingLeftTab] = useState(() => initialSaved?.codingLeftTab || "description");
+  const [codeMap, setCodeMap] = useState(() => initialSaved?.codeMap || {}); // questionId -> code string
   const [customInput, setCustomInput] = useState("");
   const [activeCodingTab, setActiveCodingTab] = useState("editor"); // "editor" | "output"
-  const [runResultMap, setRunResultMap] = useState({}); // questionId -> runResult object
+  const [runResultMap, setRunResultMap] = useState(() => initialSaved?.runResultMap || {});
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["placementMockTestStart", companyId, testSessionSeed],
-    queryFn: () => startPlacementMockTest(companyId),
-    staleTime: 0,
-    gcTime: 0,
+  // Live Interactive AI Copilot Chat state (per question)
+  const [aiChatMap, setAiChatMap] = useState(() => initialSaved?.aiChatMap || {});
+  const [aiInputText, setAiInputText] = useState("");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Compute countdown timer from saved target end time to prevent reset on refresh
+  const [secondsRemaining, setSecondsRemaining] = useState(() => {
+    if (initialSaved?.endTime) {
+      const remaining = Math.max(0, Math.floor((initialSaved.endTime - Date.now()) / 1000));
+      return remaining;
+    }
+    return (initialSaved?.durationMinutes || 90) * 60;
   });
 
-  const sections = data?.sections || [];
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["placementMockTestStart", companyId],
+    queryFn: () => startPlacementMockTest(companyId),
+    initialData: initialSaved?.testData || undefined,
+    enabled: !initialSaved?.testData,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const testData = data || initialSaved?.testData || null;
+  const sections = testData?.sections || [];
   const currentSection = sections[activeSectionIndex] || null;
   const currentQuestions = currentSection?.questions || [];
   const currentQuestion = currentQuestions[currentQuestionIndex] || null;
 
   // Active run result for the currently selected question
   const runResult = currentQuestion ? runResultMap[currentQuestion._id] || null : null;
+
+  // Check if current coding question is in the Debugging Round (Round 2)
+  const isDebuggingQuestion =
+    (currentQuestion?.topics || []).some((t) => ["Debugging Assessment", "Code Correction"].includes(t)) ||
+    (currentQuestion?.tags || []).includes("Debugging") ||
+    (currentQuestion?.title || "").includes("Debugging") ||
+    (currentSection?.sectionName || "").toLowerCase().includes("debugging");
+
+  // Initialize and persist mock test session target end time on first data load
+  useEffect(() => {
+    if (testData && !initialSaved?.endTime) {
+      const dur = testData.durationMinutes || 90;
+      const targetEndTime = Date.now() + dur * 60 * 1000;
+      setSecondsRemaining(dur * 60);
+      try {
+        const initialPayload = {
+          testSessionSeed,
+          activeSectionIndex,
+          currentQuestionIndex,
+          answers,
+          codeMap,
+          selectedLanguage,
+          codingLeftTab,
+          runResultMap,
+          aiChatMap,
+          durationMinutes: dur,
+          endTime: targetEndTime,
+          testData,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(initialPayload));
+      } catch (err) {
+        console.warn("Failed to set initial test state in localStorage:", err);
+      }
+    }
+  }, [testData]);
+
+  // Persist all state changes (current round, question index, answers, code drafts, AI chat) to localStorage
+  useEffect(() => {
+    if (!isTestSubmitted && testData) {
+      try {
+        const saved = loadSavedTestState();
+        const stateToSave = {
+          testSessionSeed,
+          activeSectionIndex,
+          currentQuestionIndex,
+          answers,
+          codeMap,
+          selectedLanguage,
+          codingLeftTab,
+          runResultMap,
+          aiChatMap,
+          durationMinutes: testData.durationMinutes || 90,
+          endTime: saved?.endTime || Date.now() + (secondsRemaining || 5400) * 1000,
+          testData: saved?.testData || testData,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(stateToSave));
+      } catch (err) {
+        console.warn("Failed to persist mock test state:", err);
+      }
+    }
+  }, [
+    activeSectionIndex,
+    currentQuestionIndex,
+    answers,
+    codeMap,
+    selectedLanguage,
+    codingLeftTab,
+    runResultMap,
+    aiChatMap,
+    isTestSubmitted,
+    testData,
+  ]);
+
+  // Handle asking AI Copilot for clues (Strictly clues, never answers)
+  const handleAskAiCopilot = async (overridePrompt) => {
+    const promptToSend = typeof overridePrompt === "string" ? overridePrompt : aiInputText;
+    if (!promptToSend.trim() || !currentQuestion || isAiLoading) return;
+
+    const qId = currentQuestion._id;
+    const defaultGreeting = [
+      {
+        role: "assistant",
+        text: "👋 I'm your AI Coding Copilot for Round 3. Ask me for intuition clues, edge cases, time/space complexity analysis, or why your logic might be failing. (Note: I will guide your thinking, but will never write the complete code for you!)",
+      },
+    ];
+    const previousMessages = aiChatMap[qId] || defaultGreeting;
+    const updatedWithUser = [...previousMessages, { role: "user", text: promptToSend }];
+
+    setAiChatMap((prev) => ({ ...prev, [qId]: updatedWithUser }));
+    setAiInputText("");
+    setIsAiLoading(true);
+
+    try {
+      const res = await askPlacementAiCopilot({
+        questionTitle: currentQuestion.title,
+        questionDescription: currentQuestion.problemDescription || currentQuestion.description,
+        currentCode: codeMap[qId] || "",
+        language: selectedLanguage,
+        userMessage: promptToSend,
+        chatHistory: previousMessages.map((m) => ({
+          role: m.role === "assistant" ? "assistant" : "user",
+          content: m.text,
+        })),
+      });
+
+      if (res?.success && res.reply) {
+        setAiChatMap((prev) => ({
+          ...prev,
+          [qId]: [...updatedWithUser, { role: "assistant", text: res.reply }],
+        }));
+      } else {
+        setAiChatMap((prev) => ({
+          ...prev,
+          [qId]: [
+            ...updatedWithUser,
+            {
+              role: "assistant",
+              text: res?.reply || "💡 Here is an algorithmic clue: check your boundary constraints ($N=0$ and array length) and test your logic with simple trace inputs.",
+            },
+          ],
+        }));
+      }
+    } catch (err) {
+      toast.error("AI Copilot request failed. Showing heuristic clue.");
+      setAiChatMap((prev) => ({
+        ...prev,
+        [qId]: [
+          ...updatedWithUser,
+          {
+            role: "assistant",
+            text: `💡 **Algorithmic Hint:** ${currentQuestion.hints?.[0] || currentQuestion.approach || "Break the problem down by identifying optimal data structures (e.g. Hash Map, Two Pointers, Monotonic Stack)."}`,
+          },
+        ],
+      }));
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   // Initialize code and tab when switching questions
   useEffect(() => {
@@ -110,10 +283,7 @@ const MockTestPage = () => {
           "// Write your code here";
         setCodeMap((prev) => ({ ...prev, [qId]: starter }));
       }
-      if (currentQuestion.testCases?.[0]?.input) {
-        setCustomInput(currentQuestion.testCases[0].input);
-      }
-      // If this question has not been executed yet, default tab to testcase editor
+      setCustomInput(currentQuestion.testCases?.[0]?.input || "");
       if (!runResultMap[qId]) {
         setActiveCodingTab("editor");
       }
@@ -138,8 +308,9 @@ const MockTestPage = () => {
   }, [isTestSubmitted, secondsRemaining]);
 
   const formatTimer = (totalSeconds) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
+    const safeSecs = Math.max(0, Math.round(Number(totalSeconds) || 0));
+    const mins = Math.floor(safeSecs / 60);
+    const secs = safeSecs % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
@@ -148,6 +319,9 @@ const MockTestPage = () => {
     onSuccess: (res) => {
       setIsTestSubmitted(true);
       setTestReport(res.result);
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {}
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
       queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
       toast.success("Mock OA submitted successfully! 🎯");
@@ -193,8 +367,9 @@ const MockTestPage = () => {
     },
   });
 
-  const handleRunCode = () => {
+  const handleRunCode = (runOnlyCustom = false) => {
     if (!currentQuestion) return;
+    const isCustom = typeof runOnlyCustom === "boolean" ? runOnlyCustom : false;
     const currentCode =
       codeMap[currentQuestion._id] ||
       currentQuestion.starterCode?.[selectedLanguage] ||
@@ -204,7 +379,8 @@ const MockTestPage = () => {
       questionId: currentQuestion._id,
       language: selectedLanguage,
       code: currentCode,
-      customInput: customInput,
+      customInput: isCustom ? customInput : "",
+      runOnlyCustom: isCustom,
     });
   };
 
@@ -215,7 +391,9 @@ const MockTestPage = () => {
       currentQuestion.starterCode?.[selectedLanguage] ||
       CODE_TEMPLATES[selectedLanguage];
 
-    const hasPassed = runResult?.allPassed === true;
+    const hasPassed =
+      runResult?.allPassed === true ||
+      (runResult?.passedTests > 0 && runResult?.passedTests >= (runResult?.totalTests || 1));
 
     setAnswers((prev) => ({
       ...prev,
@@ -234,23 +412,56 @@ const MockTestPage = () => {
     }
   };
 
+  const getSubmittableAnswers = () => {
+    const finalAnswers = { ...answers };
+    if (sections) {
+      for (const sec of sections) {
+        if (sec.category === "coding") {
+          for (const q of sec.questions || []) {
+            const qId = q._id;
+            const code = codeMap[qId] || q.starterCode?.[selectedLanguage] || "";
+            const result = runResultMap[qId];
+            const hasPassed =
+              result?.allPassed === true ||
+              (result?.passedTests > 0 && result?.passedTests >= (result?.totalTests || 1));
+            finalAnswers[qId] = {
+              ...(finalAnswers[qId] || {}),
+              isAccepted: hasPassed,
+              passedCount: hasPassed ? (result?.passedTests || 2) : (finalAnswers[qId]?.passedCount || 0),
+              totalTests: result?.totalTests || 2,
+              language: selectedLanguage,
+              code: code,
+            };
+          }
+        }
+      }
+    }
+    return finalAnswers;
+  };
+
   const handleAutoSubmit = () => {
     toast.error("Time is up! Submitting your assessment...");
+    const finalAnswers = getSubmittableAnswers();
+    const totalDurationSeconds = (testData?.durationMinutes || 90) * 60;
+    const timeTaken = Math.max(0, totalDurationSeconds - secondsRemaining);
     submitMockMutation({
       companySlug: companyId,
-      answers,
-      allQuestionIds: data?.allQuestionIds || [],
-      timeTakenSeconds: 90 * 60 - secondsRemaining,
+      answers: finalAnswers,
+      allQuestionIds: testData?.allQuestionIds || [],
+      timeTakenSeconds: timeTaken,
     });
   };
 
   const handleManualSubmit = () => {
     if (window.confirm("Are you sure you want to finish and submit this Mock OA Assessment?")) {
+      const finalAnswers = getSubmittableAnswers();
+      const totalDurationSeconds = (testData?.durationMinutes || 90) * 60;
+      const timeTaken = Math.max(0, totalDurationSeconds - secondsRemaining);
       submitMockMutation({
         companySlug: companyId,
-        answers,
-        allQuestionIds: data?.allQuestionIds || [],
-        timeTakenSeconds: 90 * 60 - secondsRemaining,
+        answers: finalAnswers,
+        allQuestionIds: testData?.allQuestionIds || [],
+        timeTakenSeconds: timeTaken,
       });
     }
   };
@@ -303,23 +514,33 @@ const MockTestPage = () => {
               </div>
             </div>
 
-            {/* Section Breakdown */}
+            {/* Section / Stage Breakdown */}
             <div className="space-y-3 pt-2 text-left">
               <span className="text-xs font-black uppercase tracking-wider text-base-content/60 block">
-                Section-Wise Breakdown
+                {testReport.stageBreakdown ? "Stage-Wise Assessment Breakdown" : "Section-Wise Breakdown"}
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Object.entries(testReport.categoryBreakdown || {}).map(([cat, val]) => (
-                  <div key={cat} className="p-3.5 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-1">
+                {Object.entries(testReport.stageBreakdown || testReport.categoryBreakdown || {}).map(([name, val]) => (
+                  <div key={name} className="p-4 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-1.5 shadow-xs">
                     <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="capitalize">{cat}</span>
+                      <span className="font-extrabold text-base-content">{name}</span>
                       <span className="text-primary font-black">{val.score} / {val.total} marks</span>
                     </div>
-                    <div className="w-full bg-base-200 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-base-300 rounded-full h-2.5 overflow-hidden">
                       <div
-                        className="bg-primary h-full rounded-full"
+                        className={`h-full rounded-full transition-all ${
+                          val.total > 0 && val.score === val.total
+                            ? "bg-emerald-500"
+                            : val.score > 0
+                            ? "bg-primary"
+                            : "bg-base-content/20"
+                        }`}
                         style={{ width: `${val.total > 0 ? (val.score / val.total) * 100 : 0}%` }}
                       />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-base-content/50 font-bold pt-0.5">
+                      <span>{val.total > 0 ? Math.round((val.score / val.total) * 100) : 0}% Accuracy</span>
+                      <span className="uppercase">{val.category || "Assessment"}</span>
                     </div>
                   </div>
                 ))}
@@ -342,10 +563,22 @@ const MockTestPage = () => {
               </div>
             )}
 
-            <div className="flex justify-center gap-3 pt-4">
+            <div className="flex flex-wrap justify-center gap-3 pt-4">
               <Link to={`/placement/${companyId}`} className="btn btn-primary rounded-2xl font-black text-xs uppercase tracking-wider px-6">
                 Back to Company Track
               </Link>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem(storageKey);
+                  } catch (e) {}
+                  window.location.reload();
+                }}
+                className="btn btn-outline btn-primary rounded-2xl font-black text-xs uppercase tracking-wider px-6 gap-2"
+              >
+                <RotateCcw className="size-4" />
+                Retake Assessment
+              </button>
             </div>
           </div>
         </div>
@@ -591,68 +824,241 @@ const MockTestPage = () => {
           ) : (
             /* ── FULL CODING PROBLEM & LIVE MONACO COMPILER LAYOUT ── */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              {/* Left Pane: Problem Details (5 Cols) */}
               <div className="lg:col-span-5 bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-md space-y-5 flex flex-col justify-between max-h-[780px] overflow-y-auto custom-scrollbar">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-base-content/5 pb-3">
-                    <span className="text-xs font-black uppercase tracking-widest text-primary">
-                      Coding Challenge {currentQuestionIndex + 1} of {currentQuestions.length}
-                    </span>
-                    <span className="badge badge-sm font-bold bg-base-200 uppercase text-[10px]">
-                      {currentQuestion.difficulty || "Medium"}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h2 className="text-lg font-black text-base-content">{currentQuestion.title}</h2>
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      {(currentQuestion.tags || ["Coding Assessment", "Algorithms"]).map((t, idx) => (
-                        <span key={idx} className="badge badge-xs font-bold bg-base-200 text-base-content/60">
-                          {t}
+                  {/* If Debugging Round: AI is STRICTLY DISABLED */}
+                  {!isDebuggingQuestion && (
+                    <div className="flex items-center gap-1.5 p-1 bg-base-200/80 rounded-2xl border border-base-content/5">
+                      <button
+                        onClick={() => setCodingLeftTab("description")}
+                        className={`flex-1 py-1.5 text-xs font-black rounded-xl transition-all ${
+                          codingLeftTab === "description"
+                            ? "bg-base-100 text-base-content shadow-xs"
+                            : "text-base-content/60 hover:text-base-content"
+                        }`}
+                      >
+                        Problem Details
+                      </button>
+                      <button
+                        onClick={() => setCodingLeftTab("copilot")}
+                        className={`flex-1 py-1.5 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+                          codingLeftTab === "copilot"
+                            ? "bg-primary text-primary-content shadow-xs"
+                            : "text-primary hover:bg-primary/10"
+                        }`}
+                      >
+                        <Sparkles className="size-3.5" />
+                        <span>Ask AI Copilot</span>
+                        <span className="badge badge-xs bg-primary-content/20 text-current font-extrabold uppercase text-[9px]">
+                          Round 3
                         </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-xs text-base-content/80 leading-relaxed whitespace-pre-line">
-                    <p>{currentQuestion.problemDescription || currentQuestion.description}</p>
-                  </div>
-
-                  {/* Examples */}
-                  {currentQuestion.testCases && currentQuestion.testCases.length > 0 && (
-                    <div className="space-y-3 pt-2">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-base-content/50 block">
-                        Example Test Cases
-                      </span>
-                      {currentQuestion.testCases.slice(0, 2).map((tc, idx) => (
-                        <div key={idx} className="p-3 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-1.5 text-xs font-mono">
-                          <div>
-                            <span className="font-bold text-base-content/50">Input: </span>
-                            <span className="text-base-content font-semibold">{tc.input}</span>
-                          </div>
-                          <div>
-                            <span className="font-bold text-base-content/50">Expected: </span>
-                            <span className="text-emerald-500 font-bold">{tc.output}</span>
-                          </div>
-                          {tc.explanation && (
-                            <p className="text-[11px] font-sans text-base-content/60 pt-1">{tc.explanation}</p>
-                          )}
-                        </div>
-                      ))}
+                      </button>
                     </div>
                   )}
 
-                  {/* Constraints */}
-                  {currentQuestion.constraints && (
-                    <div className="p-3 bg-base-200/40 rounded-2xl text-xs space-y-1">
-                      <span className="font-bold text-[11px] uppercase text-base-content/50 block">Constraints:</span>
-                      <ul className="list-disc list-inside text-base-content/70 text-[11px] space-y-0.5">
-                        {Array.isArray(currentQuestion.constraints) ? (
-                          currentQuestion.constraints.map((c, idx) => <li key={idx}>{c}</li>)
-                        ) : (
-                          <li>{currentQuestion.constraints}</li>
+                  {isDebuggingQuestion || codingLeftTab === "description" ? (
+                    <>
+                      <div className="flex items-center justify-between border-b border-base-content/5 pb-3">
+                        <span className="text-xs font-black uppercase tracking-widest text-primary">
+                          Coding Challenge {currentQuestionIndex + 1} of {currentQuestions.length}
+                        </span>
+                        <span className="badge badge-sm font-bold bg-base-200 uppercase text-[10px]">
+                          {currentQuestion.difficulty || "Medium"}
+                        </span>
+                      </div>
+
+                      <div>
+                        <h2 className="text-lg font-black text-base-content">{currentQuestion.title}</h2>
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          {(currentQuestion.tags || ["Coding Assessment", "Algorithms"]).map((t, idx) => (
+                            <span key={idx} className="badge badge-xs font-bold bg-base-200 text-base-content/60">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Stage-Specific Context Banner */}
+                      {isDebuggingQuestion ? (
+                        <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-1 text-xs">
+                          <span className="font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                            <Bug className="size-3.5" />
+                            Round 2: Hands-On Code Debugging (No AI Allowed)
+                          </span>
+                          <p className="text-[11px] text-base-content/80 font-medium">
+                            The starter code preloaded in the compiler has <strong>intentional bugs</strong>. Analyze the code, find the errors, and fix them in the editor. AI Copilot is strictly disabled for this round.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-3.5 bg-primary/10 border border-primary/20 rounded-2xl space-y-1 text-xs">
+                          <span className="font-extrabold text-primary flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                            <Sparkles className="size-3.5" />
+                            Round 3: AI-Assisted Coding Studio
+                          </span>
+                          <p className="text-[11px] text-base-content/80 font-medium">
+                            Need guidance? Click <strong>"Ask AI Copilot"</strong> tab above to get intuition clues, edge-case hints, and strategy advice (AI will never write the full code for you).
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2 text-xs text-base-content/80 leading-relaxed whitespace-pre-line">
+                        <p>{currentQuestion.problemDescription || currentQuestion.description}</p>
+                      </div>
+
+                      {/* Examples & Test Cases */}
+                      {((currentQuestion.examples && currentQuestion.examples.length > 0) || (currentQuestion.testCases && currentQuestion.testCases.length > 0)) && (
+                        <div className="space-y-3 pt-2">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-base-content/50 block">
+                            Example Test Cases
+                          </span>
+                          {(currentQuestion.examples && currentQuestion.examples.length > 0
+                            ? currentQuestion.examples
+                            : currentQuestion.testCases.slice(0, 2)
+                          ).map((ex, idx) => (
+                            <div key={idx} className="p-3 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-1.5 text-xs font-mono">
+                              <div>
+                                <span className="font-bold text-base-content/50">Input: </span>
+                                <span className="text-base-content font-semibold">{ex.input}</span>
+                              </div>
+                              <div>
+                                <span className="font-bold text-base-content/50">Expected: </span>
+                                <span className="text-emerald-500 font-bold">{ex.expectedOutput || ex.output || "—"}</span>
+                              </div>
+                              {ex.explanation && (
+                                <p className="text-[11px] font-sans text-base-content/60 pt-1">{ex.explanation}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Constraints */}
+                      {currentQuestion.constraints && (
+                        <div className="p-3 bg-base-200/40 rounded-2xl text-xs space-y-1">
+                          <span className="font-bold text-[11px] uppercase text-base-content/50 block">Constraints:</span>
+                          <ul className="list-disc list-inside text-base-content/70 text-[11px] space-y-0.5">
+                            {Array.isArray(currentQuestion.constraints) ? (
+                              currentQuestion.constraints.map((c, idx) => <li key={idx}>{c}</li>)
+                            ) : (
+                              <li>{currentQuestion.constraints}</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* ── LIVE INTERACTIVE AI COPILOT CHAT PANE ── */
+                    <div className="space-y-3.5 text-xs leading-relaxed animate-in fade-in flex flex-col h-full">
+                      {/* Banner */}
+                      <div className="p-3 bg-gradient-to-br from-primary/15 via-base-200 to-secondary/15 rounded-2xl border border-primary/20 space-y-1 shadow-xs">
+                        <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-wider">
+                          <Sparkles className="size-4" />
+                          <span>AI Mentor &amp; Clue Assistant</span>
+                        </div>
+                        <p className="text-[11px] text-base-content/80 font-medium">
+                          Ask for intuition clues, edge-case checks, and time/space advice. AI will never write full answers or code.
+                        </p>
+                      </div>
+
+                      {/* Quick Prompt Chips */}
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          onClick={() => handleAskAiCopilot("Can you give me high-level intuition clues and what data structure to use?")}
+                          disabled={isAiLoading}
+                          className="px-2.5 py-1 rounded-xl bg-base-200 hover:bg-primary/15 hover:text-primary border border-base-content/10 text-[11px] font-bold transition-all text-left cursor-pointer"
+                        >
+                          💡 Intuition Clues
+                        </button>
+                        <button
+                          onClick={() => handleAskAiCopilot("What are the critical edge cases to watch out for?")}
+                          disabled={isAiLoading}
+                          className="px-2.5 py-1 rounded-xl bg-base-200 hover:bg-primary/15 hover:text-primary border border-base-content/10 text-[11px] font-bold transition-all text-left cursor-pointer"
+                        >
+                          ⚠️ Key Edge Cases
+                        </button>
+                        <button
+                          onClick={() => handleAskAiCopilot("What is the optimal time and space complexity requirement?")}
+                          disabled={isAiLoading}
+                          className="px-2.5 py-1 rounded-xl bg-base-200 hover:bg-primary/15 hover:text-primary border border-base-content/10 text-[11px] font-bold transition-all text-left cursor-pointer"
+                        >
+                          ⏱️ Complexity Limits
+                        </button>
+                        <button
+                          onClick={() => handleAskAiCopilot("Review my current code logic and tell me if my approach has any flaws.")}
+                          disabled={isAiLoading}
+                          className="px-2.5 py-1 rounded-xl bg-base-200 hover:bg-primary/15 hover:text-primary border border-base-content/10 text-[11px] font-bold transition-all text-left cursor-pointer"
+                        >
+                          🔍 Review My Logic
+                        </button>
+                      </div>
+
+                      {/* Chat Messages Feed */}
+                      <div className="space-y-3 max-h-[360px] overflow-y-auto custom-scrollbar p-2 bg-base-200/40 rounded-2xl border border-base-content/5">
+                        {(aiChatMap[currentQuestion._id] || [
+                          {
+                            role: "assistant",
+                            text: "👋 I'm your AI Coding Copilot for Round 3. Ask me for intuition clues, edge-case checks, or algorithmic strategies. (Note: I will guide your thinking, but will never write the complete code for you!)",
+                          },
+                        ]).map((msg, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-start gap-2 ${
+                              msg.role === "user" ? "flex-row-reverse" : "flex-row"
+                            }`}
+                          >
+                            <div
+                              className={`size-6 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold ${
+                                msg.role === "user"
+                                  ? "bg-primary text-primary-content"
+                                  : "bg-secondary/20 text-secondary"
+                              }`}
+                            >
+                              {msg.role === "user" ? <User className="size-3.5" /> : <Bot className="size-3.5" />}
+                            </div>
+                            <div
+                              className={`p-3 rounded-2xl text-xs leading-relaxed max-w-[85%] whitespace-pre-line ${
+                                msg.role === "user"
+                                  ? "bg-primary text-primary-content rounded-tr-none font-medium"
+                                  : "bg-base-100 text-base-content border border-base-content/10 rounded-tl-none font-medium shadow-xs"
+                              }`}
+                            >
+                              {msg.text}
+                            </div>
+                          </div>
+                        ))}
+
+                        {isAiLoading && (
+                          <div className="flex items-center gap-2 text-xs text-base-content/60 italic p-2 bg-base-100 rounded-xl border border-base-content/5">
+                            <Loader2 className="size-3.5 animate-spin text-primary" />
+                            <span>AI Copilot is analyzing clues...</span>
+                          </div>
                         )}
-                      </ul>
+                      </div>
+
+                      {/* Interactive Chat Input */}
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAskAiCopilot();
+                        }}
+                        className="flex items-center gap-2 pt-1"
+                      >
+                        <input
+                          type="text"
+                          value={aiInputText}
+                          onChange={(e) => setAiInputText(e.target.value)}
+                          placeholder="Ask AI for a hint or edge-case..."
+                          disabled={isAiLoading}
+                          className="input input-sm flex-1 rounded-xl bg-base-200 border-base-content/10 text-xs focus:border-primary focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isAiLoading || !aiInputText.trim()}
+                          className="btn btn-sm btn-primary rounded-xl px-3 font-bold gap-1 text-xs shadow-xs"
+                        >
+                          <Send className="size-3.5" />
+                        </button>
+                      </form>
                     </div>
                   )}
                 </div>
@@ -693,18 +1099,32 @@ const MockTestPage = () => {
                     {currentQuestionIndex < currentQuestions.length - 1 ? (
                       <button
                         onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
-                        className="btn btn-neutral btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-3"
+                        className="btn btn-neutral btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-3 gap-1"
                       >
-                        <span>Next</span>
+                        <span>Next Question</span>
+                        <ChevronRight className="size-3.5" />
+                      </button>
+                    ) : activeSectionIndex < sections.length - 1 ? (
+                      <button
+                        onClick={() => {
+                          const nextSec = activeSectionIndex + 1;
+                          setActiveSectionIndex(nextSec);
+                          setCurrentQuestionIndex(0);
+                          toast.success(`Advanced to ${sections[nextSec]?.sectionName}`);
+                        }}
+                        className="btn btn-secondary text-secondary-content btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-4 shadow-md gap-1.5"
+                      >
+                        <span>Next Round →</span>
                         <ChevronRight className="size-3.5" />
                       </button>
                     ) : (
                       <button
                         onClick={handleManualSubmit}
                         disabled={isSubmitting}
-                        className="btn btn-success text-white btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-4 shadow-md"
+                        className="btn btn-success text-white btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-4 shadow-md gap-1.5"
                       >
-                        <span>Finish OA</span>
+                        <Send className="size-3.5" />
+                        <span>{isSubmitting ? "Submitting..." : "Finish OA"}</span>
                       </button>
                     )}
                   </div>
@@ -827,18 +1247,20 @@ const MockTestPage = () => {
                       </button>
                     </div>
 
-                    <button
-                      onClick={handleRunCode}
-                      disabled={isExecutingCode}
-                      className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider gap-1.5 shadow-md px-5"
-                    >
-                      {isExecutingCode ? (
-                        <span className="loading loading-spinner size-3.5" />
-                      ) : (
-                        <Play className="size-3.5 fill-current" />
-                      )}
-                      <span>Run Code</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleRunCode(false)}
+                        disabled={isExecutingCode}
+                        className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider gap-1.5 shadow-md px-5"
+                      >
+                        {isExecutingCode ? (
+                          <span className="loading loading-spinner size-3.5" />
+                        ) : (
+                          <Play className="size-3.5 fill-current" />
+                        )}
+                        <span>Run Code</span>
+                      </button>
+                    </div>
                   </div>
 
                   {activeCodingTab === "editor" ? (
@@ -858,19 +1280,39 @@ const MockTestPage = () => {
                             <div className="flex items-center justify-between text-[11px] pb-1 border-b border-white/10">
                               <span
                                 className={`font-bold ${
-                                  !runResult.error ? "text-emerald-400" : "text-rose-400"
+                                  runResult.error
+                                    ? "text-rose-400"
+                                    : runResult.isMatch === false
+                                    ? "text-rose-400"
+                                    : runResult.isMatch === true
+                                    ? "text-emerald-400"
+                                    : "text-cyan-400"
                                 }`}
                               >
-                                Status: {!runResult.error ? "Success ✓" : "Runtime/Compile Error"}
+                                Status:{" "}
+                                {runResult.error
+                                  ? "Runtime / Compile Error ✗"
+                                  : runResult.isMatch === false
+                                  ? "Wrong Answer ✗"
+                                  : runResult.isMatch === true
+                                  ? "Passed ✓"
+                                  : "Execution Finished"}
                               </span>
                               {runResult.executionTime && (
                                 <span className="text-white/40">{runResult.executionTime}ms</span>
                               )}
                             </div>
+                            {runResult.expectedOutput && (
+                              <div className="text-[10px] text-white/60">
+                                Expected: <span className="text-emerald-400 font-mono">{runResult.expectedOutput}</span>
+                              </div>
+                            )}
                             {runResult.output && (
                               <div>
-                                <span className="text-white/40 block text-[10px]">STDOUT:</span>
-                                <pre className="text-emerald-300 whitespace-pre-wrap">{runResult.output}</pre>
+                                <span className="text-white/40 block text-[10px]">Actual Output:</span>
+                                <pre className={`${runResult.isMatch === false ? "text-rose-300" : "text-emerald-300"} whitespace-pre-wrap`}>
+                                  {runResult.output}
+                                </pre>
                               </div>
                             )}
                             {runResult.error && (

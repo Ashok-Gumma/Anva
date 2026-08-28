@@ -3,6 +3,8 @@ import PlacementQuestion from "../models/PlacementQuestion.js";
 import { APTITUDE_QUESTIONS, TECHNICAL_QUESTIONS } from "./placementQuestionsData.js";
 import { CODING_QUESTIONS } from "./placementCodingQuestionsData.js";
 import { NEW_MNC_QUESTIONS } from "./newMncQuestionsData.js";
+import { PLACEMENT_2026_QUESTIONS, CODING_2026_QUESTIONS } from "./newPlacement2026Data.js";
+import { INTERVIEW_QUESTIONS_DATA } from "./interviewQuestionsData.js";
 
 export const COMPANIES_DATA = [
   {
@@ -100,17 +102,18 @@ export const COMPANIES_DATA = [
     slug: "tcs",
     name: "TCS",
     logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Tata_Consultancy_Services_Logo.svg/512px-Tata_Consultancy_Services_Logo.svg.png",
-    description: "Tata Consultancy Services — India's largest IT multinational offering Ninja, Digital, and Prime hiring cadres.",
+    description: "Tata Consultancy Services — India's largest IT multinational offering Ninja (3.6 LPA), Digital (7.5 LPA), and Prime (9-11 LPA) hiring cadres.",
     tier: "IT & Consulting Leader",
     hiringRoles: ["TCS Ninja (3.6 LPA)", "TCS Digital (7.5 LPA)", "TCS Prime (9-11 LPA)"],
     rounds: [
-      { name: "TCS NQT Assessment", type: "Online Assessment", description: "Numerical Ability, Verbal Ability, Reasoning Ability & Hands-on Coding.", duration: "120 mins" },
-      { name: "Technical Interview", type: "Technical Interview", description: "C/Java/Python basics, SQL queries, OOPs concepts, Final Year Project.", duration: "30-45 mins" },
-      { name: "Managerial & HR", type: "HR / Behavioral", description: "Work relocation flexibility, behavioral questions, background check.", duration: "20 mins" },
+      { name: "TCS NQT Foundation", type: "Online Assessment", description: "Numerical Ability, Verbal Ability & Reasoning Ability (Ninja/Digital/Prime Qualifier).", duration: "75 mins" },
+      { name: "TCS NQT Advanced", type: "Online Assessment", description: "Advanced Quantitative, Advanced Reasoning & 2 Coding Questions for Digital/Prime.", duration: "90 mins" },
+      { name: "Technical Interview", type: "Technical Interview", description: "DSA, C/Java/Python, SQL Queries, OOPs & Final Year Project.", duration: "35 mins" },
+      { name: "Managerial & HR Interview", type: "HR / Behavioral", description: "Workplace scenarios, career goals, relocation flexibility.", duration: "20 mins" },
     ],
     popular: true,
     active: true,
-    stats: { totalQuestions: 70, totalCoding: 14, avgPackage: "4-11 LPA", difficulty: "Easy-Medium" },
+    stats: { totalQuestions: 75, totalCoding: 16, avgPackage: "4-11 LPA", difficulty: "Easy-Medium" },
     order: 6,
   },
   {
@@ -121,29 +124,29 @@ export const COMPANIES_DATA = [
     tier: "IT & Consulting Leader",
     hiringRoles: ["System Engineer (SE)", "Digital Specialist Engineer (DSE)", "Specialist Programmer (SP)"],
     rounds: [
-      { name: "Infosys Online Test", type: "Online Assessment", description: "Reasoning Ability, Technical Ability, Verbal Ability, Pseudo-code & Coding.", duration: "100 mins" },
-      { name: "Technical Interview", type: "Technical Interview", description: "Data Structures, Database Management Systems, Projects.", duration: "35 mins" },
-      { name: "HR Interview", type: "HR / Behavioral", description: "Strengths, communication, and team scenarios.", duration: "15 mins" },
+      { name: "Infosys Online Test", type: "Online Assessment", description: "Reasoning Ability, Mathematical Ability, Verbal Ability, Pseudocode & Puzzle Solving.", duration: "100 mins" },
+      { name: "Hands-on Coding (SP/DSE)", type: "Online Assessment", description: "3 Advanced DSA problems on DP, Graph Traversal & Greedy Algorithms.", duration: "180 mins" },
+      { name: "Technical & HR Interview", type: "Technical Interview", description: "Data Structures, Database Management Systems, Projects & Behavioral fit.", duration: "40 mins" },
     ],
     popular: true,
     active: true,
-    stats: { totalQuestions: 65, totalCoding: 14, avgPackage: "4-9.5 LPA", difficulty: "Easy-Medium" },
+    stats: { totalQuestions: 70, totalCoding: 15, avgPackage: "4-9.5 LPA", difficulty: "Easy-Medium" },
     order: 7,
   },
   {
     slug: "wipro",
     name: "Wipro",
     logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Wipro_Primary_Logo_Color_RGB.svg/512px-Wipro_Primary_Logo_Color_RGB.svg.png",
-    description: "Leading technology services and consulting company offering Elite and Turbo career tracks.",
+    description: "Leading technology services and consulting company offering Elite National Talent Hunt and Turbo career tracks.",
     tier: "IT & Consulting Leader",
     hiringRoles: ["Project Engineer - Elite", "Turbo Candidate", "Cloud Associate"],
     rounds: [
-      { name: "National Qualifier Test", type: "Online Assessment", description: "Aptitude, Logical, Verbal, Essay Writing, and 2 Coding questions.", duration: "120 mins" },
-      { name: "Combined Tech + HR Interview", type: "Technical Interview", description: "Core CS, language fundamentals, and resume walkthrough.", duration: "30 mins" },
+      { name: "National Qualifier Test", type: "Online Assessment", description: "Aptitude, Logical Reasoning, Verbal, Essay Writing, and Automata Fix / Debugging Coding.", duration: "120 mins" },
+      { name: "Combined Tech + HR Interview", type: "Technical Interview", description: "Core CS, language fundamentals, code walkthrough, and behavioral alignment.", duration: "30 mins" },
     ],
     popular: false,
     active: true,
-    stats: { totalQuestions: 55, totalCoding: 12, avgPackage: "3.5-7 LPA", difficulty: "Easy-Medium" },
+    stats: { totalQuestions: 58, totalCoding: 13, avgPackage: "3.5-7 LPA", difficulty: "Easy-Medium" },
     order: 8,
   },
   {
@@ -155,13 +158,13 @@ export const COMPANIES_DATA = [
     hiringRoles: ["Associate Software Engineer (ASE)", "Advanced Associate Software Engineer (AASE)"],
     rounds: [
       { name: "Cognitive & Technical Assessment", type: "Online Assessment", description: "English Ability, Critical Thinking, Abstract Reasoning, Common Applications, MS Office, Pseudocode & Network Security.", duration: "90 mins" },
-      { name: "Coding Assessment", type: "Online Assessment", description: "2 Hands-on Coding questions.", duration: "45 mins" },
-      { name: "Communication Assessment", type: "Online Assessment", description: "Automated spoken English, sentence repetition & comprehension.", duration: "20 mins" },
-      { name: "HR & Technical Interview", type: "HR / Behavioral", description: "Behavioral and technical blend.", duration: "30 mins" },
+      { name: "Coding Assessment", type: "Online Assessment", description: "2 Hands-on Coding questions (Binary string / array problems in C++/Java/Python).", duration: "45 mins" },
+      { name: "Communication Assessment", type: "Online Assessment", description: "AI-proctored spoken English, sentence repetition, reading fluency & comprehension.", duration: "20 mins" },
+      { name: "HR & Technical Interview", type: "HR / Behavioral", description: "Project deep-dive, technical fundamentals, and behavioral questions.", duration: "30 mins" },
     ],
     popular: true,
     active: true,
-    stats: { totalQuestions: 62, totalCoding: 14, avgPackage: "4.5-8.5 LPA", difficulty: "Easy-Medium" },
+    stats: { totalQuestions: 68, totalCoding: 16, avgPackage: "4.5-8.5 LPA", difficulty: "Easy-Medium" },
     order: 9,
   },
   {
@@ -189,30 +192,31 @@ export const COMPANIES_DATA = [
     tier: "IT & Consulting Leader",
     hiringRoles: ["GenC", "GenC Elevate", "GenC Next"],
     rounds: [
-      { name: "Cognizant Assessment", type: "Online Assessment", description: "Quantitative, Analytical, Verbal, Skill-based Assessment & Coding.", duration: "100 mins" },
-      { name: "Technical Interview", type: "Technical Interview", description: "Java/Python, DBMS, HTML/CSS/JS, projects.", duration: "30 mins" },
-      { name: "HR Interview", type: "HR / Behavioral", description: "Personality and suitability assessment.", duration: "15 mins" },
+      { name: "Communication Assessment", type: "Online Assessment", description: "Automated AI listening, spoken English, and comprehension test.", duration: "30 mins" },
+      { name: "Skill & Coding Assessment", type: "Online Assessment", description: "Quantitative, Analytical, Core CS MCQs (OS, DBMS, SQL) & 2 Coding Problems.", duration: "100 mins" },
+      { name: "Technical & HR Interview", type: "Technical Interview", description: "Java/Python, DBMS, SQL joins, DSA and project architecture.", duration: "35 mins" },
     ],
     popular: false,
     active: true,
-    stats: { totalQuestions: 52, totalCoding: 11, avgPackage: "4-7.5 LPA", difficulty: "Easy-Medium" },
+    stats: { totalQuestions: 58, totalCoding: 13, avgPackage: "4-7.5 LPA", difficulty: "Easy-Medium" },
     order: 11,
   },
   {
     slug: "capgemini",
     name: "Capgemini",
     logo: "https://www.vectorlogo.zone/logos/capgemini/capgemini-icon.svg",
-    description: "Global leader in partnering with companies to transform and manage their business by harnessing technology.",
+    description: "Global leader in digital transformation and technology consulting hiring Software Analysts with a newly updated assessment pipeline.",
     tier: "IT & Consulting Leader",
-    hiringRoles: ["Software Analyst", "Senior Software Analyst"],
+    hiringRoles: ["Software Analyst (4.25 LPA)", "Senior Software Analyst (5.75 - 7.5 LPA)"],
     rounds: [
-      { name: "Online Test", type: "Online Assessment", description: "Pseudocode, English Communication, Game-based Aptitude & Coding.", duration: "110 mins" },
-      { name: "Technical Round", type: "Technical Interview", description: "C/C++/Java basics, Data Structures, and mini projects.", duration: "30 mins" },
-      { name: "HR Round", type: "HR / Behavioral", description: "Behavioral interview and readiness to work.", duration: "15 mins" },
+      { name: "Round 1: Foundation & AI Assessment", type: "Online Assessment", description: "Combined Versant English Communication, AI Literacy & Generative AI fundamentals, and Cognitive Game tests.", duration: "40 mins" },
+      { name: "Round 2: Hands-On Debugging Round", type: "Online Assessment", description: "Interactive compiler round: identify and fix preloaded bugs in Java, Python, C++, and JS.", duration: "30 mins" },
+      { name: "Round 3: AI-Assisted Coding Round", type: "Online Assessment", description: "Solve algorithmic problem statements with Copilot prompt strategies & Monaco test runner.", duration: "45 mins" },
+      { name: "Round 4: Technical & HR Interview", type: "Technical Interview", description: "Resume defense, project deep-dive, core CS fundamentals, and STAR behavioral round.", duration: "40 mins" },
     ],
-    popular: false,
+    popular: true,
     active: true,
-    stats: { totalQuestions: 52, totalCoding: 11, avgPackage: "4.25-7.5 LPA", difficulty: "Easy-Medium" },
+    stats: { totalQuestions: 65, totalCoding: 15, avgPackage: "4.25-7.5 LPA", difficulty: "Easy-Medium" },
     order: 12,
   },
   {
@@ -1009,6 +1013,9 @@ export const seedPlacementData = async () => {
       ...TECHNICAL_QUESTIONS,
       ...CODING_QUESTIONS,
       ...NEW_MNC_QUESTIONS,
+      ...PLACEMENT_2026_QUESTIONS,
+      ...CODING_2026_QUESTIONS,
+      ...INTERVIEW_QUESTIONS_DATA,
     ];
     console.log(`🌱 Synchronizing ${allQuestions.length} Placement Questions across all categories...`);
     

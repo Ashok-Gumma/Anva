@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Editor from "@monaco-editor/react";
+import toast from "react-hot-toast";
 import {
   Code2,
   ArrowLeft,
@@ -94,12 +95,20 @@ const CodingProblemPage = () => {
   const question = data?.question || null;
   const lastLoadedKeyRef = useRef("");
 
-  // Initialize code only when opening a new problem or switching language
+  // Initialize code only when opening a new problem or switching language (with localStorage draft support)
   useEffect(() => {
     if (question?._id) {
       const loadKey = `${question._id}_${selectedLanguage}`;
       if (lastLoadedKeyRef.current !== loadKey) {
         lastLoadedKeyRef.current = loadKey;
+
+        try {
+          const draftCode = localStorage.getItem(`anva_draft_code_${question._id}_${selectedLanguage}`);
+          if (draftCode) {
+            setCode(draftCode);
+            return;
+          }
+        } catch (e) {}
 
         // If user already had a saved code for this language, load it; otherwise starter code
         if (question.userAttempt?.code && question.userAttempt?.language === selectedLanguage) {
@@ -265,6 +274,7 @@ const CodingProblemPage = () => {
               { id: "description", label: "Brief", icon: Code2 },
               { id: "hints", label: `Hints (${question.hints?.length || 0})`, icon: Lightbulb },
               { id: "approach", label: "Approach", icon: Layers },
+              { id: "ai-assistant", label: "AI Copilot & Debugging", icon: Sparkles },
               { id: "solution", label: "Solution", icon: Unlock },
             ].map((tab) => (
               <button
@@ -452,6 +462,88 @@ const CodingProblemPage = () => {
               </div>
             )}
 
+            {/* AI Assistant & Copilot (2026 Process) */}
+            {activeLeftTab === "ai-assistant" && (
+              <div className="space-y-4 text-xs leading-relaxed animate-in fade-in">
+                {/* Banner */}
+                <div className="p-4 bg-gradient-to-br from-primary/15 via-base-200 to-secondary/15 rounded-2xl border border-primary/20 space-y-1.5 shadow-xs">
+                  <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-wider">
+                    <Sparkles className="size-4" />
+                    <span>AI-Assisted Coding Copilot</span>
+                  </div>
+                  <p className="text-[11px] text-base-content/80 font-medium">
+                    Use AI for problem intuition, conceptual clues, and edge-case validation. Focus on understanding the logic before writing code.
+                  </p>
+                </div>
+
+                {/* Problem Brief & Intuition Clues */}
+                <div className="p-4 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-2">
+                  <span className="font-extrabold text-xs text-primary uppercase tracking-wider block flex items-center gap-1.5">
+                    <Lightbulb className="size-3.5 text-amber-500" />
+                    Problem Brief &amp; Intuition Clues
+                  </span>
+                  <p className="text-base-content/90 font-medium text-xs leading-relaxed">
+                    {question.approach || "Break the problem down into input constraints, optimal data structures (e.g. Hash Map, Two Pointers, Sliding Window), and target time complexity."}
+                  </p>
+                  {question.hints && question.hints.length > 0 && (
+                    <div className="pt-2 border-t border-base-content/5 space-y-1">
+                      <span className="font-bold text-[10px] uppercase text-base-content/60">Strategy Clues:</span>
+                      <ul className="list-disc list-inside text-[11px] text-base-content/80 space-y-1">
+                        {question.hints.map((h, i) => (
+                          <li key={i}>{h}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Optimal AI Prompt Strategy */}
+                <div className="p-4 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-base-content uppercase tracking-wider flex items-center gap-1.5">
+                      <Terminal className="size-3.5 text-primary" />
+                      Suggested AI Prompt Strategy
+                    </span>
+                    <button
+                      onClick={() => {
+                        const promptText = `Explain the optimal algorithmic approach for: "${question.title}".\nRequirements:\n1. Provide the high-level intuition and time/space complexity.\n2. Do NOT write full code; provide pseudocode and step-by-step logic.\n3. List key edge cases to handle.`;
+                        navigator.clipboard.writeText(promptText);
+                        toast.success("AI Prompt template copied! 📋");
+                      }}
+                      className="btn btn-xs btn-primary rounded-xl font-bold gap-1 text-[11px]"
+                    >
+                      <Copy className="size-3" />
+                      Copy Prompt
+                    </button>
+                  </div>
+                  <div className="p-3 bg-base-100 rounded-xl border border-base-content/10 font-mono text-[11px] text-base-content/80 whitespace-pre-line leading-snug">
+                    {`"Explain the intuition for '${question.title}'. Target Time: ${question.timeComplexity || "O(n)"}, Space: ${question.spaceComplexity || "O(1)"}. Give step-by-step logic and edge cases without full code."`}
+                  </div>
+                </div>
+
+                {/* Common AI Traps & Bugs Checklist */}
+                <div className="p-4 bg-base-200/60 rounded-2xl border border-base-content/5 space-y-2.5">
+                  <span className="font-extrabold text-xs text-base-content uppercase tracking-wider block">
+                    🐞 Top Edge Cases to Watch Out For
+                  </span>
+                  <ul className="space-y-1.5 text-[11px] text-base-content/80 font-medium">
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning font-bold shrink-0">⚠️</span>
+                      <span><strong>Boundary Conditions:</strong> Empty input ($N=0$), single element ($N=1$), or maximum constraints.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning font-bold shrink-0">⚠️</span>
+                      <span><strong>Duplicates &amp; In-place Mutations:</strong> Ensure elements are not prematurely overwritten or returned early.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-warning font-bold shrink-0">⚠️</span>
+                      <span><strong>Type &amp; Overflow Limits:</strong> Account for negative values and integer range bounds.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
             {/* Solution Tab */}
             {activeLeftTab === "solution" && (
               <div className="space-y-4">
@@ -528,6 +620,12 @@ const CodingProblemPage = () => {
                     const starter =
                       question.starterCode?.[selectedLanguage] || CODE_TEMPLATES[selectedLanguage];
                     setCode(starter);
+                    if (question?._id) {
+                      try {
+                        localStorage.removeItem(`anva_draft_code_${question._id}_${selectedLanguage}`);
+                      } catch (e) {}
+                    }
+                    toast.success("Code reset to template.");
                   }}
                   className="btn btn-ghost btn-xs rounded-lg text-[11px] font-bold gap-1 text-base-content/70 hover:text-base-content"
                   title="Reset to starter template"
@@ -553,7 +651,15 @@ const CodingProblemPage = () => {
                 height="100%"
                 language={selectedLanguage === "cpp" ? "cpp" : selectedLanguage}
                 value={code}
-                onChange={(val) => setCode(val || "")}
+                onChange={(val) => {
+                  const newCode = val || "";
+                  setCode(newCode);
+                  if (question?._id) {
+                    try {
+                      localStorage.setItem(`anva_draft_code_${question._id}_${selectedLanguage}`, newCode);
+                    } catch (e) {}
+                  }
+                }}
                 theme={editorTheme}
                 options={{
                   minimap: { enabled: false },

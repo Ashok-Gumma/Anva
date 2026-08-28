@@ -103,3 +103,11 @@ export const submitPlacementMockTest = async (data) => {
   const response = await axiosInstance.post("/placement/mock-test/submit", data);
   return response.data;
 };
+
+/**
+ * Ask AI Copilot for clues, intuition, edge cases, and algorithmic strategy
+ */
+export const askPlacementAiCopilot = async (data) => {
+  const response = await axiosInstance.post("/placement/ai-copilot", data);
+  return response.data;
+};

@@ -175,12 +175,11 @@ const placementQuestionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-placementQuestionSchema.index({ category: 1, companies: 1, topics: 1 });
 placementQuestionSchema.index({ category: 1, companies: 1, difficulty: 1 });
-placementQuestionSchema.index({ companies: 1, category: 1, frequency: 1, createdAt: -1 });
 placementQuestionSchema.index({ category: 1, topics: 1 });
+placementQuestionSchema.index({ companies: 1, category: 1, frequency: 1, createdAt: -1 });
 placementQuestionSchema.index({ category: 1, difficulty: 1 });
-placementQuestionSchema.index({ title: "text", description: "text", topics: "text" });
+placementQuestionSchema.index({ title: "text", description: "text" });
 
 const PlacementQuestion = mongoose.model("PlacementQuestion", placementQuestionSchema);
 

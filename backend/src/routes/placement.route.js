@@ -14,6 +14,7 @@ import {
   startMockTest,
   submitMockTest,
   resetProgress,
+  askPlacementAiCopilot,
 } from "../controllers/placement.controller.js";
 
 const router = express.Router();
@@ -31,6 +32,9 @@ router.post("/submit-answer", protectRoute, submitAnswer);
 router.post("/reset-progress", protectRoute, resetProgress);
 router.post("/run-code", protectRoute, runCodingTest);
 router.post("/submit-code", protectRoute, submitCodingSolution);
+
+// AI Copilot for AI-Assisted Coding (Strictly mentor clues, never full answers)
+router.post("/ai-copilot", protectRoute, askPlacementAiCopilot);
 
 // Bookmarks
 router.post("/bookmark", protectRoute, toggleBookmark);

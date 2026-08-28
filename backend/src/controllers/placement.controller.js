@@ -3,6 +3,7 @@ import PlacementQuestion from "../models/PlacementQuestion.js";
 import PlacementProgress from "../models/PlacementProgress.js";
 import axios from "axios";
 import vm from "vm";
+import { callAiApi } from "./assistant.controller.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Language mapping for sandboxed code execution
@@ -799,7 +800,7 @@ public class Main {
  */
 export const runCodingTest = async (req, res) => {
   try {
-    const { questionId, code, language, customInput } = req.body;
+    const { questionId, code, language, customInput, runOnlyCustom } = req.body;
 
     if (!code) {
       return res.status(400).json({ success: false, message: "Code cannot be empty." });
@@ -810,21 +811,39 @@ export const runCodingTest = async (req, res) => {
       return res.status(404).json({ success: false, message: "Question not found." });
     }
 
-    // If custom input provided, execute once
-    if (customInput !== undefined && customInput !== null && customInput.trim() !== "") {
+    const sampleInput = question.testCases?.[0]?.input;
+    const isCustomRun =
+      runOnlyCustom === true &&
+      customInput !== undefined &&
+      customInput !== null &&
+      customInput.trim() !== "";
+
+    // If explicit custom run requested
+    if (isCustomRun) {
       const result = await executeSandboxedCode(code, language, customInput);
+      const actualTrimmed = result.stdout.trim();
+      const matchedTc = (question.testCases || []).find((tc) => normalizeOutput(tc.input) === normalizeOutput(customInput));
+      const expectedTrimmed = (matchedTc?.expectedOutput || matchedTc?.output || "").trim();
+      const normActual = normalizeOutput(actualTrimmed);
+      const normExpected = normalizeOutput(expectedTrimmed);
+      const isCompileOrRuntimeError = Boolean(result.stderr);
+      const passed = !isCompileOrRuntimeError && Boolean(normExpected) && (normActual === normExpected);
+
       return res.status(200).json({
         success: true,
         customRun: true,
         output: result.stdout,
         error: result.stderr,
         stderr: result.stderr,
-        hasError: Boolean(result.stderr),
+        hasError: isCompileOrRuntimeError,
+        expectedOutput: expectedTrimmed,
+        passed,
+        isMatch: Boolean(normExpected) ? passed : null,
         executionTime: result.executionTime,
       });
     }
 
-    // Run against visible sample test cases
+    // Default: Run against ALL visible sample test cases
     const visibleCases = (question.testCases || []).filter((tc) => !tc.isHidden);
     const testResults = [];
 
@@ -833,22 +852,24 @@ export const runCodingTest = async (req, res) => {
       const runRes = await executeSandboxedCode(code, language, tc.input);
 
       const actualTrimmed = runRes.stdout.trim();
-      const expectedTrimmed = (tc.expectedOutput || "").trim();
+      const expectedTrimmed = (tc.expectedOutput || tc.output || "").trim();
 
       const normActual = normalizeOutput(actualTrimmed);
       const normExpected = normalizeOutput(expectedTrimmed);
 
       const isCompileOrRuntimeError = Boolean(runRes.stderr);
 
-      // Check if output matches
+      // Check if output matches EXACTLY
       const passed =
         !isCompileOrRuntimeError &&
-        (normActual === normExpected || normActual.includes(normExpected) || normExpected.includes(normActual));
+        normActual.length > 0 &&
+        normExpected.length > 0 &&
+        (normActual === normExpected);
 
       testResults.push({
         testCaseIndex: i + 1,
         input: tc.input,
-        expectedOutput: tc.expectedOutput,
+        expectedOutput: expectedTrimmed,
         actualOutput: actualTrimmed || (isCompileOrRuntimeError ? "(Compilation / Runtime Error)" : "(No Output)"),
         error: runRes.stderr || (!passed ? `Expected "${expectedTrimmed}", but received "${actualTrimmed || '(No Output)'}"` : ""),
         stderr: runRes.stderr || "",
@@ -857,19 +878,22 @@ export const runCodingTest = async (req, res) => {
         executionTime: runRes.executionTime,
       });
 
-      // Fail-fast on compile error to prevent repeating identical compiler diagnostics
+      // Fail-fast on compile error
       if (isCompileOrRuntimeError) break;
     }
 
-    const allPassed = testResults.every((r) => r.passed);
+    const allPassed = testResults.length > 0 && testResults.every((r) => r.passed);
     const hasError = testResults.some((r) => r.isError);
     const firstErrorItem = testResults.find((r) => r.stderr || r.error);
     const globalStderr = testResults.find((r) => r.stderr)?.stderr || "";
 
     res.status(200).json({
       success: true,
+      customRun: false,
       allPassed,
       hasError,
+      passedTests: testResults.filter((r) => r.passed).length,
+      totalTests: testResults.length,
       error: firstErrorItem ? (firstErrorItem.stderr || firstErrorItem.error) : "",
       stderr: globalStderr,
       results: testResults,
@@ -1155,8 +1179,311 @@ export const startMockTest = async (req, res) => {
       return questions;
     };
 
-    const [company, aptQuestions, engQuestions, techQuestions, codeQuestions] = await Promise.all([
-      PlacementCompany.findOne({ slug }).lean(),
+    const company = await PlacementCompany.findOne({ slug }).lean();
+    const companyInfo = company || { name: slug.toUpperCase(), slug };
+
+    let testSections = [];
+
+    if (slug === "capgemini") {
+      // 5 Official Capgemini Online Assessment Stages (Strict Domain-Targeted Queries)
+      const [engQuestions, aiTechQuestions, debugQuestions, codeQuestions, cogQuestions] = await Promise.all([
+        // Stage 1: English Communication
+        PlacementQuestion.aggregate([
+          {
+            $match: {
+              category: "english",
+              $or: [
+                { topics: { $in: ["English Communication", "Business Communication", "Sentence Correction", "Active Listening", "Vocabulary"] } },
+                { tags: { $in: ["English Comm", "Communication", "Versant"] } },
+                { companies: "capgemini" },
+              ],
+            },
+          },
+          { $sample: { size: 4 } },
+        ]),
+        // Stage 2: Technical Module (AI Literacy & Situational Problem-Solving)
+        PlacementQuestion.aggregate([
+          {
+            $match: {
+              category: "technical",
+              $or: [
+                { topics: { $in: ["AI Literacy", "Generative AI", "Prompt Engineering", "Situational Problem Solving", "LLM Evaluation", "AI Security"] } },
+                { tags: { $in: ["AI Literacy", "GenAI", "Prompting", "Security"] } },
+              ],
+            },
+          },
+          { $sample: { size: 4 } },
+        ]),
+        // Stage 3: Hands-On Debugging Assessment (Compiler Code Fix with Buggy Starter Code)
+        PlacementQuestion.aggregate([
+          {
+            $match: {
+              category: "coding",
+              $or: [
+                { topics: { $in: ["Debugging Assessment", "Code Correction"] } },
+                { tags: { $in: ["Debugging", "Code Fix", "Automata Fix"] } },
+              ],
+            },
+          },
+          { $sample: { size: 2 } },
+        ]),
+        // Stage 4: AI-Assisted Coding Assessment (Algorithmic Studio)
+        PlacementQuestion.aggregate([
+          {
+            $match: {
+              category: "coding",
+              companies: "capgemini",
+              tags: { $nin: ["Debugging", "Code Fix", "Automata Fix"] },
+            },
+          },
+          { $sample: { size: 2 } },
+        ]),
+        // Stage 5: Cognitive Assessment (Motion, Grid & Switch Challenge)
+        PlacementQuestion.aggregate([
+          {
+            $match: {
+              category: "aptitude",
+              $or: [
+                { topics: { $in: ["Cognitive Assessment", "Motion Challenge", "Grid Challenge", "Working Memory", "Inductive Logic", "Switch Challenge"] } },
+                { tags: { $in: ["Cognitive", "Motion Challenge", "Grid Challenge", "Game Logic", "Switch Challenge", "Inductive Logic"] } },
+              ],
+            },
+          },
+          { $sample: { size: 4 } },
+        ]),
+      ]);
+
+      const allIds = [
+        ...engQuestions.map((q) => q._id.toString()),
+        ...aiTechQuestions.map((q) => q._id.toString()),
+        ...cogQuestions.map((q) => q._id.toString()),
+        ...debugQuestions.map((q) => q._id.toString()),
+        ...codeQuestions.map((q) => q._id.toString()),
+      ];
+
+      testSections = [
+        {
+          sectionName: "Round 1: Foundation & AI Assessment (English, Tech & Cognitive)",
+          category: "aptitude",
+          durationMinutes: 40,
+          questions: [...engQuestions, ...aiTechQuestions, ...cogQuestions],
+        },
+        {
+          sectionName: "Round 2: Hands-On Debugging Assessment (Compiler Code Fix)",
+          category: "coding",
+          durationMinutes: 30,
+          questions: debugQuestions,
+        },
+        {
+          sectionName: "Round 3: AI-Assisted Coding Assessment",
+          category: "coding",
+          durationMinutes: 45,
+          questions: codeQuestions,
+        },
+      ];
+
+      return res.status(200).json({
+        success: true,
+        company: companyInfo,
+        durationMinutes: 115,
+        totalQuestions: allIds.length,
+        allQuestionIds: allIds,
+        sections: testSections,
+      });
+    }
+
+    // ── 2. TCS NQT (Ninja / Digital / Prime 2026 Pipeline) ──
+    if (slug === "tcs") {
+      const [nqtFoundationApt, nqtFoundationEng, nqtAdvTech, nqtCoding] = await Promise.all([
+        getRandomQuestions("aptitude", 5),
+        getRandomQuestions("english", 4),
+        getRandomQuestions("technical", 5),
+        getRandomQuestions("coding", 2),
+      ]);
+
+      const allIds = [
+        ...nqtFoundationApt.map((q) => q._id.toString()),
+        ...nqtFoundationEng.map((q) => q._id.toString()),
+        ...nqtAdvTech.map((q) => q._id.toString()),
+        ...nqtCoding.map((q) => q._id.toString()),
+      ];
+
+      testSections = [
+        {
+          sectionName: "Round 1: TCS NQT Foundation (Numerical, Verbal & Reasoning)",
+          category: "aptitude",
+          durationMinutes: 35,
+          questions: [...nqtFoundationApt, ...nqtFoundationEng],
+        },
+        {
+          sectionName: "Round 2: TCS NQT Advanced Cognitive & IT Pseudocode",
+          category: "technical",
+          durationMinutes: 25,
+          questions: nqtAdvTech,
+        },
+        {
+          sectionName: "Round 3: TCS NQT Hands-on Coding Assessment",
+          category: "coding",
+          durationMinutes: 45,
+          questions: nqtCoding,
+        },
+      ];
+
+      return res.status(200).json({
+        success: true,
+        company: companyInfo,
+        durationMinutes: 105,
+        totalQuestions: allIds.length,
+        allQuestionIds: allIds,
+        sections: testSections,
+      });
+    }
+
+    // ── 3. Accenture (Cognitive, Coding & AI Communication 2026 Pipeline) ──
+    if (slug === "accenture") {
+      const [cogApt, techQuestions, codingQuestions, commQuestions] = await Promise.all([
+        getRandomQuestions("aptitude", 6),
+        getRandomQuestions("technical", 5),
+        getRandomQuestions("coding", 2),
+        getRandomQuestions("english", 5),
+      ]);
+
+      const allIds = [
+        ...cogApt.map((q) => q._id.toString()),
+        ...techQuestions.map((q) => q._id.toString()),
+        ...codingQuestions.map((q) => q._id.toString()),
+        ...commQuestions.map((q) => q._id.toString()),
+      ];
+
+      testSections = [
+        {
+          sectionName: "Round 1: Cognitive & Technical Assessment (Critical Thinking & Security)",
+          category: "aptitude",
+          durationMinutes: 40,
+          questions: [...cogApt, ...techQuestions],
+        },
+        {
+          sectionName: "Round 2: Hands-on Coding Assessment (AASE Upgrade)",
+          category: "coding",
+          durationMinutes: 45,
+          questions: codingQuestions,
+        },
+        {
+          sectionName: "Round 3: AI Communication & Spoken English Assessment",
+          category: "english",
+          durationMinutes: 20,
+          questions: commQuestions,
+        },
+      ];
+
+      return res.status(200).json({
+        success: true,
+        company: companyInfo,
+        durationMinutes: 105,
+        totalQuestions: allIds.length,
+        allQuestionIds: allIds,
+        sections: testSections,
+      });
+    }
+
+    // ── 4. Infosys (Qualifier & Hands-on Coding 2026 Pipeline) ──
+    if (slug === "infosys") {
+      const [aptQuestions, engQuestions, techQuestions, codingQuestions] = await Promise.all([
+        getRandomQuestions("aptitude", 5),
+        getRandomQuestions("english", 4),
+        getRandomQuestions("technical", 4),
+        getRandomQuestions("coding", 3),
+      ]);
+
+      const allIds = [
+        ...aptQuestions.map((q) => q._id.toString()),
+        ...engQuestions.map((q) => q._id.toString()),
+        ...techQuestions.map((q) => q._id.toString()),
+        ...codingQuestions.map((q) => q._id.toString()),
+      ];
+
+      testSections = [
+        {
+          sectionName: "Round 1: Infosys Qualifier Assessment (Aptitude, Verbal & Pseudocode)",
+          category: "aptitude",
+          durationMinutes: 45,
+          questions: [...aptQuestions, ...engQuestions, ...techQuestions],
+        },
+        {
+          sectionName: "Round 2: Hands-on Coding Assessment (SP / DSE Track)",
+          category: "coding",
+          durationMinutes: 60,
+          questions: codingQuestions,
+        },
+      ];
+
+      return res.status(200).json({
+        success: true,
+        company: companyInfo,
+        durationMinutes: 105,
+        totalQuestions: allIds.length,
+        allQuestionIds: allIds,
+        sections: testSections,
+      });
+    }
+
+    // ── 5. Product & FAANG Tier (Google, Microsoft, Amazon, Meta, Apple, Netflix, etc.) ──
+    const isProductTier = [
+      "google",
+      "microsoft",
+      "amazon",
+      "meta",
+      "apple",
+      "netflix",
+      "adobe",
+      "goldman-sachs",
+      "jpmorgan",
+      "uber",
+      "oracle",
+      "salesforce",
+      "cisco",
+      "ibm",
+      "qualcomm",
+    ].includes(slug);
+
+    if (isProductTier) {
+      const [codingQuestions, techQuestions] = await Promise.all([
+        getRandomQuestions("coding", 3),
+        getRandomQuestions("technical", 6),
+      ]);
+
+      const allIds = [
+        ...codingQuestions.map((q) => q._id.toString()),
+        ...techQuestions.map((q) => q._id.toString()),
+      ];
+
+      testSections = [
+        {
+          sectionName: "Round 1: Algorithmic Online Assessment (Hard DSA & Optimization)",
+          category: "coding",
+          durationMinutes: 60,
+          questions: codingQuestions,
+        },
+        {
+          sectionName: "Round 2: Core CS & System Fundamentals (OS, Concurrency & Networks)",
+          category: "technical",
+          durationMinutes: 30,
+          questions: techQuestions,
+        },
+      ];
+
+      return res.status(200).json({
+        success: true,
+        company: companyInfo,
+        durationMinutes: 90,
+        totalQuestions: allIds.length,
+        allQuestionIds: allIds,
+        sections: testSections,
+      });
+    }
+
+    // Default 4-section assessment for other companies
+    const [aptQuestions, engQuestions, techQuestions, codeQuestions] = await Promise.all([
       getRandomQuestions("aptitude", 5),
       getRandomQuestions("english", 4),
       getRandomQuestions("technical", 5),
@@ -1170,27 +1497,27 @@ export const startMockTest = async (req, res) => {
       ...codeQuestions.map((q) => q._id.toString()),
     ];
 
-    const testSections = [
+    testSections = [
       {
-        sectionName: "Quantitative & Logical Aptitude",
+        sectionName: slug === "accenture" ? "Cognitive Assessment" : slug === "tcs" ? "TCS NQT Foundation" : "Quantitative & Logical Aptitude",
         category: "aptitude",
         durationMinutes: 25,
         questions: aptQuestions,
       },
       {
-        sectionName: "Verbal Ability & English",
+        sectionName: slug === "accenture" ? "English Ability" : slug === "tcs" ? "Verbal Ability" : "Verbal Ability & English",
         category: "english",
         durationMinutes: 15,
         questions: engQuestions,
       },
       {
-        sectionName: "Core Computer Science Fundamentals",
+        sectionName: slug === "accenture" ? "Technical & Pseudocode" : slug === "tcs" ? "TCS NQT Advanced" : "Core Computer Science Fundamentals",
         category: "technical",
         durationMinutes: 20,
         questions: techQuestions,
       },
       {
-        sectionName: "Hands-on Coding Assessment",
+        sectionName: slug === "tcs" ? "Advanced Hands-on Coding" : "Hands-on Coding Assessment",
         category: "coding",
         durationMinutes: 30,
         questions: codeQuestions,
@@ -1199,7 +1526,7 @@ export const startMockTest = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      company: company || { name: slug.toUpperCase(), slug },
+      company: companyInfo,
       durationMinutes: 90,
       totalQuestions: allQuestionIds.length,
       allQuestionIds,
@@ -1229,7 +1556,7 @@ export const submitMockTest = async (req, res) => {
     const [company, questions] = await Promise.all([
       PlacementCompany.findOne({ slug: (companySlug || "").toLowerCase() }).lean(),
       PlacementQuestion.find({ _id: { $in: questionIdsToGrade } })
-        .select("correctAnswer category topics")
+        .select("correctAnswer category topics tags title")
         .lean(),
     ]);
 
@@ -1244,6 +1571,29 @@ export const submitMockTest = async (req, res) => {
       coding: { score: 0, total: 0 },
     };
 
+    const slug = (companySlug || "").toLowerCase();
+    const stageBreakdown = {};
+
+    if (slug === "capgemini") {
+      stageBreakdown["Round 1: Foundation & AI Assessment (English, Tech & Cognitive)"] = { score: 0, total: 0, category: "aptitude" };
+      stageBreakdown["Round 2: Hands-On Debugging Round (Compiler Fix)"] = { score: 0, total: 0, category: "coding" };
+      stageBreakdown["Round 3: AI-Assisted Algorithmic Coding"] = { score: 0, total: 0, category: "coding" };
+    } else if (slug === "tcs") {
+      stageBreakdown["Round 1: TCS NQT Foundation (Ninja Qualifier)"] = { score: 0, total: 0, category: "aptitude" };
+      stageBreakdown["Round 2: TCS NQT Advanced Cognitive & IT"] = { score: 0, total: 0, category: "technical" };
+      stageBreakdown["Round 3: TCS NQT Hands-on Coding Assessment"] = { score: 0, total: 0, category: "coding" };
+    } else if (slug === "accenture") {
+      stageBreakdown["Round 1: Cognitive & Technical Assessment"] = { score: 0, total: 0, category: "aptitude" };
+      stageBreakdown["Round 2: Hands-on Coding Assessment"] = { score: 0, total: 0, category: "coding" };
+      stageBreakdown["Round 3: AI Communication Assessment"] = { score: 0, total: 0, category: "english" };
+    } else if (slug === "infosys") {
+      stageBreakdown["Round 1: Infosys Qualifier Assessment"] = { score: 0, total: 0, category: "aptitude" };
+      stageBreakdown["Round 2: Hands-on Coding Assessment (SP / DSE)"] = { score: 0, total: 0, category: "coding" };
+    } else if (["google", "microsoft", "amazon", "meta", "apple", "netflix", "adobe", "goldman-sachs", "uber"].includes(slug)) {
+      stageBreakdown["Round 1: Algorithmic Online Assessment (Hard DSA)"] = { score: 0, total: 0, category: "coding" };
+      stageBreakdown["Round 2: Core CS & System Fundamentals"] = { score: 0, total: 0, category: "technical" };
+    }
+
     for (const q of questions) {
       const userAns = (answers || {})[q._id.toString()];
       const cat = q.category || "aptitude";
@@ -1256,12 +1606,50 @@ export const submitMockTest = async (req, res) => {
       categoryBreakdown[cat].total += weight;
       totalMaxScore += weight;
 
+      // Map to Stage
+      let stageKey = null;
+      if (slug === "capgemini") {
+        if (cat === "coding") {
+          const isDebug =
+            (q.topics || []).some((t) => ["Debugging Assessment", "Code Correction"].includes(t)) ||
+            (q.tags || []).includes("Debugging") ||
+            (q.title || "").includes("Debugging");
+          stageKey = isDebug
+            ? "Round 2: Hands-On Debugging Round (Compiler Fix)"
+            : "Round 3: AI-Assisted Algorithmic Coding";
+        } else {
+          // Combined Round 1 (English, Technical, Cognitive)
+          stageKey = "Round 1: Foundation & AI Assessment (English, Tech & Cognitive)";
+        }
+      } else if (slug === "tcs") {
+        if (cat === "coding") stageKey = "Round 3: TCS NQT Hands-on Coding Assessment";
+        else if (cat === "technical") stageKey = "Round 2: TCS NQT Advanced Cognitive & IT";
+        else stageKey = "Round 1: TCS NQT Foundation (Ninja Qualifier)";
+      } else if (slug === "accenture") {
+        if (cat === "coding") stageKey = "Round 2: Hands-on Coding Assessment";
+        else if (cat === "english") stageKey = "Round 3: AI Communication Assessment";
+        else stageKey = "Round 1: Cognitive & Technical Assessment";
+      } else if (slug === "infosys") {
+        if (cat === "coding") stageKey = "Round 2: Hands-on Coding Assessment (SP / DSE)";
+        else stageKey = "Round 1: Infosys Qualifier Assessment";
+      } else if (["google", "microsoft", "amazon", "meta", "apple", "netflix", "adobe", "goldman-sachs", "uber"].includes(slug)) {
+        if (cat === "coding") stageKey = "Round 1: Algorithmic Online Assessment (Hard DSA)";
+        else stageKey = "Round 2: Core CS & System Fundamentals";
+      }
+
+      if (stageKey && stageBreakdown[stageKey]) {
+        stageBreakdown[stageKey].total += weight;
+      }
+
       let isCorrect = false;
 
       if (userAns !== undefined && userAns !== null) {
         if (cat === "coding") {
-          // Coding question is only marked correct if tests were actually run and passed
-          isCorrect = userAns?.isAccepted === true && (userAns?.passedCount > 0 || userAns?.allPassed === true);
+          // Coding question is marked correct if tests were run & passed, or marked accepted
+          isCorrect =
+            userAns?.isAccepted === true ||
+            userAns?.allPassed === true ||
+            (userAns?.passedCount > 0 && userAns?.passedCount >= (userAns?.totalTests || 1));
         } else {
           // MCQ question
           const choice = typeof userAns === "object" ? userAns?.userChoice : userAns;
@@ -1271,6 +1659,9 @@ export const submitMockTest = async (req, res) => {
 
       if (isCorrect) {
         categoryBreakdown[cat].score += weight;
+        if (stageKey && stageBreakdown[stageKey]) {
+          stageBreakdown[stageKey].score += weight;
+        }
         totalScore += weight;
       } else {
         (q.topics || []).forEach((t) => weakTopicsSet.add(t));
@@ -1285,7 +1676,7 @@ export const submitMockTest = async (req, res) => {
       recommendations.push("Revise high-frequency topics and retake the mock test in 3 days.");
     }
     if (categoryBreakdown.coding.score < categoryBreakdown.coding.total * 0.7) {
-      recommendations.push("Practice 5 LeetCode Medium problems with optimal time/space complexity.");
+      recommendations.push("Practice hands-on compiler debugging & LeetCode problems with test case validation.");
     }
     if (weakTopics.length > 0) {
       recommendations.push(`Target weak topics: ${weakTopics.join(", ")}`);
@@ -1298,6 +1689,7 @@ export const submitMockTest = async (req, res) => {
       totalMarks: totalMaxScore,
       percentage,
       timeTakenSeconds: timeTakenSeconds || 0,
+      stageBreakdown: Object.keys(stageBreakdown).length > 0 ? stageBreakdown : undefined,
       categoryBreakdown,
       weakTopics,
       recommendations,
@@ -1362,5 +1754,52 @@ export const resetProgress = async (req, res) => {
   } catch (error) {
     console.error("Error in resetProgress:", error);
     res.status(500).json({ success: false, message: "Failed to reset progress." });
+  }
+};
+
+/**
+ * 13. POST /api/placement/ai-copilot
+ * Interactive AI Assistant for Round 3 (AI-Assisted Coding).
+ * Strict Guardrails: NEVER gives full answer or code. Only gives clues, intuition, edge-case guidance.
+ */
+export const askPlacementAiCopilot = async (req, res) => {
+  try {
+    const { questionTitle, questionDescription, currentCode, language, userMessage, chatHistory } = req.body;
+
+    const systemPrompt = `You are the Official AI Coding Copilot for an Online Assessment (OA) candidate.
+The candidate is in the "AI-Assisted Coding" round.
+
+CURRENT PROBLEM: "${questionTitle || "Algorithmic Problem"}"
+PROBLEM DESCRIPTION:
+${questionDescription || "N/A"}
+
+STRICT INTERACTION RULES (NON-NEGOTIABLE):
+1. NEVER output the full solution code, finished functions, or copy-paste answers in any programming language.
+2. If the user asks "Give me the code", "Solve this problem", or "What is the answer?", politely decline and instead guide them with algorithmic clues, data structure intuition, and high-level steps.
+3. Help the candidate by providing:
+   - High-level algorithmic intuition (e.g. why Hash Map, Two Pointers, Monotonic Stack, or DP fits this problem).
+   - Time and space complexity trade-offs ($O(N)$ vs $O(N^2)$).
+   - Edge-case warnings (e.g., empty array, single element, negative numbers, boundary constraints).
+   - Explaining why their current logic might be failing based on the code they provided.
+4. Keep your responses concise (2 to 4 short paragraphs or bullet points), highly professional, encouraging, and clear.`;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...(Array.isArray(chatHistory) ? chatHistory.slice(-6) : []),
+      {
+        role: "user",
+        content: `Candidate's Question: ${userMessage}\n\n[Candidate's Current ${language || "code"} in editor]:\n\`\`\`\n${currentCode || "No code written yet"}\n\`\`\``,
+      },
+    ];
+
+    const reply = await callAiApi(messages, { maxTokens: 450, temperature: 0.6 });
+    return res.status(200).json({ success: true, reply });
+  } catch (error) {
+    console.error("Error in askPlacementAiCopilot:", error);
+    return res.status(500).json({
+      success: false,
+      message: "AI Copilot is currently busy. Please try asking your question again.",
+      reply: "I'm experiencing high traffic, but here is a quick tip: check your edge cases (empty input, single element, or out-of-bounds array indices) and verify your time complexity constraint.",
+    });
   }
 };
