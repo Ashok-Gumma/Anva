@@ -19,6 +19,9 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
+  Cpu,
+  Clock,
+  BarChart3,
 } from "lucide-react";
 import { getPlacementCompanies, getPlacementUserProgress } from "../../lib/placementApi";
 import { motion } from "framer-motion";
@@ -31,6 +34,74 @@ const TIERS = [
   { id: "Product Giant", label: "Product Giants" },
   { id: "Fintech & Startups", label: "Fintech & Banking" },
   { id: "IT & Consulting Leader", label: "IT & Consulting" },
+];
+
+const MASTER_LIBRARIES = [
+  {
+    id: "aptitude",
+    title: "Master Aptitude & Quant",
+    subtitle: "300+ Authentic Quantitative & Logical Reasoning Questions",
+    description: "Time & Work, Probability, Number Series, Cryptarithmetic, Syllogisms & Puzzles.",
+    icon: Brain,
+    path: "/placement/all/aptitude",
+    color: "from-amber-500/20 to-orange-500/10",
+    border: "border-amber-500/30",
+    badgeColor: "bg-amber-500/10 text-amber-500",
+    iconColor: "text-amber-500",
+    count: "300+ Qs",
+  },
+  {
+    id: "coding",
+    title: "Master Coding Practice",
+    subtitle: "200+ LeetCode-Style Multi-Language Algorithmic Problems",
+    description: "Arrays, Two Pointers, Sliding Window, Monotonic Deque, Dynamic Programming, Graphs & Trees.",
+    icon: Code2,
+    path: "/placement/all/coding",
+    color: "from-blue-500/20 to-indigo-500/10",
+    border: "border-blue-500/30",
+    badgeColor: "bg-blue-500/10 text-blue-500",
+    iconColor: "text-blue-500",
+    count: "200+ Problems",
+  },
+  {
+    id: "technical",
+    title: "Master Core CS Technical",
+    subtitle: "250+ Operating Systems, DBMS, Networks & OOP MCQs",
+    description: "B+ Tree Indexing, MESI Protocol, Virtual Memory, ACID, TCP/IP & Concurrency.",
+    icon: Cpu,
+    path: "/placement/all/technical",
+    color: "from-emerald-500/20 to-teal-500/10",
+    border: "border-emerald-500/30",
+    badgeColor: "bg-emerald-500/10 text-emerald-500",
+    iconColor: "text-emerald-500",
+    count: "250+ Qs",
+  },
+  {
+    id: "english",
+    title: "Master Verbal & English",
+    subtitle: "200+ Reading Comprehension, Grammar & Para Jumbles",
+    description: "Sentence Correction, Critical Reasoning, Idioms, Contextual Vocabulary & Cloze Tests.",
+    icon: BookOpen,
+    path: "/placement/all/english",
+    color: "from-purple-500/20 to-pink-500/10",
+    border: "border-purple-500/30",
+    badgeColor: "bg-purple-500/10 text-purple-500",
+    iconColor: "text-purple-500",
+    count: "200+ Qs",
+  },
+  {
+    id: "interview",
+    title: "Master Interview Prep",
+    subtitle: "150+ Technical & STAR Behavioral Masterclasses",
+    description: "System Design, Resume Defense, Amazon Leadership Principles & HR Scenarios.",
+    icon: MessageSquare,
+    path: "/placement/all/interview",
+    color: "from-rose-500/20 to-red-500/10",
+    border: "border-rose-500/30",
+    badgeColor: "bg-rose-500/10 text-rose-500",
+    iconColor: "text-rose-500",
+    count: "150+ Frameworks",
+  },
 ];
 
 const containerVariants = {
@@ -66,13 +137,6 @@ const PlacementLandingPage = () => {
   });
 
   const companies = companiesData?.companies || [];
-  const progress = progressData?.progress || {
-    totalQuestionsCount: 0,
-    totalSolved: 0,
-    overallReadiness: 0,
-    accuracy: 0,
-    bookmarksCount: 0,
-  };
 
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
@@ -93,7 +157,7 @@ const PlacementLandingPage = () => {
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-base-200 p-3 sm:p-6 lg:p-8 font-sans text-base-content">
       <motion.div
-        className="container mx-auto max-w-[1400px] space-y-6 sm:space-y-8"
+        className="container mx-auto max-w-[1400px] space-y-8"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -115,23 +179,22 @@ const PlacementLandingPage = () => {
                 Anva Placement Hub
               </div>
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-                Prepare Smarter. <span className="font-curly italic text-primary">Practice Company-Wise.</span><br />
-                Get Placement Ready.
+                Master Campus &amp; Off-Campus <br />
+                <span className="font-curly italic text-primary">Placements With Precision.</span>
               </h1>
               <p className="text-sm sm:text-base text-base-content/70 font-medium leading-relaxed">
-                Master company-specific aptitude, verbal ability, core CS technical MCQs, LeetCode-style coding problems, and STAR behavioral interview rounds tailored for top product giants and IT multinationals.
+                The complete quality preparation hub for ambitious students: Practice universal master question banks, tackle authentic company-specific hiring rounds, run code in our sandboxed LeetCode IDE, and ace STAR behavioral interviews.
               </p>
             </div>
 
             {/* Quick Feature Badges */}
             <div className="flex flex-wrap gap-2 pt-1">
               {[
-                { label: "Quantitative & Logic", icon: Brain },
-                { label: "Verbal & English", icon: BookOpen },
-                { label: "CS Fundamentals", icon: Layers },
-                { label: "LeetCode-Style IDE", icon: Code2 },
-                { label: "HR & Project Rounds", icon: MessageSquare },
-                { label: "Simulated Mock OAs", icon: ShieldCheck },
+                { label: "5 Master Libraries", icon: Layers },
+                { label: "22+ Company Tracks", icon: Building2 },
+                { label: "Multi-Language IDE (C++, Java, Python, JS)", icon: Code2 },
+                { label: "Real Timed Mock Tests", icon: ShieldCheck },
+                { label: "STAR Interview Frameworks", icon: MessageSquare },
               ].map((item, idx) => (
                 <span
                   key={idx}
@@ -145,7 +208,67 @@ const PlacementLandingPage = () => {
           </div>
         </motion.div>
 
-        {/* ── 2. SEARCH & FILTER CONTROLS ── */}
+        {/* ── 2. DEDICATED MASTER PRACTICE LIBRARIES ── */}
+        <motion.div variants={itemVariants} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                <Layers className="size-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-base-content flex items-center gap-2">
+                  Universal Master Practice Libraries
+                  <span className="badge badge-accent badge-sm font-black text-[10px] uppercase">
+                    Practice By Category
+                  </span>
+                </h2>
+                <p className="text-xs text-base-content/60 font-medium">
+                  Comprehensive topic-wise practice modules with 1,100+ vetted questions across all domains
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {MASTER_LIBRARIES.map((lib) => {
+              const Icon = lib.icon;
+              return (
+                <Link
+                  key={lib.id}
+                  to={lib.path}
+                  className={`bg-base-100 p-5 rounded-3xl border ${lib.border} hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col justify-between group relative overflow-hidden`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className={`p-2.5 rounded-2xl bg-base-200/80 ${lib.iconColor}`}>
+                        <Icon className="size-5" />
+                      </div>
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-wider ${lib.badgeColor}`}>
+                        {lib.count}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="font-black text-sm text-base-content group-hover:text-primary transition-colors">
+                        {lib.title}
+                      </h3>
+                      <p className="text-[11px] text-base-content/60 font-medium line-clamp-2 mt-1 leading-relaxed">
+                        {lib.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 mt-2 border-t border-base-content/5 flex items-center justify-between text-xs font-black text-primary">
+                    <span>Open Library</span>
+                    <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* ── 3. SEARCH & FILTER CONTROLS ── */}
         <motion.div variants={itemVariants} className="space-y-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Search Input */}
@@ -153,7 +276,7 @@ const PlacementLandingPage = () => {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-base-content/40" />
               <input
                 type="text"
-                placeholder="Search company (Google, Microsoft, TCS, Amazon...)"
+                placeholder="Search company (Google, Amazon, TCS, Cisco, Oracle...)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 bg-base-100 border border-base-content/10 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 shadow-sm transition-all placeholder:text-base-content/40"
@@ -179,14 +302,14 @@ const PlacementLandingPage = () => {
           </div>
         </motion.div>
 
-        {/* ── 3. COMPANY CARDS GRID ── */}
+        {/* ── 4. COMPANY CARDS GRID ── */}
         <motion.div variants={itemVariants} className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
               <Building2 className="size-5 text-primary" />
               Company-Wise Preparation Tracks
               <span className="badge badge-sm font-extrabold bg-base-300 text-base-content/70">
-                {filteredCompanies.length}
+                {filteredCompanies.length} Tracks
               </span>
             </h2>
           </div>
@@ -227,10 +350,6 @@ const PlacementLandingPage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {filteredCompanies.map((company) => {
-                const readiness = company.userProgress?.readinessPercent || 0;
-                const solvedCount = company.userProgress?.solvedCount || 0;
-                const totalCount = company.userProgress?.totalCount || company.stats?.totalQuestions || 30;
-
                 return (
                   <div
                     key={company._id || company.slug}

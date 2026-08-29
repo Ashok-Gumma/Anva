@@ -10,6 +10,7 @@ export const INTERVIEW_QUESTIONS_DATA = [
   // ─────────────────────────────────────────────────────────────
   {
     title: "Explain the Four Pillars of OOP with Real-World Production Examples",
+    question: "Explain the Four Pillars of OOP with Real-World Production Examples",
     category: "interview",
     type: "interview",
     interviewCategory: "Technical",
@@ -45,6 +46,7 @@ export const INTERVIEW_QUESTIONS_DATA = [
   },
   {
     title: "How does HashMap work internally in Java? What is Collision Resolution?",
+    question: "How does HashMap work internally in Java? What is Collision Resolution?",
     category: "interview",
     type: "interview",
     interviewCategory: "Technical",
@@ -81,6 +83,7 @@ export const INTERVIEW_QUESTIONS_DATA = [
   },
   {
     title: "Tell Me About a Challenging Situation in a Project and How You Resolved It (STAR Method)",
+    question: "Tell Me About a Challenging Situation in a Project and How You Resolved It (STAR Method)",
     category: "interview",
     type: "interview",
     interviewCategory: "HR",
@@ -119,6 +122,7 @@ export const INTERVIEW_QUESTIONS_DATA = [
   // ─────────────────────────────────────────────────────────────
   {
     title: "What is the difference between Primary Key, Unique Key, and Foreign Key in DBMS?",
+    question: "What is the difference between Primary Key, Unique Key, and Foreign Key in DBMS?",
     category: "interview",
     type: "interview",
     interviewCategory: "Technical",
@@ -158,6 +162,7 @@ export const INTERVIEW_QUESTIONS_DATA = [
   },
   {
     title: "Why are you interested in joining TCS, and are you willing to work in rotational shifts and relocate?",
+    question: "Why are you interested in joining TCS, and are you willing to work in rotational shifts and relocate?",
     category: "interview",
     type: "interview",
     interviewCategory: "HR",
@@ -192,6 +197,7 @@ Regarding relocation and rotational shifts: Yes, absolutely! I am 100% flexible 
   // ─────────────────────────────────────────────────────────────
   {
     title: "What is the Difference Between Monolithic and Microservices Architecture?",
+    question: "What is the Difference Between Monolithic and Microservices Architecture?",
     category: "interview",
     type: "interview",
     interviewCategory: "Technical",
@@ -220,6 +226,7 @@ In contrast, a Microservices architecture decomposes the application into small,
   },
   {
     title: "How do you handle a disagreement or conflict with a teammate during a critical sprint deadline?",
+    question: "How do you handle a disagreement or conflict with a teammate during a critical sprint deadline?",
     category: "interview",
     type: "interview",
     interviewCategory: "HR",
@@ -254,6 +261,7 @@ By focusing on objective benchmarks and shared sprint goals, we resolved the deb
   // ─────────────────────────────────────────────────────────────
   {
     title: "How do you detect and prevent Deadlocks in a Multi-Threaded Environment?",
+    question: "How do you detect and prevent Deadlocks in a Multi-Threaded Environment?",
     category: "interview",
     type: "interview",
     interviewCategory: "Technical",
@@ -289,6 +297,7 @@ How to Prevent Deadlocks in Production:
   },
   {
     title: "Amazon Leadership Principle: Tell me about a time you showed 'Customer Obsession' and 'Bias for Action'",
+    question: "Amazon Leadership Principle: Tell me about a time you showed 'Customer Obsession' and 'Bias for Action'",
     category: "interview",
     type: "interview",
     interviewCategory: "HR",
@@ -319,6 +328,7 @@ How to Prevent Deadlocks in Production:
   },
   {
     title: "Explain How You Designed and Defended the Architecture of Your Capstone / Personal Project",
+    question: "Explain How You Designed and Defended the Architecture of Your Capstone / Personal Project",
     category: "interview",
     type: "interview",
     interviewCategory: "Project",

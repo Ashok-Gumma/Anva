@@ -10,6 +10,18 @@
  * 8. IBM (Cloud Architecture, Linux, Enterprise Java/Python, Anagrams)
  * 9. Salesforce (Multi-tenant DB, Apex Patterns, LRU Cache, Custom HashMaps)
  * 10. Qualcomm (Embedded C, ISRs, Pointers, Volatile, Bit Manipulation)
+ * 11. Google (Hard Graphs, DP, Concurrency, Raft/Paxos, System Design)
+ * 12. Microsoft (Azure Cloud, Trees, Bit Manipulation, C++/C# Design)
+ * 13. Amazon (Leadership Principles, Heaps, Sliding Window, DynamoDB)
+ * 14. Meta (GraphQL, Caching, BFS/DFS, Continuous Subarrays)
+ * 15. Adobe (Matrix Transforms, Geometric Algorithms, Tries, OOP)
+ * 16. TCS (Ninja/Digital/Prime NQT Numerical, Advanced Pseudocode, String/Array OA)
+ * 17. Infosys (Cryptarithmetic, SP/DSE Coding, OOP, DBMS)
+ * 18. Wipro (Elite NLTH Quantitative, Cloud/OS MCQs, Automata Debugging)
+ * 19. Accenture (Critical Thinking, Abstract Reasoning, Pseudocode, Binary String)
+ * 20. Capgemini (Game-Based / Cognitive, Versant English, Pseudo-code, Compiler Code Fix)
+ * 21. Cognizant (GenC / Elevate Quant, Java/DBMS MCQs, Coding)
+ * 22. Deloitte (Business & Logical Reasoning, ERP/Cloud, Tech Aptitude)
  */
 
 export const NEW_MNC_QUESTIONS = [
@@ -21,7 +33,7 @@ export const NEW_MNC_QUESTIONS = [
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["apple", "qualcomm", "google", "microsoft"],
+    companies: ["apple"],
     topics: ["Operating Systems", "Memory Management", "Virtual Memory"],
     frequency: "High",
     source: "Reported in Apple CoreOS Technical Interview",
@@ -42,7 +54,7 @@ export const NEW_MNC_QUESTIONS = [
     category: "technical",
     type: "mcq",
     difficulty: "Hard",
-    companies: ["apple", "google", "adobe", "goldman-sachs"],
+    companies: ["apple"],
     topics: ["C++", "Memory Management", "Smart Pointers"],
     frequency: "High",
     source: "Reported in Apple Software Frameworks & Tools Round",
@@ -63,7 +75,7 @@ export const NEW_MNC_QUESTIONS = [
     category: "technical",
     type: "mcq",
     difficulty: "Hard",
-    companies: ["apple", "qualcomm", "intel"],
+    companies: ["apple"],
     topics: ["Computer Architecture", "Cache Memory", "Multithreading"],
     frequency: "High",
     source: "Reported in Apple Silicon & Hardware-Software Co-Design Round",
@@ -84,7 +96,7 @@ export const NEW_MNC_QUESTIONS = [
     category: "coding",
     type: "coding",
     difficulty: "Medium",
-    companies: ["apple", "google", "meta", "amazon"],
+    companies: ["apple"],
     topics: ["Array", "Binary Search"],
     frequency: "High",
     source: "Reported in Apple & Google Technical Screening",
@@ -113,44 +125,44 @@ You must write an algorithm that runs in \`O(log n)\` time.`,
     approach: "Binary search by comparing nums[mid] with nums[mid+1]. If nums[mid] > nums[mid+1], the peak lies on the left (including mid). Otherwise on the right.",
     solutionCode: {
       javascript: `function findPeakElement(nums) {\n    let left = 0, right = nums.length - 1;\n    while (left < right) {\n        const mid = Math.floor((left + right) / 2);\n        if (nums[mid] > nums[mid + 1]) {\n            right = mid;\n        } else {\n            left = mid + 1;\n        }\n    }\n    return left;\n}`,
-      python: `class Solution:\n    def findPeakElement(self, nums: list[int]) -> int:\n        l, r = 0, len(nums) - 1\n        while l < r:\n            mid = (l + r) // 2\n            if nums[mid] > nums[mid + 1]:\n                r = mid\n            else:\n                l = mid + 1\n        return l`,
-      cpp: `class Solution {\npublic:\n    int findPeakElement(vector<int>& nums) {\n        int l = 0, r = nums.size() - 1;\n        while (l < r) {\n            int mid = l + (r - l) / 2;\n            if (nums[mid] > nums[mid + 1]) r = mid;\n            else l = mid + 1;\n        }\n        return l;\n    }\n};`,
-      java: `class Solution {\n    public int findPeakElement(int[] nums) {\n        int l = 0, r = nums.length - 1;\n        while (l < r) {\n            int mid = l + (r - l) / 2;\n            if (nums[mid] > nums[mid + 1]) r = mid;\n            else l = mid + 1;\n        }\n        return l;\n    }\n}`
+      python: `class Solution:\n    def findPeakElement(self, nums: list[int]) -> int:\n        left, right = 0, len(nums) - 1\n        while left < right:\n            mid = (left + right) // 2\n            if nums[mid] > nums[mid + 1]:\n                right = mid\n            else:\n                left = mid + 1\n        return left`,
+      cpp: `class Solution {\npublic:\n    int findPeakElement(vector<int>& nums) {\n        int left = 0, right = nums.size() - 1;\n        while (left < right) {\n            int mid = left + (right - left) / 2;\n            if (nums[mid] > nums[mid + 1]) {\n                right = mid;\n            } else {\n                left = mid + 1;\n            }\n        }\n        return left;\n    }\n};`,
+      java: `class Solution {\n    public int findPeakElement(int[] nums) {\n        int left = 0, right = nums.length - 1;\n        while (left < right) {\n            int mid = left + (right - left) / 2;\n            if (nums[mid] > nums[mid + 1]) {\n                right = mid;\n            } else {\n                left = mid + 1;\n            }\n        }\n        return left;\n    }\n}`
     },
     timeComplexity: "O(log n)",
     spaceComplexity: "O(1)",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 2. NETFLIX QUESTIONS (Distributed Caching, Microservices, Scale)
+  // 2. NETFLIX QUESTIONS (High Concurrency, Microservices, Monotonic Deque)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    title: "Microservices - Circuit Breaker Pattern States",
+    title: "Microservices Resiliency - Circuit Breaker States",
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["netflix", "amazon", "uber", "salesforce"],
-    topics: ["Distributed Systems", "System Design", "Microservices"],
+    companies: ["netflix"],
+    topics: ["System Design", "Microservices", "Resiliency"],
     frequency: "High",
-    source: "Reported in Netflix Architecture & Core Infrastructure Round",
-    tags: ["Distributed Systems", "Resilience", "Netflix"],
+    source: "Reported in Netflix Distributed Systems Round",
+    tags: ["Microservices", "Resilience", "Netflix"],
     lastReviewed: "2026",
-    description: "In the Netflix Hystrix / Resilience4j Circuit Breaker pattern, what occurs during the 'HALF-OPEN' state?",
+    description: "In Netflix Hystrix/Resilience4j pattern, what occurs when a Circuit Breaker enters the 'Half-Open' state?",
     options: [
-      "All incoming requests are immediately rejected without calling the downstream dependency.",
-      "A limited trial batch of requests is allowed through to test if the downstream service has recovered.",
-      "The service automatically spins up 10 new replica pods before routing traffic.",
-      "Traffic is permanently diverted to fallback caches without ever querying downstream again."
+      "All incoming requests are immediately dropped with HTTP 503.",
+      "A limited number of probe requests are allowed through to evaluate if the downstream downstream service has recovered.",
+      "The circuit breaker is permanently disabled until manual restart.",
+      "Traffic is mirrored to a shadow cluster without responding to clients."
     ],
     correctAnswer: 1,
-    explanation: "Circuit Breaker has 3 states: Closed (healthy), Open (fails fast, blocks calls), and Half-Open (after timeout, sends limited test traffic. If successful, resets to Closed; if fails, trips back to Open).",
+    explanation: "In the Half-Open state, a predetermined small percentage of trial requests pass to the troubled service. If they succeed, the breaker resets to Closed (normal). If they fail, it immediately trips back to Open.",
   },
   {
     title: "Sliding Window Maximum",
     category: "coding",
     type: "coding",
     difficulty: "Hard",
-    companies: ["netflix", "google", "amazon", "uber"],
+    companies: ["netflix"],
     topics: ["Array", "Sliding Window", "Monotonic Queue"],
     frequency: "High",
     source: "Reported in Netflix & Amazon Live Coding Interviews",
@@ -193,7 +205,7 @@ Return the max sliding window.`,
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["oracle", "microsoft", "amazon", "salesforce"],
+    companies: ["oracle"],
     topics: ["DBMS", "Indexing", "B+ Trees"],
     frequency: "High",
     source: "Reported in Oracle Database & OCI Technical Rounds",
@@ -210,36 +222,15 @@ Return the max sliding window.`,
     explanation: "In B+ Trees, internal nodes only store key pointers (maximizing branching factor/fanout per disk page), while all actual data/row pointers reside in linked leaf nodes, making sequential range scans (e.g. BETWEEN, >, <) exceptionally fast with sequential I/O.",
   },
   {
-    title: "Java Garbage Collection - G1 vs ZGC",
-    category: "technical",
-    type: "mcq",
-    difficulty: "Medium",
-    companies: ["oracle", "goldman-sachs", "jpmorgan", "salesforce"],
-    topics: ["Java", "Memory Management", "Garbage Collection"],
-    frequency: "High",
-    source: "Reported in Oracle Core Java & Middleware Interviews",
-    tags: ["Java", "JVM", "Oracle"],
-    lastReviewed: "2026",
-    description: "What is the primary design goal of the Z Garbage Collector (ZGC) introduced in modern OpenJDK / Oracle JDK?",
-    options: [
-      "To maximize raw throughput at the expense of multi-second Stop-The-World (STW) pauses.",
-      "To perform concurrent phase marking and compaction with ultra-low pause times (< 1ms) regardless of heap size.",
-      "To eliminate the need for heap memory allocation in JVM.",
-      "To execute only on single-core embedded microcontrollers."
-    ],
-    correctAnswer: 1,
-    explanation: "ZGC is a scalable, low-latency concurrent garbage collector that achieves sub-millisecond maximum STW pause times even on massive multi-terabyte heaps using colored pointers and load barriers.",
-  },
-  {
     title: "Subarray Sum Equals K",
     category: "coding",
     type: "coding",
     difficulty: "Medium",
-    companies: ["oracle", "goldman-sachs", "meta", "amazon"],
-    topics: ["Array", "Hash Table", "Prefix Sum"],
+    companies: ["oracle"],
+    topics: ["Hash Table", "Prefix Sum", "Array"],
     frequency: "High",
     source: "Reported in Oracle OA & Goldman Sachs Technical Screening",
-    tags: ["Hash Table", "Prefix Sum", "Oracle", "Goldman Sachs"],
+    tags: ["Hash Table", "Prefix Sum", "Oracle"],
     lastReviewed: "2026",
     problemDescription: `Given an array of integers \`nums\` and an integer \`k\`, return *the total number of subarrays whose sum equals to* \`k\`.
 
@@ -280,7 +271,7 @@ A subarray is a contiguous non-empty sequence of elements within an array.`,
     category: "aptitude",
     type: "mcq",
     difficulty: "Hard",
-    companies: ["goldman-sachs", "jpmorgan", "google", "meta"],
+    companies: ["goldman-sachs"],
     topics: ["Probability", "Quantitative Math"],
     frequency: "High",
     source: "Reported in Goldman Sachs Engineering OA & Math Screen",
@@ -297,7 +288,7 @@ A subarray is a contiguous non-empty sequence of elements within an array.`,
     category: "coding",
     type: "coding",
     difficulty: "Medium",
-    companies: ["goldman-sachs", "microsoft", "amazon"],
+    companies: ["goldman-sachs"],
     topics: ["String", "Two Pointers"],
     frequency: "High",
     source: "Reported in Goldman Sachs Technical Round 1",
@@ -345,7 +336,7 @@ The compressed string \`s\` should not be returned separately, but instead, be s
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["jpmorgan", "goldman-sachs", "uber", "salesforce"],
+    companies: ["jpmorgan"],
     topics: ["System Design", "REST APIs", "Database Transactions"],
     frequency: "High",
     source: "Reported in JPMorgan Chase Code for Good & SEP Interviews",
@@ -366,7 +357,7 @@ The compressed string \`s\` should not be returned separately, but instead, be s
     category: "coding",
     type: "coding",
     difficulty: "Medium",
-    companies: ["jpmorgan", "goldman-sachs", "amazon", "microsoft"],
+    companies: ["jpmorgan"],
     topics: ["Dynamic Programming", "Knapsack"],
     frequency: "High",
     source: "Reported in JPMorgan Chase & Goldman Sachs Coding Tests",
@@ -411,7 +402,7 @@ Return *the fewest number of coins that you need to make up that amount*. If tha
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["cisco", "qualcomm", "ibm"],
+    companies: ["cisco"],
     topics: ["Computer Networks", "IP Addressing", "Subnetting"],
     frequency: "High",
     source: "Reported in Cisco Systems Technical Online Assessment",
@@ -428,7 +419,7 @@ Return *the fewest number of coins that you need to make up that amount*. If tha
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["cisco", "amazon", "google", "qualcomm"],
+    companies: ["cisco"],
     topics: ["Computer Networks", "TCP/IP", "Protocols"],
     frequency: "High",
     source: "Reported in Cisco Core Software Engineering Interview",
@@ -449,20 +440,40 @@ Return *the fewest number of coins that you need to make up that amount*. If tha
   // 7. UBER QUESTIONS (Geospatial, Intervals, High-Scale Graphs)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    title: "Merge Intervals (Ride Schedule Overlaps)",
+    title: "Geospatial Indexing - Uber H3 Hexagonal Grid",
+    category: "technical",
+    type: "mcq",
+    difficulty: "Hard",
+    companies: ["uber"],
+    topics: ["System Design", "Geospatial", "Architecture"],
+    frequency: "High",
+    source: "Reported in Uber Backend / Marketplace Systems Interview",
+    tags: ["System Design", "Geospatial", "Uber"],
+    lastReviewed: "2026",
+    description: "Why does Uber's H3 spatial index utilize regular hexagons rather than square or triangle tiles for partitioning planetary ride demand?",
+    options: [
+      "Hexagons require 90% less disk space than squares in relational databases.",
+      "Hexagons have invariant neighbor distance (all 6 adjacent neighbors share the exact same centroid distance) and minimize perimeter-to-area distortion.",
+      "GPS satellites transmit coordinates directly in hexadecimal format.",
+      "Square tiles cannot cover curved spheres without non-Euclidean angles."
+    ],
+    correctAnswer: 1,
+    explanation: "With squares, diagonal neighbors have distance sqrt(2) * d, while orthogonal neighbors have distance d. Hexagons have identical distance to all 6 neighbors, which simplifies radius searches, smoothing, and surge algorithms.",
+  },
+  {
+    title: "Merge Intervals",
     category: "coding",
     type: "coding",
     difficulty: "Medium",
-    companies: ["uber", "google", "meta", "amazon"],
+    companies: ["uber"],
     topics: ["Array", "Sorting", "Intervals"],
     frequency: "High",
-    source: "Reported in Uber CodeSignal OA & Technical Round",
+    source: "Reported in Uber & Amazon Onsite Interview",
     tags: ["Intervals", "Sorting", "Uber"],
     lastReviewed: "2026",
     problemDescription: `Given an array of \`intervals\` where \`intervals[i] = [starti, endi]\`, merge all overlapping intervals, and return *an array of the non-overlapping intervals that cover all the intervals in the input*.`,
     examples: [
-      { input: "intervals = [[1,3],[2,6],[8,10],[15,18]]", output: "[[1,6],[8,10],[15,18]]", explanation: "Intervals [1,3] and [2,6] overlap, merged into [1,6]." },
-      { input: "intervals = [[1,4],[4,5]]", output: "[[1,5]]", explanation: "Intervals [1,4] and [4,5] are considered overlapping." }
+      { input: "intervals = [[1,3],[2,6],[8,10],[15,18]]", output: "[[1,6],[8,10],[15,18]]", explanation: "Since intervals [1,3] and [2,6] overlap, merge them into [1,6]." }
     ],
     constraints: ["1 <= intervals.length <= 10^4", "intervals[i].length == 2", "0 <= starti <= endi <= 10^4"],
     starterCode: {
@@ -475,58 +486,35 @@ Return *the fewest number of coins that you need to make up that amount*. If tha
       { input: "[[1,3],[2,6],[8,10],[15,18]]", expectedOutput: "[[1,6],[8,10],[15,18]]", isHidden: false },
       { input: "[[1,4],[4,5]]", expectedOutput: "[[1,5]]", isHidden: false },
     ],
-    hints: ["Sort intervals by their start time first."],
-    approach: "Sort intervals by start. Iterate and check if current start <= previous end. If yes, merge by extending previous end = max(prev.end, cur.end).",
+    hints: ["Sort intervals by start time. Merge overlapping intervals iteratively."],
+    approach: "Sort by start time. Maintain merged list; if current start <= previous end, merge by updating end = max(prev.end, curr.end).",
     solutionCode: {
-      javascript: `function merge(intervals) {\n    if (!intervals.length) return [];\n    intervals.sort((a, b) => a[0] - b[0]);\n    const res = [intervals[0]];\n    for (let i = 1; i < intervals.length; i++) {\n        const last = res[res.length - 1];\n        const curr = intervals[i];\n        if (curr[0] <= last[1]) {\n            last[1] = Math.max(last[1], curr[1]);\n        } else {\n            res.push(curr);\n        }\n    }\n    return res;\n}`,
-      python: `class Solution:\n    def merge(self, intervals: list[list[int]]) -> list[list[int]]:\n        intervals.sort(key=lambda x: x[0])\n        merged = [intervals[0]]\n        for current in intervals[1:]:\n            prev = merged[-1]\n            if current[0] <= prev[1]:\n                prev[1] = max(prev[1], current[1])\n            else:\n                merged.append(current)\n        return merged`,
-      cpp: `class Solution {\npublic:\n    vector<vector<int>> merge(vector<vector<int>>& intervals) {\n        sort(intervals.begin(), intervals.end());\n        vector<vector<int>> merged;\n        merged.push_back(intervals[0]);\n        for (int i = 1; i < intervals.size(); ++i) {\n            if (intervals[i][0] <= merged.back()[1]) {\n                merged.back()[1] = max(merged.back()[1], intervals[i][1]);\n            } else {\n                merged.push_back(intervals[i]);\n            }\n        }\n        return merged;\n    }\n};`,
-      java: `import java.util.*;\nclass Solution {\n    public int[][] merge(int[][] intervals) {\n        Arrays.sort(intervals, (a, b) -> Integer.compare(a[0], b[0]));\n        List<int[]> merged = new ArrayList<>();\n        merged.add(intervals[0]);\n        for (int i = 1; i < intervals.length; i++) {\n            int[] prev = merged.get(merged.size() - 1);\n            if (intervals[i][0] <= prev[1]) {\n                prev[1] = Math.max(prev[1], intervals[i][1]);\n            } else {\n                merged.add(intervals[i]);\n            }\n        }\n        return merged.toArray(new int[merged.size()][]);\n    }\n}`
+      javascript: `function merge(intervals) {\n    if (!intervals.length) return [];\n    intervals.sort((a, b) => a[0] - b[0]);\n    const res = [intervals[0]];\n    for (let i = 1; i < intervals.length; i++) {\n        const last = res[res.length - 1];\n        if (intervals[i][0] <= last[1]) {\n            last[1] = Math.max(last[1], intervals[i][1]);\n        } else {\n            res.push(intervals[i]);\n        }\n    }\n    return res;\n}`,
+      python: `class Solution:\n    def merge(self, intervals: list[list[int]]) -> list[list[int]]:\n        intervals.sort(key=lambda x: x[0])\n        merged = []\n        for interval in intervals:\n            if not merged or merged[-1][1] < interval[0]:\n                merged.append(interval)\n            else:\n                merged[-1][1] = max(merged[-1][1], interval[1])\n        return merged`,
+      cpp: `class Solution {\npublic:\n    vector<vector<int>> merge(vector<vector<int>>& intervals) {\n        if (intervals.empty()) return {};\n        sort(intervals.begin(), intervals.end());\n        vector<vector<int>> merged = {intervals[0]};\n        for (size_t i = 1; i < intervals.size(); ++i) {\n            if (intervals[i][0] <= merged.back()[1]) {\n                merged.back()[1] = max(merged.back()[1], intervals[i][1]);\n            } else {\n                merged.push_back(intervals[i]);\n            }\n        }\n        return merged;\n    }\n};`,
+      java: `import java.util.*;\nclass Solution {\n    public int[][] merge(int[][] intervals) {\n        if (intervals.length <= 1) return intervals;\n        Arrays.sort(intervals, (a, b) -> Integer.compare(a[0], b[0]));\n        List<int[]> result = new ArrayList<>();\n        int[] current = intervals[0];\n        result.add(current);\n        for (int[] interval : intervals) {\n            if (interval[0] <= current[1]) {\n                current[1] = Math.max(current[1], interval[1]);\n            } else {\n                current = interval;\n                result.add(current);\n            }\n        }\n        return result.toArray(new int[result.size()][]);\n    }\n}`
     },
     timeComplexity: "O(n log n)",
     spaceComplexity: "O(n)",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 8. IBM QUESTIONS (Enterprise Cloud, Linux, Anagrams)
+  // 8. IBM QUESTIONS (Enterprise Java, Linux, Hash Table)
   // ═══════════════════════════════════════════════════════════════════════════
-  {
-    title: "Linux File Permissions & Octal Masks",
-    category: "technical",
-    type: "mcq",
-    difficulty: "Easy",
-    companies: ["ibm", "cisco", "oracle", "tcs"],
-    topics: ["Operating Systems", "Linux", "File Systems"],
-    frequency: "High",
-    source: "Reported in IBM Cognitive Assessment & System Engineer Round",
-    tags: ["Linux", "OS", "IBM"],
-    lastReviewed: "2026",
-    description: "What permission set does the octal command `chmod 754 script.sh` assign to the file?",
-    options: [
-      "User: rwx, Group: r-x, Others: r--",
-      "User: r-x, Group: rwx, Others: --x",
-      "User: rwx, Group: rw-, Others: r--",
-      "User: rwx, Group: r--, Others: r-x"
-    ],
-    correctAnswer: 0,
-    explanation: "7 = 4+2+1 (rwx for owner/user), 5 = 4+0+1 (r-x for group), 4 = 4+0+0 (r-- for others).",
-  },
   {
     title: "Group Anagrams",
     category: "coding",
     type: "coding",
     difficulty: "Medium",
-    companies: ["ibm", "amazon", "google", "salesforce"],
-    topics: ["String", "Hash Table", "Sorting"],
+    companies: ["ibm"],
+    topics: ["Array", "Hash Table", "String"],
     frequency: "High",
-    source: "Reported in IBM & Amazon Technical Screening",
+    source: "Reported in IBM Software Developer OA",
     tags: ["Hash Table", "String", "IBM"],
     lastReviewed: "2026",
-    problemDescription: `Given an array of strings \`strs\`, group the **anagrams** together. You can return the answer in any order.
-
-An **Anagram** is a word or phrase formed by rearranging the letters of a different word or phrase, typically using all the original letters exactly once.`,
+    problemDescription: `Given an array of strings \`strs\`, group the anagrams together. You can return the answer in any order.`,
     examples: [
-      { input: 'strs = ["eat","tea","tan","ate","nat","bat"]', output: '[["bat"],["nat","tan"],["ate","eat","tea"]]', explanation: 'Grouped by sorted signature.' }
+      { input: 'strs = ["eat","tea","tan","ate","nat","bat"]', output: '[["bat"],["nat","tan"],["ate","eat","tea"]]' }
     ],
     constraints: ["1 <= strs.length <= 10^4", "0 <= strs[i].length <= 100", "strs[i] consists of lowercase English letters."],
     starterCode: {
@@ -538,12 +526,13 @@ An **Anagram** is a word or phrase formed by rearranging the letters of a differ
     testCases: [
       { input: '["eat","tea","tan","ate","nat","bat"]', expectedOutput: '[["eat","tea","ate"],["tan","nat"],["bat"]]', isHidden: false },
       { input: '[""]', expectedOutput: '[[""]]', isHidden: false },
+      { input: '["a"]', expectedOutput: '[["a"]]', isHidden: true },
     ],
-    hints: ["Use sorted string or frequency array as the hash map key."],
-    approach: "Map key -> list of anagrams. Key is the alphabetically sorted version of each word.",
+    hints: ["Use sorted characters as HashMap keys."],
+    approach: "For each string, sort characters as key. Group original strings into Map values.",
     solutionCode: {
       javascript: `function groupAnagrams(strs) {\n    const map = {};\n    for (const s of strs) {\n        const key = s.split('').sort().join('');\n        if (!map[key]) map[key] = [];\n        map[key].push(s);\n    }\n    return Object.values(map);\n}`,
-      python: `class Solution:\n    def groupAnagrams(self, strs: list[str]) -> list[list[str]]:\n        mp = {}\n        for s in strs:\n            key = "".join(sorted(s))\n            mp.setdefault(key, []).append(s)\n        return list(mp.values())`,
+      python: `from collections import defaultdict\nclass Solution:\n    def groupAnagrams(self, strs: list[str]) -> list[list[str]]:\n        mp = defaultdict(list)\n        for s in strs:\n            mp[''.join(sorted(s))].append(s)\n        return list(mp.values())`,
       cpp: `class Solution {\npublic:\n    vector<vector<string>> groupAnagrams(vector<string>& strs) {\n        unordered_map<string, vector<string>> mp;\n        for (const string& s : strs) {\n            string key = s;\n            sort(key.begin(), key.end());\n            mp[key].push_back(s);\n        }\n        vector<vector<string>> res;\n        for (auto& p : mp) res.push_back(p.second);\n        return res;\n    }\n};`,
       java: `import java.util.*;\nclass Solution {\n    public List<List<String>> groupAnagrams(String[] strs) {\n        Map<String, List<String>> map = new HashMap<>();\n        for (String s : strs) {\n            char[] ca = s.toCharArray();\n            Arrays.sort(ca);\n            String key = String.valueOf(ca);\n            map.computeIfAbsent(key, k -> new ArrayList<>()).add(s);\n        }\n        return new ArrayList<>(map.values());\n    }\n}`
     },
@@ -559,7 +548,7 @@ An **Anagram** is a word or phrase formed by rearranging the letters of a differ
     category: "technical",
     type: "mcq",
     difficulty: "Medium",
-    companies: ["salesforce", "oracle", "amazon", "microsoft"],
+    companies: ["salesforce"],
     topics: ["Cloud Computing", "Architecture", "Databases"],
     frequency: "High",
     source: "Reported in Salesforce AMTS & Cloud Engineer Round",
@@ -584,7 +573,7 @@ An **Anagram** is a word or phrase formed by rearranging the letters of a differ
     category: "technical",
     type: "mcq",
     difficulty: "Hard",
-    companies: ["qualcomm", "apple", "cisco"],
+    companies: ["qualcomm"],
     topics: ["C Programming", "Embedded Systems", "Compilers"],
     frequency: "High",
     source: "Reported in Qualcomm Technical Assessment & Embedded Round",
@@ -605,7 +594,7 @@ An **Anagram** is a word or phrase formed by rearranging the letters of a differ
     category: "coding",
     type: "coding",
     difficulty: "Easy",
-    companies: ["qualcomm", "apple", "cisco", "google"],
+    companies: ["qualcomm"],
     topics: ["Bit Manipulation", "Dynamic Programming"],
     frequency: "High",
     source: "Reported in Qualcomm OA & Apple Embedded Round",
@@ -640,4 +629,290 @@ You must write an algorithm that runs in \`O(n)\` linear time.`,
     timeComplexity: "O(n)",
     spaceComplexity: "O(n)",
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 11. CISCO CODING & NETWORKING QUESTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    title: "Reverse Bits (32-bit Integer)",
+    category: "coding",
+    type: "coding",
+    difficulty: "Easy",
+    companies: ["cisco", "qualcomm"],
+    topics: ["Bit Manipulation", "Computer Architecture"],
+    frequency: "High",
+    source: "Reported in Cisco Software Engineer OA & Qualcomm Embedded Round",
+    tags: ["Bit Manipulation", "Cisco"],
+    lastReviewed: "2026",
+    problemDescription: `Reverse bits of a given 32-bit unsigned integer.`,
+    examples: [
+      { input: "n = 43261596", output: "964176192", explanation: "43261596 in binary reversed yields 964176192." }
+    ],
+    constraints: ["The input is a valid 32-bit unsigned integer."],
+    starterCode: {
+      javascript: `function reverseBits(n) {\n    // Write your code here\n}`,
+      python: `class Solution:\n    def reverseBits(self, n: int) -> int:\n        pass`,
+      cpp: `class Solution {\npublic:\n    uint32_t reverseBits(uint32_t n) {\n        \n    }\n};`,
+      java: `class Solution {\n    public int reverseBits(int n) {\n        return 0;\n    }\n}`
+    },
+    testCases: [
+      { input: "43261596", expectedOutput: "964176192", isHidden: false },
+      { input: "1", expectedOutput: "2147483648", isHidden: false },
+    ],
+    hints: ["Iterate 32 times: shift result left by 1 and OR with (n & 1), then shift n right by 1."],
+    approach: "Process each of the 32 bits from right to left, placing each bit into the reversed position.",
+    solutionCode: {
+      javascript: `function reverseBits(n) {\n    let res = 0;\n    for (let i = 0; i < 32; i++) {\n        res = (res << 1) | (n & 1);\n        n = n >>> 1;\n    }\n    return res >>> 0;\n}`,
+      python: `class Solution:\n    def reverseBits(self, n: int) -> int:\n        res = 0\n        for _ in range(32):\n            res = (res << 1) | (n & 1)\n            n >>= 1\n        return res`,
+      cpp: `class Solution {\npublic:\n    uint32_t reverseBits(uint32_t n) {\n        uint32_t res = 0;\n        for (int i = 0; i < 32; ++i) {\n            res = (res << 1) | (n & 1);\n            n >>= 1;\n        }\n        return res;\n    }\n};`,
+      java: `class Solution {\n    public int reverseBits(int n) {\n        int res = 0;\n        for (int i = 0; i < 32; i++) {\n            res = (res << 1) | (n & 1);\n            n >>>= 1;\n        }\n        return res;\n    }\n}`
+    },
+    timeComplexity: "O(1)",
+    spaceComplexity: "O(1)",
+  },
+  {
+    title: "Validate IPv4 / IPv6 Address",
+    category: "coding",
+    type: "coding",
+    difficulty: "Medium",
+    companies: ["cisco"],
+    topics: ["String", "Networking"],
+    frequency: "High",
+    source: "Reported in Cisco Systems Technical OA",
+    tags: ["String", "Networks", "Cisco"],
+    lastReviewed: "2026",
+    problemDescription: `Given a string \`queryIP\`, return \`"IPv4"\` if IP is a valid IPv4 address, \`"IPv6"\` if IP is a valid IPv6 address or \`"Neither"\` if IP is not a correct IP of any type.`,
+    examples: [
+      { input: 'queryIP = "172.16.254.1"', output: '"IPv4"' },
+      { input: 'queryIP = "256.256.256.256"', output: '"Neither"' }
+    ],
+    constraints: ["queryIP consists only of English letters, digits and the characters '.' and ':'."],
+    starterCode: {
+      javascript: `function validIPAddress(queryIP) {\n    // Write your code here\n}`,
+      python: `class Solution:\n    def validIPAddress(self, queryIP: str) -> str:\n        pass`,
+      cpp: `class Solution {\npublic:\n    string validIPAddress(string queryIP) {\n        \n    }\n};`,
+      java: `class Solution {\n    public String validIPAddress(String queryIP) {\n        return "";\n    }\n}`
+    },
+    testCases: [
+      { input: '"172.16.254.1"', expectedOutput: '"IPv4"', isHidden: false },
+      { input: '"256.256.256.256"', expectedOutput: '"Neither"', isHidden: false },
+      { input: '"2001:0db8:85a3:0:0:8A2E:0370:7334"', expectedOutput: '"IPv6"', isHidden: true },
+    ],
+    hints: ["Check IPv4 by splitting on '.' (must have 4 parts, 0-255, no leading zero).", "Check IPv6 by splitting on ':' (must have 8 parts, 1-4 hex chars)."],
+    approach: "Split by '.' for IPv4 validation (range 0-255, no leading zero). Split by ':' for IPv6 validation (1-4 valid hexadecimal characters).",
+    solutionCode: {
+      javascript: `function validIPAddress(queryIP) {\n    const v4 = queryIP.split('.');\n    if (v4.length === 4) {\n        for (const p of v4) {\n            if (!p || p.length > 3) return 'Neither';\n            if (p.length > 1 && p[0] === '0') return 'Neither';\n            for (const c of p) if (c < '0' || c > '9') return 'Neither';\n            const num = Number(p);\n            if (num < 0 || num > 255) return 'Neither';\n        }\n        return 'IPv4';\n    }\n    const v6 = queryIP.split(':');\n    if (v6.length === 8) {\n        const hex = '0123456789abcdefABCDEF';\n        for (const p of v6) {\n            if (!p || p.length > 4) return 'Neither';\n            for (const c of p) if (!hex.includes(c)) return 'Neither';\n        }\n        return 'IPv6';\n    }\n    return 'Neither';\n}`,
+      python: `class Solution:\n    def validIPAddress(self, queryIP: str) -> str:\n        v4 = queryIP.split('.')\n        if len(v4) == 4:\n            for p in v4:\n                if not p or len(p) > 3 or (len(p) > 1 and p[0] == '0'): return 'Neither'\n                if not p.isdigit() or not (0 <= int(p) <= 255): return 'Neither'\n            return 'IPv4'\n        v6 = queryIP.split(':')\n        if len(v6) == 8:\n            for p in v6:\n                if not p or len(p) > 4 or not all(c in '0123456789abcdefABCDEF' for c in p): return 'Neither'\n            return 'IPv6'\n        return 'Neither'`,
+      cpp: `class Solution {\npublic:\n    string validIPAddress(string queryIP) {\n        if (count(queryIP.begin(), queryIP.end(), '.') == 3) {\n            stringstream ss(queryIP);\n            string p;\n            int cnt = 0;\n            while (getline(ss, p, '.')) {\n                cnt++;\n                if (p.empty() || p.size() > 3 || (p.size() > 1 && p[0] == '0')) return "Neither";\n                for (char c : p) if (!isdigit(c)) return "Neither";\n                if (stoi(p) > 255) return "Neither";\n            }\n            return (cnt == 4 && queryIP.back() != '.') ? "IPv4" : "Neither";\n        }\n        if (count(queryIP.begin(), queryIP.end(), ':') == 7) {\n            stringstream ss(queryIP);\n            string p;\n            int cnt = 0;\n            while (getline(ss, p, ':')) {\n                cnt++;\n                if (p.empty() || p.size() > 4) return "Neither";\n                for (char c : p) if (!isxdigit(c)) return "Neither";\n            }\n            return (cnt == 8 && queryIP.back() != ':') ? "IPv6" : "Neither";\n        }\n        return "Neither";\n    }\n};`,
+      java: `class Solution {\n    public String validIPAddress(String queryIP) {\n        if (queryIP.chars().filter(ch -> ch == '.').count() == 3) {\n            String[] parts = queryIP.split("\\\\.", -1);\n            if (parts.length != 4) return "Neither";\n            for (String p : parts) {\n                if (p.length() == 0 || p.length() > 3 || (p.length() > 1 && p.charAt(0) == '0')) return "Neither";\n                for (char c : p.toCharArray()) if (!Character.isDigit(c)) return "Neither";\n                int val = Integer.parseInt(p);\n                if (val < 0 || val > 255) return "Neither";\n            }\n            return "IPv4";\n        }\n        if (queryIP.chars().filter(ch -> ch == ':').count() == 7) {\n            String[] parts = queryIP.split(":", -1);\n            if (parts.length != 8) return "Neither";\n            for (String p : parts) {\n                if (p.length() == 0 || p.length() > 4) return "Neither";\n                for (char c : p.toCharArray()) {\n                    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) return "Neither";\n                }\n            }\n            return "IPv6";\n        }\n        return "Neither";\n    }\n}`
+    },
+    timeComplexity: "O(n)",
+    spaceComplexity: "O(1)",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 12. QUALCOMM POWER OF TWO
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    title: "Power of Two",
+    category: "coding",
+    type: "coding",
+    difficulty: "Easy",
+    companies: ["qualcomm"],
+    topics: ["Bit Manipulation", "Math"],
+    frequency: "High",
+    source: "Reported in Qualcomm OA",
+    tags: ["Bit Manipulation", "Qualcomm"],
+    lastReviewed: "2026",
+    problemDescription: `Given an integer \`n\`, return \`true\` if it is a power of two. Otherwise, return \`false\`.`,
+    examples: [
+      { input: "n = 1", output: "true", explanation: "2^0 = 1" },
+      { input: "n = 16", output: "true", explanation: "2^4 = 16" },
+      { input: "n = 3", output: "false" }
+    ],
+    constraints: ["-2^31 <= n <= 2^31 - 1"],
+    starterCode: {
+      javascript: `function isPowerOfTwo(n) {\n    // Write your code here\n}`,
+      python: `class Solution:\n    def isPowerOfTwo(self, n: int) -> bool:\n        pass`,
+      cpp: `class Solution {\npublic:\n    bool isPowerOfTwo(int n) {\n        \n    }\n};`,
+      java: `class Solution {\n    public boolean isPowerOfTwo(int n) {\n        return false;\n    }\n}`
+    },
+    testCases: [
+      { input: "1", expectedOutput: "true", isHidden: false },
+      { input: "16", expectedOutput: "true", isHidden: false },
+      { input: "3", expectedOutput: "false", isHidden: false },
+    ],
+    hints: ["n > 0 && (n & (n - 1)) == 0"],
+    approach: "A power of two in binary has exactly one '1' bit. Thus, n > 0 && (n & (n - 1)) === 0.",
+    solutionCode: {
+      javascript: `function isPowerOfTwo(n) {\n    return n > 0 && (n & (n - 1)) === 0;\n}`,
+      python: `class Solution:\n    def isPowerOfTwo(self, n: int) -> bool:\n        return n > 0 and (n & (n - 1)) == 0`,
+      cpp: `class Solution {\npublic:\n    bool isPowerOfTwo(int n) {\n        return n > 0 && (n & (n - 1)) == 0;\n    }\n};`,
+      java: `class Solution {\n    public boolean isPowerOfTwo(int n) {\n        return n > 0 && (n & (n - 1)) == 0;\n    }\n}`
+    },
+    timeComplexity: "O(1)",
+    spaceComplexity: "O(1)",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 13. META VERBAL & COMMUNICATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    title: "Meta Contextual Communication - Critical Inference",
+    category: "english",
+    type: "mcq",
+    difficulty: "Medium",
+    companies: ["meta"],
+    topics: ["Critical Reasoning", "Reading Comprehension"],
+    frequency: "High",
+    source: "Reported in Meta Leadership & Communication Screening",
+    tags: ["Communication", "Meta"],
+    lastReviewed: "2026",
+    description: "Read the excerpt: 'In asynchronous distributed engineering teams, over-indexing on synchronous alignment meetings reduces deep work intervals and increases context switching overhead.' Which conclusion is best supported?",
+    options: [
+      "Synchronous meetings must be eliminated completely in all software projects.",
+      "Asynchronous documentation and written RFCs preserve engineering focus and reduce disruptive context switching.",
+      "Deep work can only be achieved in physical office spaces.",
+      "Context switching has no measurable impact on developer velocity."
+    ],
+    correctAnswer: 1,
+    explanation: "The excerpt specifically warns that excessive reliance on synchronous meetings disrupts deep work and induces context switching. Shifting toward structured asynchronous workflows mitigates this problem.",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 14. INTERVIEW BLUEPRINTS FOR FINANCIAL & SYSTEMS GIANTS
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    title: "Goldman Sachs - Low Latency Multithreading & Memory Alignment",
+    category: "interview",
+    type: "interview",
+    interviewCategory: "technical",
+    difficulty: "Hard",
+    companies: ["goldman-sachs"],
+    topics: ["Multithreading", "Concurrency", "Low Latency"],
+    frequency: "High",
+    source: "Reported in Goldman Sachs Quantitative / HFT Technical Round",
+    tags: ["HFT", "Low Latency", "Goldman Sachs"],
+    lastReviewed: "2026",
+    question: "How do you eliminate false sharing in high-frequency multi-threaded C++/Java applications?",
+    whatInterviewerExpects: [
+      "Explanation of CPU L1/L2 cache line size (typically 64 bytes).",
+      "Understanding that multiple threads updating adjacent variables on the same cache line trigger costly cache invalidations across cores.",
+      "Cache line padding or alignas(64) / @Contended annotations."
+    ],
+    importantPoints: ["False sharing occurs when independent threads modify variables residing on the same 64-byte hardware cache line."],
+    sampleAnswer: "In high-throughput systems, CPU cores fetch memory in 64-byte cache lines. If Thread A modifies variable X and Thread B modifies variable Y on the same cache line, core cache coherence protocols (MESI) invalidate the entire cache line repeatedly, creating massive lock bus contention. We eliminate this by padding variables with 64-byte alignment (alignas(64) in C++ or @jdk.internal.vm.annotation.Contended in Java) to ensure thread-local state occupies distinct hardware cache lines.",
+    tips: ["Mention hardware performance counters and perf cache-miss analysis."],
+  },
+  {
+    title: "JPMorgan Chase - Distributed Financial Transactions (Saga vs 2PC)",
+    category: "interview",
+    type: "interview",
+    interviewCategory: "technical",
+    difficulty: "Medium",
+    companies: ["jpmorgan"],
+    topics: ["Distributed Systems", "Saga Pattern", "Fintech"],
+    frequency: "High",
+    source: "Reported in JPMorgan Chase Software Engineer Round",
+    tags: ["FinTech", "System Design", "JPMorgan"],
+    lastReviewed: "2026",
+    question: "How do you maintain data consistency across microservices in a banking payment flow without locking database rows indefinitely?",
+    whatInterviewerExpects: [
+      "Comparison between Two-Phase Commit (2PC) and Saga Pattern.",
+      "Compensating transactions in Choreography vs Orchestration.",
+      "Idempotency and outbox patterns."
+    ],
+    importantPoints: ["2PC creates blocking locks across network boundaries. The Saga pattern uses local transactions coordinated by events with compensating transactions on failure."],
+    sampleAnswer: "In financial microservices, Two-Phase Commit causes distributed deadlocks and high latency due to long-held database locks. Instead, we implement the Saga Pattern using an Orchestrator (Temporal or Kafka-driven). Each microservice executes its local ACID transaction. If an intermediate step fails (e.g. insufficient funds during account debit), the orchestrator triggers compensating rollback transactions (e.g. unreserve credit limit, refund ledger) ensuring eventual consistency.",
+    tips: ["Always mention how idempotency tokens prevent duplicate debit execution on network retry."],
+  },
+  {
+    title: "Cisco - Linux Packet Socket Debugging & TCP Diagnostics",
+    category: "interview",
+    type: "interview",
+    interviewCategory: "technical",
+    difficulty: "Medium",
+    companies: ["cisco"],
+    topics: ["Linux", "Networks", "Sockets"],
+    frequency: "High",
+    source: "Reported in Cisco Core Engineering Technical Interview",
+    tags: ["Networking", "Linux", "Cisco"],
+    lastReviewed: "2026",
+    question: "A high-scale server is dropping incoming TCP packets under peak load. How would you systematically diagnose and resolve the bottleneck using Linux CLI tools?",
+    whatInterviewerExpects: [
+      "Diagnosing NIC ring buffers via `ethtool -S`.",
+      "Inspecting socket listen backlogs (`ss -lnt`, `netstat -s`).",
+      "Tuning `net.core.somaxconn` and `net.ipv4.tcp_max_syn_backlog`."
+    ],
+    importantPoints: ["Systematic diagnosis: Hardware NIC drops -> Kernel socket backlog drops -> Application thread pool exhaustion."],
+    sampleAnswer: "I begin at the network interface layer checking `ethtool -S <eth0>` for `rx_dropped` (indicating NIC ring buffer exhaustion). Next, I inspect TCP stack metrics with `netstat -s | grep -i listen` to check for listen queue overflows. If `ss -lnt` shows Send-Q full, the application is not calling `accept()` fast enough. I increase the socket backlog `somaxconn` via `sysctl -w net.core.somaxconn=4096` and optimize the epoll event loop in the application layer.",
+    tips: ["Demonstrate full-stack networking awareness from physical NIC to user-space epoll."],
+  },
+  {
+    title: "Qualcomm - Interrupt Service Routine (ISR) Best Practices in Embedded C",
+    category: "interview",
+    type: "interview",
+    interviewCategory: "technical",
+    difficulty: "Hard",
+    companies: ["qualcomm"],
+    topics: ["Embedded Systems", "ISRs", "C Programming"],
+    frequency: "High",
+    source: "Reported in Qualcomm Embedded Systems Technical Interview",
+    tags: ["Embedded", "ISRs", "Qualcomm"],
+    lastReviewed: "2026",
+    question: "What are the core constraints and best practices when writing an Interrupt Service Routine (ISR) in embedded C?",
+    whatInterviewerExpects: [
+      "ISRs must be non-blocking and minimal (no dynamic malloc, no blocking I/O like printf, no mutex acquisitions).",
+      "Global variables modified inside ISRs must be marked `volatile`.",
+      "Deferred interrupt processing using Bottom Halves / Tasklets / FreeRTOS Queues."
+    ],
+    importantPoints: ["ISRs run in interrupt context where sleeping/blocking causes system lockup."],
+    sampleAnswer: "An ISR must execute in deterministic, minimal microseconds. Key rules: 1) Never call blocking functions like `printf`, `malloc`, or sleep/mutex locks because interrupts cannot yield the CPU. 2) Declare all shared flags as `volatile` to prevent compiler register caching. 3) Adopt the Top-Half / Bottom-Half model: the top-half ISR acknowledges the hardware interrupt, captures the raw hardware register data into a ring buffer, and notifies a worker task/thread via a FreeRTOS semaphore or tasklet to perform heavy processing.",
+    tips: ["Mention critical sections and interrupt masking precautions."],
+  },
+  {
+    title: "Salesforce - Scalable Multi-Tenant Object Design & SOQL Optimization",
+    category: "interview",
+    type: "interview",
+    interviewCategory: "technical",
+    difficulty: "Medium",
+    companies: ["salesforce"],
+    topics: ["Cloud Architecture", "Database Design", "Salesforce"],
+    frequency: "High",
+    source: "Reported in Salesforce Technical Architect Interview",
+    tags: ["Cloud", "Database", "Salesforce"],
+    lastReviewed: "2026",
+    question: "How does the Salesforce multitenant architecture optimize custom field indexing and avoid Governor Limit exceptions?",
+    whatInterviewerExpects: [
+      "Understanding metadata-driven Universal Data Dictionary.",
+      "Skinny tables and custom index tables.",
+      "Governor limits preventing single-tenant resource starvation."
+    ],
+    importantPoints: ["Governor limits enforce bounded CPU, heap, and SOQL query counts to protect neighbor tenants in shared clusters."],
+    sampleAnswer: "Salesforce stores all customer records in unified physical tables (e.g. `CustomFields`, `CustomObjects`) where data and metadata are decoupled. To make queries fast across billions of rows, the platform creates dedicated index tables for indexed fields and dynamically syncs read-only 'Skinny Tables' that combine standard and custom fields to avoid multi-table joins. Governor limits (e.g. 100 SOQL queries per transaction) enforce efficient bulkified code patterns and prevent runaway queries from starving cluster resources.",
+    tips: ["Highlight the importance of bulkification and set-based queries in Apex."],
+  },
+  {
+    title: "IBM - Hybrid Cloud Enterprise Architecture & Resilience",
+    category: "interview",
+    type: "interview",
+    interviewCategory: "technical",
+    difficulty: "Medium",
+    companies: ["ibm"],
+    topics: ["Cloud Architecture", "Linux", "Kubernetes"],
+    frequency: "High",
+    source: "Reported in IBM Cloud & Enterprise Technical Interview",
+    tags: ["Cloud", "Enterprise", "IBM"],
+    lastReviewed: "2026",
+    question: "How do you design a hybrid cloud solution that enables seamless data and application migration between on-premise OpenShift clusters and public cloud?",
+    whatInterviewerExpects: [
+      "Red Hat OpenShift container orchestration.",
+      "API gateways, service mesh (Istio), and secure mTLS tunneling.",
+      "Event-driven data replication with Kafka."
+    ],
+    importantPoints: ["Containers and Kubernetes Operators provide consistent runtime environments regardless of underlying infrastructure."],
+    sampleAnswer: "We deploy Red Hat OpenShift across both on-premise bare-metal and public cloud environments, ensuring consistent Kubernetes runtime and security policies. We establish high-speed direct interconnects (VPN/Direct Link) with mTLS encryption. Using an Istio Service Mesh, we route traffic dynamically based on latency or regulatory requirements. Application state and databases are synchronized using Kafka event streams and distributed object storage (Ceph/S3), allowing stateless microservices to failover seamlessly across cloud boundaries.",
+    tips: ["Emphasize compliance, security tokens, and container immutability."],
+  }
 ];
+

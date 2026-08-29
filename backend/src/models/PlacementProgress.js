@@ -27,6 +27,12 @@ const solvedQuestionSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  companySlug: {
+    type: String,
+    default: "",
+    lowercase: true,
+    trim: true,
+  },
   attemptedAt: {
     type: Date,
     default: Date.now,

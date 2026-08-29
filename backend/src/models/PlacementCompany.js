@@ -37,6 +37,7 @@ const placementCompanySchema = new mongoose.Schema(
       {
         name: { type: String, required: true },
         type: { type: String, enum: ["Online Assessment", "Technical Interview", "System Design", "HR / Behavioral", "Managerial"], default: "Technical Interview" },
+        category: { type: String, enum: ["aptitude", "english", "technical", "coding", "interview"], default: "technical" },
         description: { type: String, default: "" },
         duration: { type: String, default: "60 mins" },
       },

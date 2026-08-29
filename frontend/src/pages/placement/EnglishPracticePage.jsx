@@ -182,6 +182,7 @@ const EnglishPracticePage = () => {
     submitAnswerMutation({
       questionId: currentQuestion._id,
       userChoice: selectedOption,
+      companySlug: companyId || "all",
     });
   };
 
@@ -200,6 +201,8 @@ const EnglishPracticePage = () => {
     );
   }
 
+  const isMaster = !companyId || companyId.toLowerCase() === "all";
+
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-base-200/50 p-2 sm:p-5 font-sans text-base-content">
       <div className="max-w-6xl mx-auto space-y-4">
@@ -207,7 +210,7 @@ const EnglishPracticePage = () => {
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-base-100 p-4 rounded-3xl border border-base-content/10 shadow-xs">
           <div className="flex items-center gap-3">
             <Link
-              to={`/placement/${companyId}`}
+              to={isMaster ? "/placement" : `/placement/${companyId}`}
               className="p-2 rounded-2xl bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors shrink-0"
               title="Back to Dashboard"
             >
@@ -216,7 +219,7 @@ const EnglishPracticePage = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-[11px] uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20">
-                  {companyId?.toUpperCase()}
+                  {isMaster ? "MASTER LIBRARY" : companyId?.toUpperCase()}
                 </span>
                 <span className="text-xs font-bold text-base-content/40">•</span>
                 <span className="text-xs font-black uppercase tracking-wider text-base-content/70">

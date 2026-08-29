@@ -374,7 +374,7 @@ export const getQuestionById = async (req, res) => {
  */
 export const submitAnswer = async (req, res) => {
   try {
-    const { questionId, userChoice } = req.body;
+    const { questionId, userChoice, companySlug } = req.body;
     const userId = req.user?._id;
 
     if (!questionId || userChoice === undefined) {
@@ -396,6 +396,7 @@ export const submitAnswer = async (req, res) => {
       const attemptEntry = {
         questionId: question._id,
         category: question.category,
+        companySlug: (companySlug || "").toLowerCase(),
         isCorrect,
         userChoice,
         attemptedAt: new Date(),
@@ -456,23 +457,86 @@ const normalizeOutput = (val) => {
 };
 
 /**
+ * Parses and splits raw input strings (single line with top-level commas, multiline, or variable assignments)
+ * into clean argument strings.
+ */
+const splitInputArguments = (rawInput) => {
+  if (!rawInput || typeof rawInput !== "string") return [];
+  const lines = rawInput.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const args = [];
+
+  for (const line of lines) {
+    let current = "";
+    let inDouble = false;
+    let inSingle = false;
+    let bracket = 0;
+    let brace = 0;
+    let paren = 0;
+
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      const prev = i > 0 ? line[i - 1] : "";
+
+      if (c === '"' && prev !== "\\" && !inSingle) {
+        inDouble = !inDouble;
+        current += c;
+      } else if (c === "'" && prev !== "\\" && !inDouble) {
+        inSingle = !inSingle;
+        current += c;
+      } else if (!inDouble && !inSingle) {
+        if (c === "[") { bracket++; current += c; }
+        else if (c === "]") { bracket--; current += c; }
+        else if (c === "{") { brace++; current += c; }
+        else if (c === "}") { brace--; current += c; }
+        else if (c === "(") { paren++; current += c; }
+        else if (c === ")") { paren--; current += c; }
+        else if (c === "," && bracket === 0 && brace === 0 && paren === 0) {
+          if (current.trim()) args.push(current.trim());
+          current = "";
+        } else {
+          current += c;
+        }
+      } else {
+        current += c;
+      }
+    }
+    if (current.trim()) {
+      args.push(current.trim());
+    }
+  }
+
+  // Clean each argument: strip variable assignments like "nums = ", "k = ", etc.
+  return args.map((arg) => {
+    let clean = arg.trim();
+    clean = clean.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*=\s*/, "").trim();
+    return clean;
+  });
+};
+
+/**
  * Production-Grade Sandboxed Execution Engine
  */
 const executeSandboxedCode = async (code, language, stdin = "") => {
   const lang = language?.toLowerCase() || "javascript";
   const oneCompilerLang = LANG_MAP[lang] || "javascript";
 
+  const rawArgStrings = splitInputArguments(stdin);
+  const formattedStdin = rawArgStrings.join("\n");
+
   // Tier 1: Instant Native JavaScript Sandboxing via Node VM
   if (lang === "javascript" || lang === "js") {
     try {
       const startTime = Date.now();
       const logs = [];
-      const lines = stdin.split("\n").map((l) => l.trim()).filter(Boolean);
-      const parsedArgs = lines.map((line) => {
+      const parsedArgs = rawArgStrings.map((arg) => {
         try {
-          return JSON.parse(line);
+          return JSON.parse(arg);
         } catch {
-          return line;
+          let s = arg.trim();
+          if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+            return s.slice(1, -1);
+          }
+          return s;
         }
       });
 
@@ -483,7 +547,7 @@ const executeSandboxedCode = async (code, language, stdin = "") => {
         },
         args: parsedArgs,
         result: undefined,
-        input: stdin,
+        input: formattedStdin,
       };
 
       // Detect solution function name
@@ -555,7 +619,7 @@ const executeSandboxedCode = async (code, language, stdin = "") => {
   let executableCode = code;
 
   if (lang === "python" || lang === "python3") {
-    executableCode = `import sys, json
+    executableCode = `import sys, json, re
 
 class ListNode:
     def __init__(self, x):
@@ -580,12 +644,16 @@ def __harness__():
     lines = [l.strip() for l in raw.splitlines() if l.strip()]
     args = []
     for l in lines:
+        cleaned = re.sub(r'^[a-zA-Z_$][a-zA-Z0-9_$]*\\s*=\\s*', '', l).strip()
         try:
-            args.append(json.loads(l))
+            args.append(json.loads(cleaned))
         except:
-            args.append(l)
+            if (cleaned.startswith('"') and cleaned.endsWith('"')) or (cleaned.startswith("'") and cleaned.endsWith("'")):
+                args.append(cleaned[1:-1])
+            else:
+                args.append(cleaned)
     
-    if args and isinstance(args[0], list) and ('hasCycle' in '${code}' or 'ListNode' in '${code}'):
+    if args and isinstance(args[0], list) and ('hasCycle' in '''${code}''' or 'ListNode' in '''${code}'''):
         pos = args[1] if len(args) > 1 and isinstance(args[1], int) else -1
         args = [__build_linked_list__(args[0], pos)]
     
@@ -596,13 +664,23 @@ def __harness__():
             fn = getattr(sol, methods[0])
             res = fn(*args)
             if res is not None:
-                print(json.dumps(res, separators=(',', ':')) if isinstance(res, (list, dict, bool, int, float)) else str(res))
+                if isinstance(res, bool):
+                    print(str(res).lower())
+                elif isinstance(res, (list, dict)):
+                    print(json.dumps(res, separators=(',', ':')))
+                else:
+                    print(str(res))
     else:
         for name in list(globals().keys()):
             if not name.startswith('_') and callable(globals()[name]):
                 res = globals()[name](*args)
                 if res is not None:
-                    print(json.dumps(res, separators=(',', ':')) if isinstance(res, (list, dict, bool, int, float)) else str(res))
+                    if isinstance(res, bool):
+                        print(str(res).lower())
+                    elif isinstance(res, (list, dict)):
+                        print(json.dumps(res, separators=(',', ':')))
+                    else:
+                        print(str(res))
                 break
 
 if __name__ == '__main__':
@@ -615,6 +693,7 @@ if __name__ == '__main__':
   } else if (lang === "java") {
     executableCode = `import java.util.*;
 import java.io.*;
+import java.lang.reflect.*;
 import java.util.regex.*;
 
 class ListNode {
@@ -632,74 +711,120 @@ public class Main {
     public static void main(String[] args) {
         try {
             Scanner sc = new Scanner(System.in);
-            StringBuilder sb = new StringBuilder();
+            List<String> rawLines = new ArrayList<>();
             while (sc.hasNextLine()) {
-                sb.append(sc.nextLine()).append("\\n");
-            }
-            String input = sb.toString().trim();
-            if (input.isEmpty()) return;
-            
-            String[] lines = input.split("\\n");
-            Solution sol = new Solution();
-            
-            java.lang.reflect.Method target = null;
-            for (java.lang.reflect.Method m : Solution.class.getDeclaredMethods()) {
-                if (java.lang.reflect.Modifier.isPublic(m.getModifiers()) && !m.getName().contains("$") && !m.getName().equals("main")) {
-                    target = m;
-                    if (m.getReturnType() != void.class) {
-                        break;
-                    }
+                String line = sc.nextLine().trim();
+                if (!line.isEmpty()) {
+                    rawLines.add(line);
                 }
             }
+            if (rawLines.isEmpty()) return;
+            
+            List<String> lines = new ArrayList<>();
+            for (String line : rawLines) {
+                // If line contains top-level comma delimited arguments
+                int bracket = 0, brace = 0, paren = 0;
+                boolean inDouble = false, inSingle = false;
+                StringBuilder cur = new StringBuilder();
+                for (int ci = 0; ci < line.length(); ci++) {
+                    char c = line.charAt(ci);
+                    char prev = ci > 0 ? line.charAt(ci - 1) : ' ';
+                    if (c == '"' && prev != '\\\\' && !inSingle) {
+                        inDouble = !inDouble;
+                        cur.append(c);
+                    } else if (c == '\\'' && prev != '\\\\' && !inDouble) {
+                        inSingle = !inSingle;
+                        cur.append(c);
+                    } else if (!inDouble && !inSingle) {
+                        if (c == '[') { bracket++; cur.append(c); }
+                        else if (c == ']') { bracket--; cur.append(c); }
+                        else if (c == '{') { brace++; cur.append(c); }
+                        else if (c == '}') { brace--; cur.append(c); }
+                        else if (c == '(') { paren++; cur.append(c); }
+                        else if (c == ')') { paren--; cur.append(c); }
+                        else if (c == ',' && bracket == 0 && brace == 0 && paren == 0) {
+                            if (!cur.toString().trim().isEmpty()) lines.add(cur.toString().trim());
+                            cur.setLength(0);
+                        } else {
+                            cur.append(c);
+                        }
+                    } else {
+                        cur.append(c);
+                    }
+                }
+                if (!cur.toString().trim().isEmpty()) {
+                    lines.add(cur.toString().trim());
+                }
+            }
+            
+            Solution sol = new Solution();
+            Method target = null;
+            Method[] methods = Solution.class.getDeclaredMethods();
+            for (Method m : methods) {
+                if (m.isSynthetic() || m.getName().contains("$") || m.getName().equals("main")) continue;
+                if (target == null || (target.getReturnType() == void.class && m.getReturnType() != void.class) || m.getParameterCount() > target.getParameterCount()) {
+                    target = m;
+                }
+            }
+            if (target == null && methods.length > 0) {
+                target = methods[0];
+            }
             if (target == null) return;
+            target.setAccessible(true);
             
             Class<?>[] paramTypes = target.getParameterTypes();
             Object[] invokeArgs = new Object[paramTypes.length];
             
-            for (int i = 0; i < paramTypes.length && i < lines.length; i++) {
-                String line = lines[i].trim();
+            for (int i = 0; i < paramTypes.length; i++) {
+                String line = i < lines.size() ? lines.get(i).trim() : "";
+                line = line.replaceFirst("^[a-zA-Z_$][a-zA-Z0-9_$]*\\\\s*=\\\\s*", "").trim();
                 Class<?> pt = paramTypes[i];
+                
                 if (pt.getSimpleName().equals("ListNode")) {
                     String clean = line.replace("[", "").replace("]", "").replace(" ", "").trim();
                     if (!clean.isEmpty()) {
                         String[] parts = clean.split(",");
                         List<ListNode> nodes = new ArrayList<>();
                         for (String p : parts) {
-                            nodes.add(new ListNode(Integer.parseInt(p.trim())));
+                            if (!p.trim().isEmpty()) {
+                                nodes.add(new ListNode(Integer.parseInt(p.trim())));
+                            }
                         }
                         for (int k = 0; k < nodes.size() - 1; k++) {
                             nodes.get(k).next = nodes.get(k + 1);
                         }
                         int pos = -1;
-                        if (lines.length > i + 1) {
+                        if (lines.size() > i + 1) {
                             try {
-                                pos = Integer.parseInt(lines[i + 1].replaceAll("[^0-9-]", ""));
+                                pos = Integer.parseInt(lines.get(i + 1).replaceAll("[^0-9-]", ""));
                             } catch (Exception ignored) {}
                         }
                         if (pos >= 0 && pos < nodes.size()) {
                             nodes.get(nodes.size() - 1).next = nodes.get(pos);
                         }
-                        invokeArgs[i] = nodes.get(0);
+                        invokeArgs[i] = nodes.isEmpty() ? null : nodes.get(0);
                     } else {
                         invokeArgs[i] = null;
                     }
                 } else if (pt == int.class || pt == Integer.class) {
-                    invokeArgs[i] = Integer.parseInt(line.replaceAll("[^0-9-]", ""));
+                    String digits = line.replaceAll("[^0-9-]", "");
+                    invokeArgs[i] = digits.isEmpty() ? 0 : Integer.parseInt(digits);
                 } else if (pt == long.class || pt == Long.class) {
-                    invokeArgs[i] = Long.parseLong(line.replaceAll("[^0-9-]", ""));
+                    String digits = line.replaceAll("[^0-9-]", "");
+                    invokeArgs[i] = digits.isEmpty() ? 0L : Long.parseLong(digits);
                 } else if (pt == double.class || pt == Double.class) {
-                    invokeArgs[i] = Double.parseDouble(line.trim());
+                    invokeArgs[i] = line.isEmpty() ? 0.0 : Double.parseDouble(line.trim());
                 } else if (pt == float.class || pt == Float.class) {
-                    invokeArgs[i] = Float.parseFloat(line.trim());
+                    invokeArgs[i] = line.isEmpty() ? 0.0f : Float.parseFloat(line.trim());
                 } else if (pt == boolean.class || pt == Boolean.class) {
-                    invokeArgs[i] = Boolean.parseBoolean(line.trim());
+                    invokeArgs[i] = line.equalsIgnoreCase("true") || line.equals("1");
                 } else if (pt == char.class || pt == Character.class) {
                     String clean = line.replace("\\\"", "").replace("'", "").trim();
                     invokeArgs[i] = clean.isEmpty() ? ' ' : clean.charAt(0);
                 } else if (pt == String.class) {
                     String clean = line.trim();
-                    if (clean.startsWith("\\\"") && clean.endsWith("\\\"") && clean.length() >= 2) {
-                        clean = clean.substring(1, clean.length() - 1);
+                    if ((clean.startsWith("\\\"") && clean.endsWith("\\\"")) || (clean.startsWith("'") && clean.endsWith("'"))) {
+                        if (clean.length() >= 2) clean = clean.substring(1, clean.length() - 1);
                     }
                     invokeArgs[i] = clean;
                 } else if (pt == int[].class) {
@@ -710,8 +835,9 @@ public class Main {
                         String[] parts = clean.split(",");
                         int[] arr = new int[parts.length];
                         for (int k = 0; k < parts.length; k++) {
-                            if (!parts[k].trim().isEmpty()) {
-                                arr[k] = Integer.parseInt(parts[k].trim());
+                            String p = parts[k].replaceAll("[^0-9-]", "");
+                            if (!p.isEmpty()) {
+                                arr[k] = Integer.parseInt(p);
                             }
                         }
                         invokeArgs[i] = arr;
@@ -758,7 +884,8 @@ public class Main {
                             String[] parts = rClean.split(",");
                             int[] arr = new int[parts.length];
                             for (int k = 0; k < parts.length; k++) {
-                                if (!parts[k].trim().isEmpty()) arr[k] = Integer.parseInt(parts[k].trim());
+                                String p = parts[k].replaceAll("[^0-9-]", "");
+                                if (!p.isEmpty()) arr[k] = Integer.parseInt(p);
                             }
                             matrix.add(arr);
                         }
@@ -794,15 +921,20 @@ public class Main {
                 } else if (ret instanceof char[]) {
                     System.out.println(new String((char[]) ret));
                 } else if (ret instanceof Object[]) {
-                    System.out.println(Arrays.toString((Object[]) ret));
+                    System.out.println(Arrays.toString((Object[]) ret).replace(" ", ""));
                 } else if (ret instanceof int[][]) {
                     System.out.println(Arrays.deepToString((int[][]) ret).replace(" ", ""));
+                } else if (ret instanceof List) {
+                    System.out.println(ret.toString().replace(" ", ""));
+                } else if (ret instanceof Boolean) {
+                    System.out.println(ret.toString().toLowerCase());
                 } else {
                     System.out.println(ret.toString());
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            cause.printStackTrace();
         }
     }
 }`;
@@ -821,7 +953,7 @@ public class Main {
         },
         data: {
           language: oneCompilerLang,
-          stdin: stdin || "",
+          stdin: formattedStdin || "",
           files: [
             {
               name: `Main.${lang === "javascript" ? "js" : lang === "python" ? "py" : lang === "cpp" ? "cpp" : "java"}`,
@@ -854,7 +986,7 @@ public class Main {
             content: executableCode,
           },
         ],
-        stdin: stdin || "",
+        stdin: formattedStdin || "",
       },
       { timeout: 8000 }
     );
@@ -1008,7 +1140,7 @@ export const runCodingTest = async (req, res) => {
  */
 export const submitCodingSolution = async (req, res) => {
   try {
-    const { questionId, code, language } = req.body;
+    const { questionId, code, language, companySlug } = req.body;
     const userId = req.user?._id;
 
     if (!code) {
@@ -1077,6 +1209,7 @@ export const submitCodingSolution = async (req, res) => {
       const attemptEntry = {
         questionId: question._id,
         category: "coding",
+        companySlug: (companySlug || "").toLowerCase(),
         isCorrect: isAccepted,
         code,
         language,

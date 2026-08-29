@@ -85,7 +85,7 @@ const CodingProblemPage = () => {
   const [runResults, setRunResults] = useState(null);
   const [submissionResult, setSubmissionResult] = useState(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["placementQuestion", problemId],
     queryFn: () => getPlacementQuestionById(problemId),
     enabled: !!problemId,
@@ -189,6 +189,7 @@ const CodingProblemPage = () => {
       questionId: question._id,
       code,
       language: selectedLanguage,
+      companySlug: companyId || "all",
     });
   };
 
@@ -218,7 +219,6 @@ const CodingProblemPage = () => {
       } catch (e) {}
       resetProgressMutation({ questionId: question._id });
     }
-    toast.success("Code reset to starter template.");
   };
 
   const handleCopyCode = () => {
@@ -228,18 +228,40 @@ const CodingProblemPage = () => {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  if (isLoading || !question) {
+  if (isLoading) {
     return (
       <div className="min-h-[calc(100dvh-4rem)] bg-base-200 flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3 text-base-content/60">
           <span className="loading loading-spinner loading-lg text-primary" />
           <span className="text-xs font-bold uppercase tracking-widest font-mono">
-            Initializing Zen Studio...
+            Booting Cloud IDE & Environment...
           </span>
         </div>
       </div>
     );
   }
+
+  if (isError || !question) {
+    return (
+      <div className="min-h-[calc(100dvh-4rem)] bg-base-200 flex items-center justify-center p-6">
+        <div className="bg-base-100 rounded-3xl p-8 max-w-md border border-base-content/10 text-center space-y-4 shadow-xl">
+          <Code2 className="size-12 mx-auto text-rose-500" />
+          <h2 className="text-lg font-black">Problem Not Found</h2>
+          <p className="text-xs text-base-content/60">
+            This coding problem could not be loaded. It may have been relocated or updated.
+          </p>
+          <Link
+            to={!companyId || companyId === "all" ? "/placement/all/coding" : `/placement/${companyId}/coding`}
+            className="btn btn-primary btn-sm rounded-xl font-bold uppercase text-xs"
+          >
+            Back to Problems
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const isMaster = !companyId || companyId.toLowerCase() === "all";
 
   const diffBadgeStyle =
     question.difficulty === "Easy"
@@ -256,7 +278,7 @@ const CodingProblemPage = () => {
       <header className="flex items-center justify-between bg-base-100 px-4 py-2.5 rounded-2xl border border-base-content/10 shadow-xs shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <Link
-            to={`/placement/${companyId}/coding`}
+            to={isMaster ? "/placement/all/coding" : `/placement/${companyId}/coding`}
             className="p-2 rounded-xl bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors shrink-0"
             title="Back to Problem List"
           >
@@ -264,7 +286,7 @@ const CodingProblemPage = () => {
           </Link>
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-extrabold text-[11px] uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20 shrink-0">
-              {companyId?.toUpperCase()}
+              {isMaster ? "MASTER LIBRARY" : companyId?.toUpperCase()}
             </span>
             <span className="text-base-content/20 shrink-0">•</span>
             <h1 className="font-black text-sm text-base-content truncate">

@@ -147,6 +147,7 @@ const AptitudePracticePage = () => {
     submitAnswerMutation({
       questionId: currentQuestion._id,
       userChoice: selectedOption,
+      companySlug: companyId || "all",
     });
   };
 
@@ -161,12 +162,17 @@ const AptitudePracticePage = () => {
           delete copy[qId];
           return copy;
         });
+        setSelectedOption(null);
+        setSubmissionResult(null);
+        toast.success("Progress reset for this deck");
       }
-      setSelectedOption(null);
-      setSubmissionResult(null);
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
-      toast.success("Question reset successfully.");
+    },
+    onError: () => {
+      toast.error("Failed to reset progress");
     },
   });
 
@@ -177,26 +183,19 @@ const AptitudePracticePage = () => {
       return;
     }
     resetQuestionMutation({
-      company: companyId,
+      company: companyId || "all",
       category: "aptitude",
       questionId: currentQuestion._id,
     });
   };
 
-  // Reset entire deck progress
   const handleResetDeck = () => {
-    if (isResetting || !questions.length) return;
-    const questionIds = questions.map((q) => q._id);
-    resetQuestionMutation({
-      company: companyId,
-      category: "aptitude",
-      questionIds,
-    });
-    setAttemptMap({});
-    setSelectedOption(null);
-    setSubmissionResult(null);
-    setCurrentIndex(0);
-    toast.success("All questions in this deck have been reset! 🔄");
+    if (window.confirm("Reset all question attempts in this category deck?")) {
+      resetQuestionMutation({
+        company: companyId || "all",
+        category: "aptitude",
+      });
+    }
   };
 
   // Summary Metrics
@@ -215,6 +214,8 @@ const AptitudePracticePage = () => {
     );
   }
 
+  const isMaster = !companyId || companyId.toLowerCase() === "all";
+
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-base-200/50 p-2 sm:p-5 font-sans text-base-content">
       <div className="max-w-6xl mx-auto space-y-4">
@@ -222,7 +223,7 @@ const AptitudePracticePage = () => {
         <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-base-100 p-4 rounded-3xl border border-base-content/10 shadow-xs">
           <div className="flex items-center gap-3">
             <Link
-              to={`/placement/${companyId}`}
+              to={isMaster ? "/placement" : `/placement/${companyId}`}
               className="p-2 rounded-2xl bg-base-200 hover:bg-base-300 text-base-content/80 hover:text-base-content transition-colors shrink-0"
               title="Back to Dashboard"
             >
@@ -231,7 +232,7 @@ const AptitudePracticePage = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-[11px] uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/20">
-                  {companyId?.toUpperCase()}
+                  {isMaster ? "MASTER LIBRARY" : companyId?.toUpperCase()}
                 </span>
                 <span className="text-xs font-bold text-base-content/40">•</span>
                 <span className="text-xs font-black uppercase tracking-wider text-base-content/70">

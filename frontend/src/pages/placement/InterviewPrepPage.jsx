@@ -54,6 +54,8 @@ const InterviewPrepPage = () => {
     setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const isMaster = !companyId || companyId.toLowerCase() === "all";
+
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-base-200 p-3 sm:p-6 lg:p-8 font-sans text-base-content">
       <div className="container mx-auto max-w-[1200px] space-y-6">
@@ -61,21 +63,25 @@ const InterviewPrepPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-4 sm:p-6 rounded-3xl border border-base-content/10 shadow-sm">
           <div className="flex items-center gap-3">
             <Link
-              to={`/placement/${companyId}`}
+              to={isMaster ? "/placement" : `/placement/${companyId}`}
               className="p-2 rounded-xl bg-base-200 hover:bg-base-300 text-base-content transition-colors"
             >
               <ArrowLeft className="size-5" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm uppercase tracking-wider text-rose-500">
-                  {companyId?.toUpperCase()}
+                <span className="font-extrabold text-xs uppercase tracking-wider text-rose-500 bg-rose-500/10 px-2.5 py-0.5 rounded-lg border border-rose-500/20">
+                  {isMaster ? "MASTER LIBRARY" : companyId?.toUpperCase()}
                 </span>
                 <span className="text-base-content/40">•</span>
-                <h1 className="font-black text-base sm:text-lg text-base-content">Interview Masterclass</h1>
+                <h1 className="font-black text-base sm:text-lg text-base-content">
+                  {isMaster ? "Master Interview Preparation Library" : "Company Interview Masterclass"}
+                </h1>
               </div>
-              <p className="text-xs text-base-content/60 font-medium">
-                High-impact technical deep-dives, STAR-method HR questions &amp; project defense blueprints
+              <p className="text-xs text-base-content/60 font-medium mt-0.5">
+                {isMaster
+                  ? "High-impact technical deep-dives, STAR-method behavioral frameworks & project defense blueprints"
+                  : `Curated interview questions and evaluation criteria reported for ${companyId?.toUpperCase()}`}
               </p>
             </div>
           </div>

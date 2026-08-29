@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Sparkles,
   Layers,
+  Building2,
 } from "lucide-react";
 import { getPlacementQuestions } from "../../lib/placementApi";
 import { motion } from "framer-motion";
@@ -25,6 +26,7 @@ const DIFFICULTY_FILTERS = [
 
 const CodingListPage = () => {
   const { companyId } = useParams();
+  const isMasterLibrary = !companyId || companyId.toLowerCase() === "all";
   const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,12 +35,12 @@ const CodingListPage = () => {
     queryKey: ["placementQuestions", companyId, "coding", selectedDifficulty, selectedTopic, searchQuery],
     queryFn: () =>
       getPlacementQuestions({
-        company: companyId,
+        company: companyId || "all",
         category: "coding",
         difficulty: selectedDifficulty,
         topic: selectedTopic,
         search: searchQuery,
-        limit: 50,
+        limit: 100,
       }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -54,21 +56,25 @@ const CodingListPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-4 sm:p-6 rounded-3xl border border-base-content/10 shadow-sm">
           <div className="flex items-center gap-3">
             <Link
-              to={`/placement/${companyId}`}
+              to={isMasterLibrary ? "/placement" : `/placement/${companyId}`}
               className="p-2 rounded-xl bg-base-200 hover:bg-base-300 text-base-content transition-colors"
             >
               <ArrowLeft className="size-5" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm uppercase tracking-wider text-amber-500">
-                  {companyId?.toUpperCase()}
+                <span className="font-extrabold text-xs uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20">
+                  {isMasterLibrary ? "MASTER LIBRARY" : companyId?.toUpperCase()}
                 </span>
                 <span className="text-base-content/40">•</span>
-                <h1 className="font-black text-base sm:text-lg text-base-content">Coding Challenges</h1>
+                <h1 className="font-black text-base sm:text-lg text-base-content">
+                  {isMasterLibrary ? "Master Coding Practice Bank" : "Company Coding Challenges"}
+                </h1>
               </div>
-              <p className="text-xs text-base-content/60 font-medium">
-                High-frequency algorithmic problems reported in {companyId?.toUpperCase()} OAs &amp; technical interviews
+              <p className="text-xs text-base-content/60 font-medium mt-0.5">
+                {isMasterLibrary
+                  ? "Solve comprehensive LeetCode-style algorithmic coding problems across Arrays, DP, Graphs, Trees, and Strings"
+                  : `High-frequency algorithmic problems reported in ${companyId?.toUpperCase()} OAs & technical interviews`}
               </p>
             </div>
           </div>
@@ -86,7 +92,7 @@ const CodingListPage = () => {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-base-content/40" />
             <input
               type="text"
-              placeholder="Search problem (Two Sum, Subarray...)"
+              placeholder="Search problem (Two Sum, Subarray, Window...)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-base-100 border border-base-content/10 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/30"
@@ -133,6 +139,8 @@ const CodingListPage = () => {
                     ? "text-amber-700 bg-amber-500/10 border-amber-500/30 dark:text-amber-400"
                     : "text-rose-700 bg-rose-500/10 border-rose-500/30 dark:text-rose-400";
 
+                const targetCompany = (companyId && companyId !== "all") ? companyId : (prob.companies?.[0] || "all");
+
                 return (
                   <div
                     key={prob._id}
@@ -146,10 +154,10 @@ const CodingListPage = () => {
                         <Circle className="size-5 text-base-content/20 shrink-0 mt-0.5 sm:mt-0" />
                       )}
 
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <Link
-                            to={`/placement/${companyId}/coding/${prob._id}`}
+                            to={`/placement/${targetCompany}/coding/${prob._id}`}
                             className="font-bold text-sm text-base-content group-hover:text-primary transition-colors truncate"
                           >
                             {idx + 1}. {prob.title}
@@ -161,8 +169,16 @@ const CodingListPage = () => {
                           )}
                         </div>
 
-                        {/* Topics */}
+                        {/* Topics & Company Badges */}
                         <div className="flex flex-wrap items-center gap-1.5">
+                          {prob.companies?.slice(0, 3).map((comp, cIdx) => (
+                            <span
+                              key={cIdx}
+                              className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
+                            >
+                              {comp}
+                            </span>
+                          ))}
                           {prob.topics?.map((tp, tIdx) => (
                             <span
                               key={tIdx}
@@ -182,7 +198,7 @@ const CodingListPage = () => {
                       </span>
 
                       <Link
-                        to={`/placement/${companyId}/coding/${prob._id}`}
+                        to={`/placement/${targetCompany}/coding/${prob._id}`}
                         className="btn btn-primary btn-sm rounded-xl font-bold uppercase text-[11px] tracking-wider px-4 gap-1.5 shadow-xs"
                       >
                         <span>{prob.isSolved ? "Solve Again" : "Solve"}</span>
