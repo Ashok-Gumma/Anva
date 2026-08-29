@@ -69,7 +69,9 @@ const EnglishPracticePage = () => {
           setSubmissionResult(null);
         }
       }
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
       toast.success("Question reset successfully.");
     },

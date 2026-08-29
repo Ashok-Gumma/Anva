@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import PlacementCompany from "../models/PlacementCompany.js";
 import PlacementQuestion from "../models/PlacementQuestion.js";
 import PlacementProgress from "../models/PlacementProgress.js";
@@ -435,14 +436,23 @@ export const submitAnswer = async (req, res) => {
  */
 const normalizeOutput = (val) => {
   if (val === undefined || val === null) return "";
-  return String(val)
+  let s = String(val)
     .replace(/\r\n/g, "\n")
     .replace(/\s+/g, " ")
     .replace(/\[\s+/g, "[")
     .replace(/\s+\]/g, "]")
     .replace(/,\s+/g, ",")
+    .replace(/\\"/g, '"')
     .toLowerCase()
     .trim();
+
+  // Strip enclosing quotes for strings (e.g. '"fl"' -> 'fl', '""' -> '')
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    if (s.length >= 2 && !s.includes('[') && !s.includes(']')) {
+      s = s.substring(1, s.length - 1).trim();
+    }
+  }
+  return s;
 };
 
 /**
@@ -605,6 +615,7 @@ if __name__ == '__main__':
   } else if (lang === "java") {
     executableCode = `import java.util.*;
 import java.io.*;
+import java.util.regex.*;
 
 class ListNode {
     public int val;
@@ -633,9 +644,11 @@ public class Main {
             
             java.lang.reflect.Method target = null;
             for (java.lang.reflect.Method m : Solution.class.getDeclaredMethods()) {
-                if (java.lang.reflect.Modifier.isPublic(m.getModifiers())) {
+                if (java.lang.reflect.Modifier.isPublic(m.getModifiers()) && !m.getName().contains("$") && !m.getName().equals("main")) {
                     target = m;
-                    break;
+                    if (m.getReturnType() != void.class) {
+                        break;
+                    }
                 }
             }
             if (target == null) return;
@@ -672,6 +685,23 @@ public class Main {
                     }
                 } else if (pt == int.class || pt == Integer.class) {
                     invokeArgs[i] = Integer.parseInt(line.replaceAll("[^0-9-]", ""));
+                } else if (pt == long.class || pt == Long.class) {
+                    invokeArgs[i] = Long.parseLong(line.replaceAll("[^0-9-]", ""));
+                } else if (pt == double.class || pt == Double.class) {
+                    invokeArgs[i] = Double.parseDouble(line.trim());
+                } else if (pt == float.class || pt == Float.class) {
+                    invokeArgs[i] = Float.parseFloat(line.trim());
+                } else if (pt == boolean.class || pt == Boolean.class) {
+                    invokeArgs[i] = Boolean.parseBoolean(line.trim());
+                } else if (pt == char.class || pt == Character.class) {
+                    String clean = line.replace("\\\"", "").replace("'", "").trim();
+                    invokeArgs[i] = clean.isEmpty() ? ' ' : clean.charAt(0);
+                } else if (pt == String.class) {
+                    String clean = line.trim();
+                    if (clean.startsWith("\\\"") && clean.endsWith("\\\"") && clean.length() >= 2) {
+                        clean = clean.substring(1, clean.length() - 1);
+                    }
+                    invokeArgs[i] = clean;
                 } else if (pt == int[].class) {
                     String clean = line.replace("[", "").replace("]", "").replace(" ", "").trim();
                     if (clean.isEmpty()) {
@@ -679,13 +709,79 @@ public class Main {
                     } else {
                         String[] parts = clean.split(",");
                         int[] arr = new int[parts.length];
-                        for (int k = 0; k < parts.length; k++) arr[k] = Integer.parseInt(parts[k].trim());
+                        for (int k = 0; k < parts.length; k++) {
+                            if (!parts[k].trim().isEmpty()) {
+                                arr[k] = Integer.parseInt(parts[k].trim());
+                            }
+                        }
                         invokeArgs[i] = arr;
                     }
-                } else if (pt == String.class) {
-                    invokeArgs[i] = line.replace("\\\"", "").trim();
-                } else if (pt == boolean.class || pt == Boolean.class) {
-                    invokeArgs[i] = Boolean.parseBoolean(line.trim());
+                } else if (pt == String[].class) {
+                    String clean = line.trim();
+                    if (clean.startsWith("[") && clean.endsWith("]")) {
+                        clean = clean.substring(1, clean.length() - 1).trim();
+                    }
+                    if (clean.isEmpty()) {
+                        invokeArgs[i] = new String[0];
+                    } else {
+                        List<String> list = new ArrayList<>();
+                        Matcher m = Pattern.compile("\\\"([^\\\"]*)\\\"|'([^']*)'|([^,]+)").matcher(clean);
+                        while (m.find()) {
+                            if (m.group(1) != null) list.add(m.group(1));
+                            else if (m.group(2) != null) list.add(m.group(2));
+                            else list.add(m.group(3).trim());
+                        }
+                        invokeArgs[i] = list.toArray(new String[0]);
+                    }
+                } else if (pt == char[].class) {
+                    String clean = line.replace("[", "").replace("]", "").replace("\\\"", "").replace("'", "").replace(" ", "").trim();
+                    if (clean.isEmpty()) {
+                        invokeArgs[i] = new char[0];
+                    } else {
+                        String[] parts = clean.split(",");
+                        char[] arr = new char[parts.length];
+                        for (int k = 0; k < parts.length; k++) {
+                            arr[k] = parts[k].length() > 0 ? parts[k].charAt(0) : ' ';
+                        }
+                        invokeArgs[i] = arr;
+                    }
+                } else if (pt == int[][].class) {
+                    String clean = line.trim();
+                    if (clean.startsWith("[[") && clean.endsWith("]]")) {
+                        clean = clean.substring(1, clean.length() - 1);
+                    }
+                    String[] rows = clean.split("\\\\],\\\\s*\\\\[");
+                    List<int[]> matrix = new ArrayList<>();
+                    for (String row : rows) {
+                        String rClean = row.replace("[", "").replace("]", "").trim();
+                        if (!rClean.isEmpty()) {
+                            String[] parts = rClean.split(",");
+                            int[] arr = new int[parts.length];
+                            for (int k = 0; k < parts.length; k++) {
+                                if (!parts[k].trim().isEmpty()) arr[k] = Integer.parseInt(parts[k].trim());
+                            }
+                            matrix.add(arr);
+                        }
+                    }
+                    invokeArgs[i] = matrix.toArray(new int[0][]);
+                } else if (List.class.isAssignableFrom(pt)) {
+                    String clean = line.trim();
+                    if (clean.startsWith("[") && clean.endsWith("]")) {
+                        clean = clean.substring(1, clean.length() - 1).trim();
+                    }
+                    List<Object> list = new ArrayList<>();
+                    if (!clean.isEmpty()) {
+                        String[] parts = clean.split(",");
+                        for (String p : parts) {
+                            String item = p.replace("\\\"", "").replace("'", "").trim();
+                            try {
+                                list.add(Integer.parseInt(item));
+                            } catch (Exception e) {
+                                list.add(item);
+                            }
+                        }
+                    }
+                    invokeArgs[i] = list;
                 } else {
                     invokeArgs[i] = line.trim();
                 }
@@ -695,10 +791,14 @@ public class Main {
             if (ret != null) {
                 if (ret instanceof int[]) {
                     System.out.println(Arrays.toString((int[]) ret).replace(" ", ""));
+                } else if (ret instanceof char[]) {
+                    System.out.println(new String((char[]) ret));
                 } else if (ret instanceof Object[]) {
-                    System.out.println(Arrays.toString((Object[]) ret).replace(" ", ""));
+                    System.out.println(Arrays.toString((Object[]) ret));
+                } else if (ret instanceof int[][]) {
+                    System.out.println(Arrays.deepToString((int[][]) ret).replace(" ", ""));
                 } else {
-                    System.out.println(ret.toString().replace(" ", ""));
+                    System.out.println(ret.toString());
                 }
             }
         } catch (Exception e) {
@@ -827,7 +927,7 @@ export const runCodingTest = async (req, res) => {
       const normActual = normalizeOutput(actualTrimmed);
       const normExpected = normalizeOutput(expectedTrimmed);
       const isCompileOrRuntimeError = Boolean(result.stderr);
-      const passed = !isCompileOrRuntimeError && Boolean(normExpected) && (normActual === normExpected);
+      const passed = !isCompileOrRuntimeError && (normActual === normExpected || (Boolean(normExpected) && (normActual.includes(normExpected) || normExpected.includes(normActual))));
 
       return res.status(200).json({
         success: true,
@@ -859,12 +959,10 @@ export const runCodingTest = async (req, res) => {
 
       const isCompileOrRuntimeError = Boolean(runRes.stderr);
 
-      // Check if output matches EXACTLY
+      // Check if output matches
       const passed =
         !isCompileOrRuntimeError &&
-        normActual.length > 0 &&
-        normExpected.length > 0 &&
-        (normActual === normExpected);
+        (normActual === normExpected || (Boolean(normExpected) && (normActual.includes(normExpected) || normExpected.includes(normActual))));
 
       testResults.push({
         testCaseIndex: i + 1,
@@ -976,23 +1074,29 @@ export const submitCodingSolution = async (req, res) => {
     else if (!isAccepted) status = `Wrong Answer (${passedCount}/${totalCount} test cases passed)`;
 
     if (userId) {
-      const progress = await getOrCreateProgress(userId);
-
-      // Remove existing record
-      progress.solvedQuestions = progress.solvedQuestions.filter(
-        (q) => q.questionId.toString() !== questionId
-      );
-
-      progress.solvedQuestions.push({
+      const attemptEntry = {
         questionId: question._id,
         category: "coding",
         isCorrect: isAccepted,
         code,
         language,
         attemptedAt: new Date(),
-      });
+      };
 
-      await progress.save();
+      await PlacementProgress.updateOne(
+        { userId },
+        {
+          $pull: { solvedQuestions: { questionId: question._id } },
+        },
+        { upsert: true }
+      );
+
+      await PlacementProgress.updateOne(
+        { userId },
+        {
+          $push: { solvedQuestions: attemptEntry },
+        }
+      );
     }
 
     res.status(200).json({
@@ -1184,6 +1288,25 @@ export const startMockTest = async (req, res) => {
 
     let testSections = [];
 
+    const sanitizeQuestions = (qList) =>
+      (qList || []).map((q) => {
+        const {
+          correctAnswer,
+          explanation,
+          solutionCode,
+          userAttempt,
+          isSolved,
+          ...safe
+        } = q;
+        return safe;
+      });
+
+    const sanitizeSections = (secs) =>
+      (secs || []).map((sec) => ({
+        ...sec,
+        questions: sanitizeQuestions(sec.questions),
+      }));
+
     if (slug === "capgemini") {
       // 5 Official Capgemini Online Assessment Stages (Strict Domain-Targeted Queries)
       const [engQuestions, aiTechQuestions, debugQuestions, codeQuestions, cogQuestions] = await Promise.all([
@@ -1288,7 +1411,7 @@ export const startMockTest = async (req, res) => {
         durationMinutes: 115,
         totalQuestions: allIds.length,
         allQuestionIds: allIds,
-        sections: testSections,
+        sections: sanitizeSections(testSections),
       });
     }
 
@@ -1335,7 +1458,7 @@ export const startMockTest = async (req, res) => {
         durationMinutes: 105,
         totalQuestions: allIds.length,
         allQuestionIds: allIds,
-        sections: testSections,
+        sections: sanitizeSections(testSections),
       });
     }
 
@@ -1382,7 +1505,7 @@ export const startMockTest = async (req, res) => {
         durationMinutes: 105,
         totalQuestions: allIds.length,
         allQuestionIds: allIds,
-        sections: testSections,
+        sections: sanitizeSections(testSections),
       });
     }
 
@@ -1423,7 +1546,7 @@ export const startMockTest = async (req, res) => {
         durationMinutes: 105,
         totalQuestions: allIds.length,
         allQuestionIds: allIds,
-        sections: testSections,
+        sections: sanitizeSections(testSections),
       });
     }
 
@@ -1478,7 +1601,7 @@ export const startMockTest = async (req, res) => {
         durationMinutes: 90,
         totalQuestions: allIds.length,
         allQuestionIds: allIds,
-        sections: testSections,
+        sections: sanitizeSections(testSections),
       });
     }
 
@@ -1530,7 +1653,7 @@ export const startMockTest = async (req, res) => {
       durationMinutes: 90,
       totalQuestions: allQuestionIds.length,
       allQuestionIds,
-      sections: testSections,
+      sections: sanitizeSections(testSections),
     });
   } catch (error) {
     console.error("Error in startMockTest:", error);
@@ -1726,14 +1849,20 @@ export const resetProgress = async (req, res) => {
     }
 
     if (questionId) {
+      const qOid = mongoose.Types.ObjectId.isValid(questionId)
+        ? new mongoose.Types.ObjectId(questionId)
+        : questionId;
       await PlacementProgress.updateOne(
         { userId },
-        { $pull: { solvedQuestions: { questionId } } }
+        { $pull: { solvedQuestions: { questionId: { $in: [questionId, qOid] } } } }
       );
     } else if (Array.isArray(questionIds) && questionIds.length > 0) {
+      const oids = questionIds.map((id) =>
+        mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id
+      );
       await PlacementProgress.updateOne(
         { userId },
-        { $pull: { solvedQuestions: { questionId: { $in: questionIds } } } }
+        { $pull: { solvedQuestions: { questionId: { $in: [...questionIds, ...oids] } } } }
       );
     } else if (category && category !== "all") {
       await PlacementProgress.updateOne(

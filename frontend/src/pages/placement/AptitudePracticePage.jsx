@@ -132,8 +132,10 @@ const AptitudePracticePage = () => {
         );
       }
       setIsSubmitting(false);
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId], refetchType: "none" });
-      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"], refetchType: "none" });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
     },
     onError: () => {
       setIsSubmitting(false);

@@ -33,6 +33,7 @@ import {
   getPlacementQuestionById,
   runPlacementCode,
   submitPlacementCode,
+  resetPlacementProgress,
 } from "../../lib/placementApi";
 import PomodoroTimer from "../../components/PomodoroTimer";
 
@@ -166,9 +167,11 @@ const CodingProblemPage = () => {
     onSuccess: (res) => {
       setIsSubmitting(false);
       setSubmissionResult(res);
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails", companyId], refetchType: "none" });
-      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"], refetchType: "none" });
-      queryClient.invalidateQueries({ queryKey: ["placementQuestion", problemId], refetchType: "none" });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestion", problemId] });
     },
     onError: (err) => {
       setIsSubmitting(false);
@@ -187,6 +190,35 @@ const CodingProblemPage = () => {
       code,
       language: selectedLanguage,
     });
+  };
+
+  // Reset code & submission progress for this question
+  const { mutate: resetProgressMutation } = useMutation({
+    mutationFn: resetPlacementProgress,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
+      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
+      queryClient.invalidateQueries({ queryKey: ["placementQuestion", problemId] });
+    },
+  });
+
+  const handleResetCode = () => {
+    if (!question) return;
+    const starter =
+      question.starterCode?.[selectedLanguage] || CODE_TEMPLATES[selectedLanguage] || "";
+    setCode(starter);
+    setSubmissionResult(null);
+    setRunResults(null);
+
+    if (question._id) {
+      try {
+        localStorage.removeItem(`anva_draft_code_${question._id}_${selectedLanguage}`);
+      } catch (e) {}
+      resetProgressMutation({ questionId: question._id });
+    }
+    toast.success("Code reset to starter template.");
   };
 
   const handleCopyCode = () => {
@@ -616,19 +648,9 @@ const CodingProblemPage = () => {
                 </button>
 
                 <button
-                  onClick={() => {
-                    const starter =
-                      question.starterCode?.[selectedLanguage] || CODE_TEMPLATES[selectedLanguage];
-                    setCode(starter);
-                    if (question?._id) {
-                      try {
-                        localStorage.removeItem(`anva_draft_code_${question._id}_${selectedLanguage}`);
-                      } catch (e) {}
-                    }
-                    toast.success("Code reset to template.");
-                  }}
+                  onClick={handleResetCode}
                   className="btn btn-ghost btn-xs rounded-lg text-[11px] font-bold gap-1 text-base-content/70 hover:text-base-content"
-                  title="Reset to starter template"
+                  title="Reset to starter template & clear saved progress"
                 >
                   <RotateCcw className="size-3" />
                   <span>Reset</span>
