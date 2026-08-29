@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { ArrowDown, MessageSquare } from "lucide-react";
 import WhatsAppMessage from "./WhatsAppMessage";
 import WhatsAppChatInput from "./WhatsAppChatInput";
@@ -22,13 +22,23 @@ export const WhatsAppChatView = ({
   authUser,
   targetUser,
 }) => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => (channel ? [...channel.state.messages] : []));
   const [replyingTo, setReplyingTo] = useState(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const scrollContainerRef = useRef(null);
   const bottomSentinelRef = useRef(null);
+  const isInitialMountRef = useRef(true);
 
-  // Sync messages from channel state
+  const scrollToBottom = (behavior = "auto") => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+    if (bottomSentinelRef.current) {
+      bottomSentinelRef.current.scrollIntoView({ behavior, block: "end" });
+    }
+  };
+
+  // Sync messages from channel state and listen to events
   useEffect(() => {
     if (!channel) return;
 
@@ -40,10 +50,8 @@ export const WhatsAppChatView = ({
 
     const handleMessageNew = (event) => {
       syncMessages();
-      // Scroll to bottom if we were already close to bottom or it's my message
-      if (event.user?.id === authUser?._id) {
-        setTimeout(scrollToBottom, 50);
-      }
+      // Always scroll to bottom when receiving or sending a new message
+      setTimeout(() => scrollToBottom("smooth"), 50);
     };
 
     const handleMessageUpdated = () => syncMessages();
@@ -65,23 +73,48 @@ export const WhatsAppChatView = ({
     };
   }, [channel, authUser]);
 
-  // Initial scroll to bottom
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
+  // Initial instant scroll to the latest message when opening a chat or changing channels
+  useLayoutEffect(() => {
+    if (!channel) return;
+    isInitialMountRef.current = true;
+    scrollToBottom("auto");
+
+    // Multiple staggered checks to ensure layout/media rendering completes at the bottom
+    const t1 = setTimeout(() => scrollToBottom("auto"), 50);
+    const t2 = setTimeout(() => scrollToBottom("auto"), 150);
+    const t3 = setTimeout(() => {
+      scrollToBottom("auto");
+      isInitialMountRef.current = false;
+    }, 400);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [channel?.id]);
 
-  const scrollToBottom = (behavior = "smooth") => {
-    if (bottomSentinelRef.current) {
-      bottomSentinelRef.current.scrollIntoView({ behavior, block: "end" });
+  // Scroll to bottom when message count changes (if user was already near bottom)
+  useEffect(() => {
+    if (messages.length > 0) {
+      if (isInitialMountRef.current) {
+        scrollToBottom("auto");
+      } else {
+        const container = scrollContainerRef.current;
+        if (container) {
+          const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 350;
+          if (isNearBottom) {
+            scrollToBottom("smooth");
+          }
+        }
+      }
     }
-  };
+  }, [messages.length]);
 
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-    const isFarFromBottom = scrollHeight - scrollTop - clientHeight > 300;
+    const isFarFromBottom = scrollHeight - scrollTop - clientHeight > 250;
     setShowScrollBottom(isFarFromBottom);
   };
 
@@ -118,11 +151,11 @@ export const WhatsAppChatView = ({
 
   return (
     <div className="w-full h-full flex flex-col relative overflow-hidden bg-transparent">
-      {/* ── Scrollable Message Feed with WhatsApp Wallpaper ── */}
+      {/* ── Scrollable Message Feed ── */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 w-full overflow-y-auto py-4 space-y-1.5 scroll-smooth relative"
+        className="flex-1 w-full overflow-y-auto py-4 space-y-1.5 relative"
       >
         {groupedMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center select-none">
@@ -171,7 +204,7 @@ export const WhatsAppChatView = ({
       {showScrollBottom && (
         <button
           type="button"
-          onClick={() => scrollToBottom()}
+          onClick={() => scrollToBottom("smooth")}
           className="absolute bottom-20 right-6 z-20 size-9 rounded-full bg-white dark:bg-[#202C33] text-[#54656F] dark:text-[#8696A0] border border-black/10 dark:border-white/10 shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer"
           title="Scroll to latest"
         >
@@ -179,7 +212,7 @@ export const WhatsAppChatView = ({
         </button>
       )}
 
-      {/* ── WhatsApp / Instagram Style Bottom Input Bar ── */}
+      {/* ── Bottom Input Bar ── */}
       <WhatsAppChatInput
         channel={channel}
         replyingTo={replyingTo}

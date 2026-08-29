@@ -236,7 +236,7 @@ const App = () => {
               path="/onboarding"
               element={
                 !isAuthenticated
-                  ? <Navigate to="/sign-in" replace />
+                  ? <Navigate to="/login" replace />
                   : authUser?.isOnboarded
                     ? <Navigate to="/" replace />
                     : <OnboardingPage />

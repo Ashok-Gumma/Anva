@@ -25,7 +25,7 @@ const AdminRoute = ({ element }) => {
 
   if (isResolving) return <PageLoader />;
 
-  if (!isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   if (!isAdmin) return <Navigate to="/" replace />;
 

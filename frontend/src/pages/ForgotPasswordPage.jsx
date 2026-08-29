@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Mail,
   ArrowRight,
+  KeyRound,
 } from "lucide-react";
 
 const ForgotPasswordPage = () => {
@@ -50,106 +51,135 @@ const ForgotPasswordPage = () => {
   return (
     <div
       data-theme="light"
-      className="min-h-screen flex items-center justify-center bg-[#fafaf9] p-4 sm:p-6 font-sans antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden"
+      className="min-h-screen flex items-center justify-center bg-slate-100/70 p-4 sm:p-6 lg:p-8 font-sans antialiased relative selection:bg-indigo-500 selection:text-white overflow-x-hidden"
     >
-      {/* Subtle Constellation Canvas Background */}
+      {/* Subtle particle background */}
       <ParticleBackground />
 
-      {/* Decorative ambient backdrop glow */}
+      {/* Decorative ambient lighting */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[550px] h-[350px] bg-gradient-to-br from-indigo-300/15 via-blue-300/10 to-transparent blur-[90px] rounded-full" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-gradient-to-tr from-indigo-200/40 via-blue-100/30 to-transparent blur-[100px] rounded-full" />
       </div>
 
-      {/* ── MINIMAL FORGOT PASSWORD CARD ── */}
+      {/* ── MAIN AUTH CARD CONTAINER ── */}
       <motion.div
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="w-full max-w-[420px] bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-200/80 shadow-[0_20px_50px_rgba(0,0,0,0.06)] p-7 sm:p-9 relative z-10"
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-4xl bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.08)] overflow-hidden relative z-10 grid grid-cols-1 lg:grid-cols-12"
       >
-        {/* Top Brand Logo */}
-        <div className="flex items-center justify-between mb-6">
-          <Link to="/" className="inline-flex items-center select-none group">
-            <span className="text-2xl font-extrabold text-slate-900 tracking-tight group-hover:opacity-90 transition-opacity">
-              An<span className="font-curly font-bold ml-0.5 text-indigo-600">va</span>
-            </span>
-          </Link>
-          <span className="text-[11px] font-bold text-slate-400">Recovery</span>
-        </div>
+        {/* ── LEFT PANEL: AUTH FORM (7 cols on lg) ── */}
+        <div className="lg:col-span-7 p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
+          <div>
+            {/* Top Brand Header & Badge */}
+            <div className="flex items-center justify-between mb-8">
+              <Link to="/" className="inline-flex items-center gap-1 group select-none">
+                <span className="text-2xl font-black text-slate-900 tracking-tight group-hover:opacity-90 transition-opacity">
+                  An<span className="text-indigo-600 font-bold">va</span>
+                </span>
+              </Link>
 
-        {/* Heading */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-1">
-            Forgot password?
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium">
-            Enter your email to receive recovery instructions.
-          </p>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: -4 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="p-3 rounded-xl text-xs font-medium mb-4 bg-red-50 border border-red-200 text-red-600 flex items-start gap-2"
-          >
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-            <span>
-              {error.response?.data?.message || "An error occurred. Please try again."}
-            </span>
-          </motion.div>
-        )}
-
-        {/* Reset Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <label htmlFor="forgot-email" className="text-xs font-semibold text-slate-700 block">
-              Email Address
-            </label>
-            <div className="relative flex items-center">
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
-              <input
-                id="forgot-email"
-                type="email"
-                name="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl text-xs sm:text-sm bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:outline-none transition-all placeholder:text-slate-400 text-slate-900 font-medium"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <span className="text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700">
+                <KeyRound className="w-3.5 h-3.5 text-slate-600" />
+                <span>Recovery</span>
+              </span>
             </div>
+
+            {/* Title & Subtitle */}
+            <div className="mb-6">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                Forgot password?
+              </h1>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Enter your registered email address and we&apos;ll help you recover your account in seconds.
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3.5 rounded-xl text-xs font-medium mb-5 bg-red-50 border border-red-200 text-red-700 flex items-start gap-2.5"
+              >
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                <span>
+                  {error.response?.data?.message || "An error occurred. Please try again."}
+                </span>
+              </motion.div>
+            )}
+
+            {/* Reset Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="forgot-email"
+                  className="text-xs font-semibold text-slate-700 block"
+                >
+                  Registered Email Address
+                </label>
+                <div className="relative flex items-center">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    name="email"
+                    autoComplete="email"
+                    placeholder="name@example.com"
+                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl text-sm bg-slate-50/50 border border-slate-200 focus:border-indigo-600 focus:bg-white focus:ring-3 focus:ring-indigo-100 focus:outline-none transition-all placeholder:text-slate-400 text-slate-900"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full font-bold py-3 sm:py-3.5 px-4 rounded-xl text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-sm shadow-indigo-200 disabled:opacity-70 mt-5 cursor-pointer flex items-center justify-center gap-2"
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Generating recovery link...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send Recovery Link</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
           </div>
 
-          <button
-            type="submit"
-            className="w-full font-bold py-3 px-4 rounded-xl text-xs sm:text-sm text-white bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] transition-all shadow-sm shadow-indigo-500/20 disabled:opacity-70 mt-5 cursor-pointer flex items-center justify-center gap-2"
-            disabled={isPending}
-          >
-            {isPending ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Sending link...</span>
-              </>
-            ) : (
-              <>
-                <span>Send Reset Link</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        </form>
+          {/* Footer */}
+          <div className="text-center pt-6 border-t border-slate-100 mt-6">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-indigo-600 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to Sign In
+            </Link>
+          </div>
+        </div>
 
-        {/* Footer */}
-        <div className="text-center pt-5 border-t border-slate-100 mt-6">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Sign In
-          </Link>
+        {/* ── RIGHT PANEL: VECTOR ILLUSTRATION & SHOWCASE (5 cols on lg) ── */}
+        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-b from-slate-50 via-slate-50 to-indigo-50/30 p-8 border-l border-slate-100 flex-col items-center justify-center text-center relative overflow-hidden">
+          <div className="w-full max-w-[280px] aspect-square rounded-2xl overflow-hidden bg-white shadow-2xs border border-slate-200/70 p-3 flex items-center justify-center">
+            <img
+              src="/auth-forgot-vector.jpg"
+              alt="Forgot Password Illustration"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <h3 className="text-base font-bold text-slate-800 mt-5">
+            Effortless account recovery
+          </h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-[260px] leading-relaxed">
+            We help you safely regain access to your account and learning progress.
+          </p>
         </div>
       </motion.div>
     </div>

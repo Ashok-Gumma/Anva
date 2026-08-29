@@ -240,10 +240,13 @@ code, pre, .font-mono, .monaco-editor, code *, pre * {
   animation: fadeIn 0.3s ease both;
 }
 
-/* Hide background chat doodle image on Landing Page */
+/* Hide background chat doodle image on Landing Page and Legal Pages */
 .landing-page-container ~ .anva-whatsapp-bg,
 .landing-page-container .anva-whatsapp-bg,
-body:has(.landing-page-container) .anva-whatsapp-bg {
+body:has(.landing-page-container) .anva-whatsapp-bg,
+.legal-page-container ~ .anva-whatsapp-bg,
+.legal-page-container .anva-whatsapp-bg,
+body:has(.legal-page-container) .anva-whatsapp-bg {
   display: none !important;
 }
 

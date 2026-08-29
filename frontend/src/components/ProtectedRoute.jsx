@@ -36,10 +36,10 @@ const ProtectedRoute = ({ element, requireOnboarding = true, allowSuspended = fa
   if (isResolving) return <PageLoader />;
 
   // Clerk says signed in but we have no MongoDB user after all retries → force re-auth
-  if (isClerkSignedIn && !authUser) return <Navigate to="/sign-in" replace />;
+  if (isClerkSignedIn && !authUser) return <Navigate to="/login" replace />;
 
   // Not authenticated at all
-  if (!isAuthenticated) return <Navigate to="/sign-in" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   // If user is Admin, restrict access to user dashboard pages and keep them strictly on /admin
   if (authUser?.role === "admin") {

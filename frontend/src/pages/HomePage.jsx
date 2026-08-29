@@ -526,12 +526,9 @@ const HomePage = () => {
           </div>
         </motion.div>
 
-        {/* ── 6. COMMUNITY POSTS & FEED SECTION (Spans full width right below Discover Partners) ── */}
-        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-4 mt-4">
-          <CommunityFeedSection
-            title="Community Posts & Feed"
-            subtitle="Share notes, ask questions, and engage directly from your homepage"
-          />
+        {/* ── 6. COMMUNITY FEED POSTS (Clean Feed on Homepage) ── */}
+        <motion.div variants={itemVariants} className="md:col-span-2 lg:col-span-4 mt-6">
+          <CommunityFeedSection showHeader={false} showCreatePost={false} />
         </motion.div>
       </motion.div>
     </div>
