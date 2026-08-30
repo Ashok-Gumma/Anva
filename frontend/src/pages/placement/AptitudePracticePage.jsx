@@ -39,14 +39,13 @@ const AptitudePracticePage = () => {
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [selectedDifficulty, setSelectedDifficulty] = useState("all");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [submissionResult, setSubmissionResult] = useState(null);
+  const [pendingChoices, setPendingChoices] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptMap, setAttemptMap] = useState({});
   const [showPomodoro, setShowPomodoro] = useState(false);
 
   // Fetch Questions (Cached for 5 minutes for instant switches)
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["placementQuestions", companyId, "aptitude", selectedTopic, selectedDifficulty],
     queryFn: () =>
       getPlacementQuestions({
@@ -64,37 +63,35 @@ const AptitudePracticePage = () => {
   const topics = data?.availableTopics || [];
   const currentQuestion = questions[currentIndex] || null;
 
-  // Sync answer states when moving to another question
-  useEffect(() => {
-    if (currentQuestion) {
-      const qId = currentQuestion._id;
-      if (attemptMap[qId]) {
-        setSelectedOption(attemptMap[qId].userChoice);
-        setSubmissionResult(attemptMap[qId]);
-      } else if (currentQuestion.userAttempt) {
-        const attempt = {
-          isCorrect: currentQuestion.userAttempt.isCorrect,
-          correctAnswer: currentQuestion.correctAnswer,
-          explanation: currentQuestion.explanation,
-          formula: currentQuestion.formula,
-          userChoice: currentQuestion.userAttempt.userChoice,
-        };
-        setSelectedOption(currentQuestion.userAttempt.userChoice);
-        setSubmissionResult(attempt);
-        setAttemptMap((prev) => ({ ...prev, [qId]: attempt }));
-      } else {
-        setSelectedOption(null);
-        setSubmissionResult(null);
-      }
-    }
-  }, [currentIndex, currentQuestion?._id]);
+  // Seamlessly derive attempt & choice without useEffect delay/flicker
+  const currentAttempt = currentQuestion
+    ? attemptMap[currentQuestion._id] ||
+      (currentQuestion.userAttempt
+        ? {
+            isCorrect: currentQuestion.userAttempt.isCorrect,
+            correctAnswer: currentQuestion.correctAnswer,
+            explanation: currentQuestion.explanation,
+            formula: currentQuestion.formula,
+            userChoice: currentQuestion.userAttempt.userChoice,
+          }
+        : null)
+    : null;
+
+  const selectedOption = currentQuestion
+    ? pendingChoices[currentQuestion._id] !== undefined
+      ? pendingChoices[currentQuestion._id]
+      : currentAttempt?.userChoice !== undefined
+      ? currentAttempt.userChoice
+      : null
+    : null;
+
+  const submissionResult = currentAttempt;
 
   // Submit answer in Practice Mode (Fast inline feedback)
   const { mutate: submitAnswerMutation } = useMutation({
     mutationFn: submitPlacementAnswer,
     onMutate: () => setIsSubmitting(true),
     onSuccess: (res) => {
-      setSubmissionResult(res);
       if (currentQuestion) {
         setAttemptMap((prev) => ({
           ...prev,
@@ -132,18 +129,18 @@ const AptitudePracticePage = () => {
         );
       }
       setIsSubmitting(false);
-      queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
-      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
+      queryClient.invalidateQueries({ queryKey: ["placementCompanies"], refetchType: "none" });
+      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"], refetchType: "none" });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
     },
     onError: () => {
       setIsSubmitting(false);
+      toast.error("Failed to submit answer. Please try again.");
     },
   });
 
   const handleSubmitAnswer = () => {
-    if (selectedOption === null || !currentQuestion) return;
+    if (selectedOption === null || !currentQuestion || isSubmitting) return;
     submitAnswerMutation({
       questionId: currentQuestion._id,
       userChoice: selectedOption,
@@ -162,13 +159,14 @@ const AptitudePracticePage = () => {
           delete copy[qId];
           return copy;
         });
-        setSelectedOption(null);
-        setSubmissionResult(null);
-        toast.success("Progress reset for this deck");
+        setPendingChoices((prev) => {
+          const copy = { ...prev };
+          delete copy[qId];
+          return copy;
+        });
+        toast.success("Progress reset for this question");
       }
       queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
-      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
     },
     onError: () => {
@@ -179,7 +177,11 @@ const AptitudePracticePage = () => {
   const handleResetCurrentQuestion = () => {
     if (!currentQuestion || isResetting) return;
     if (!submissionResult && selectedOption !== null) {
-      setSelectedOption(null);
+      setPendingChoices((prev) => {
+        const copy = { ...prev };
+        delete copy[currentQuestion._id];
+        return copy;
+      });
       return;
     }
     resetQuestionMutation({
@@ -310,205 +312,218 @@ const AptitudePracticePage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left: Question Card Deck (8 cols) */}
             <div className="lg:col-span-8 space-y-4">
-              <div className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-xs space-y-6">
-                {/* Question Header & Meta */}
-                <div className="flex items-center justify-between gap-2 border-b border-base-content/5 pb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-xs text-primary uppercase tracking-wider">
-                      Question {currentIndex + 1}
-                    </span>
-                    <span className="text-xs text-base-content/30">of {questions.length}</span>
-                  </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentQuestion?._id || currentIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-xs space-y-6"
+                >
+                  {/* Question Header & Meta */}
+                  <div className="flex items-center justify-between gap-2 border-b border-base-content/5 pb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-xs text-primary uppercase tracking-wider">
+                        Question {currentIndex + 1}
+                      </span>
+                      <span className="text-xs text-base-content/30">of {questions.length}</span>
+                    </div>
 
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border ${
-                        currentQuestion.difficulty === "easy"
-                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                          : currentQuestion.difficulty === "medium"
-                          ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                          : "bg-rose-500/10 text-rose-600 border-rose-500/20"
-                      }`}
-                    >
-                      {currentQuestion.difficulty || "medium"}
-                    </span>
-                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-base-200 text-base-content/70 border-base-content/10">
-                      {currentQuestion.topic || "General"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Problem Statement */}
-                <div className="space-y-3">
-                  <h2 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
-                    {currentQuestion.problemDescription || currentQuestion.description || currentQuestion.title}
-                  </h2>
-                </div>
-
-                {/* Options List */}
-                <div className="space-y-3 pt-2">
-                  {(currentQuestion.options || []).map((option, idx) => {
-                    const isSelected =
-                      selectedOption !== null &&
-                      selectedOption !== undefined &&
-                      Number(selectedOption) === Number(idx);
-
-                    let optionBorder = "border-base-content/10 hover:border-base-content/30 bg-base-200/30 hover:bg-base-200/60";
-                    let badgeStyle = "bg-base-200 text-base-content/70";
-
-                    if (submissionResult) {
-                      const isCorrectAnswer = Number(idx) === Number(submissionResult.correctAnswer);
-                      const isUserSelection = Number(idx) === Number(submissionResult.userChoice);
-
-                      if (isCorrectAnswer) {
-                        optionBorder = "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500";
-                        badgeStyle = "bg-emerald-500 text-white font-bold";
-                      } else if (isUserSelection && !submissionResult.isCorrect) {
-                        optionBorder = "border-rose-500 bg-rose-500/10 text-rose-950 dark:text-rose-200 ring-1 ring-rose-500";
-                        badgeStyle = "bg-rose-500 text-white font-bold";
-                      }
-                    } else if (isSelected) {
-                      optionBorder = "border-primary bg-primary/10 text-primary ring-1 ring-primary";
-                      badgeStyle = "bg-primary text-primary-content font-bold";
-                    }
-
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          if (!submissionResult) {
-                            setSelectedOption(idx);
-                          }
-                        }}
-                        disabled={!!submissionResult}
-                        className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${optionBorder} ${
-                          submissionResult ? "cursor-default" : ""
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border ${
+                          currentQuestion.difficulty === "easy"
+                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                            : currentQuestion.difficulty === "medium"
+                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                            : "bg-rose-500/10 text-rose-600 border-rose-500/20"
                         }`}
                       >
-                        <span className={`size-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${badgeStyle}`}>
-                          {["A", "B", "C", "D", "E"][idx]}
-                        </span>
-                        <span className="text-xs sm:text-sm font-semibold flex-1 leading-relaxed">
-                          {option}
-                        </span>
+                        {currentQuestion.difficulty || "medium"}
+                      </span>
+                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-base-200 text-base-content/70 border-base-content/10">
+                        {currentQuestion.topic || "General"}
+                      </span>
+                    </div>
+                  </div>
 
-                        {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) && (
-                          <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
-                        )}
-                        {submissionResult &&
-                          !submissionResult.isCorrect &&
-                          Number(idx) === Number(submissionResult.userChoice) && (
-                            <XCircle className="size-5 text-rose-500 shrink-0" />
-                          )}
-                      </button>
-                    );
-                  })}
-                </div>
+                  {/* Problem Statement */}
+                  <div className="space-y-3">
+                    <h2 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
+                      {currentQuestion.problemDescription || currentQuestion.description || currentQuestion.title}
+                    </h2>
+                  </div>
 
-                {/* Action Bar */}
-                <div className="flex items-center justify-between pt-4 border-t border-base-content/5">
-                  <button
-                    onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-                    disabled={currentIndex === 0}
-                    className="btn btn-ghost btn-sm rounded-xl font-bold gap-1 text-xs"
-                  >
-                    <ChevronLeft className="size-4" />
-                    Previous
-                  </button>
+                  {/* Options List */}
+                  <div className="space-y-3 pt-2">
+                    {(currentQuestion.options || []).map((option, idx) => {
+                      const isSelected =
+                        selectedOption !== null &&
+                        selectedOption !== undefined &&
+                        Number(selectedOption) === Number(idx);
 
-                  <div className="flex items-center gap-2">
-                    {!submissionResult ? (
-                      <>
-                        {selectedOption !== null && (
-                          <button
-                            onClick={handleResetCurrentQuestion}
-                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 text-base-content/60 hover:text-error hover:bg-error/10"
-                            title="Clear choice"
-                          >
-                            <RotateCcw className="size-3.5" />
-                            <span>Clear</span>
-                          </button>
-                        )}
+                      let optionBorder = "border-base-content/10 hover:border-base-content/30 bg-base-200/30 hover:bg-base-200/60";
+                      let badgeStyle = "bg-base-200 text-base-content/70";
+
+                      if (submissionResult) {
+                        const isCorrectAnswer = Number(idx) === Number(submissionResult.correctAnswer);
+                        const isUserSelection = Number(idx) === Number(submissionResult.userChoice);
+
+                        if (isCorrectAnswer) {
+                          optionBorder = "border-emerald-500 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200 ring-1 ring-emerald-500";
+                          badgeStyle = "bg-emerald-500 text-white font-bold";
+                        } else if (isUserSelection && !submissionResult.isCorrect) {
+                          optionBorder = "border-rose-500 bg-rose-500/10 text-rose-950 dark:text-rose-200 ring-1 ring-rose-500";
+                          badgeStyle = "bg-rose-500 text-white font-bold";
+                        }
+                      } else if (isSelected) {
+                        optionBorder = "border-primary bg-primary/10 text-primary ring-1 ring-primary";
+                        badgeStyle = "bg-primary text-primary-content font-bold";
+                      }
+
+                      return (
                         <button
-                          onClick={handleSubmitAnswer}
-                          disabled={selectedOption === null || isSubmitting}
-                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
-                        >
-                          {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
-                        </button>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={handleResetCurrentQuestion}
-                          disabled={isResetting}
-                          className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
-                          title="Reset question to try again"
-                        >
-                          <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
-                          <span>Reset &amp; Try Again</span>
-                        </button>
-                        <button
+                          key={idx}
                           onClick={() => {
-                            if (currentIndex < questions.length - 1) {
-                              setCurrentIndex((prev) => prev + 1);
+                            if (!submissionResult && !isSubmitting) {
+                              setPendingChoices((prev) => ({
+                                ...prev,
+                                [currentQuestion._id]: idx,
+                              }));
                             }
                           }}
-                          disabled={currentIndex === questions.length - 1}
-                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                          disabled={!!submissionResult}
+                          className={`w-full text-left p-4 rounded-2xl border transition-all duration-150 flex items-center gap-3 cursor-pointer ${optionBorder} ${
+                            submissionResult ? "cursor-default" : ""
+                          }`}
                         >
-                          <span>Next Question</span>
-                          <ChevronRight className="size-4" />
+                          <span className={`size-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-colors ${badgeStyle}`}>
+                            {["A", "B", "C", "D", "E"][idx]}
+                          </span>
+                          <span className="text-xs sm:text-sm font-semibold flex-1 leading-relaxed">
+                            {option}
+                          </span>
+
+                          {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) && (
+                            <CheckCircle2 className="size-5 text-emerald-500 shrink-0" />
+                          )}
+                          {submissionResult &&
+                            !submissionResult.isCorrect &&
+                            Number(idx) === Number(submissionResult.userChoice) && (
+                              <XCircle className="size-5 text-rose-500 shrink-0" />
+                            )}
                         </button>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                </div>
 
-                {/* Mastery Breakdown / Step-by-Step Solution Card */}
-                <AnimatePresence>
-                  {submissionResult && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-6 pt-6 border-t border-base-content/10 space-y-4"
+                  {/* Action Bar */}
+                  <div className="flex items-center justify-between pt-4 border-t border-base-content/5">
+                    <button
+                      onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                      disabled={currentIndex === 0}
+                      className="btn btn-ghost btn-sm rounded-xl font-bold gap-1 text-xs"
                     >
-                      <div className="flex items-center gap-2">
-                        {submissionResult.isCorrect ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-black text-sm">
-                            <CheckCircle2 className="size-5 text-emerald-500" />
-                            <span>Correct! Excellent solution.</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-black text-sm">
-                            <XCircle className="size-5 text-rose-500" />
-                            <span>
-                              Incorrect. Correct Answer: Option{" "}
-                              {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <ChevronLeft className="size-4" />
+                      Previous
+                    </button>
 
-                      {submissionResult.formula && (
-                        <div className="p-3.5 bg-primary/5 rounded-2xl border border-primary/15 text-xs font-mono text-primary font-bold">
-                          💡 Formula: {submissionResult.formula}
+                    <div className="flex items-center gap-2">
+                      {!submissionResult ? (
+                        <>
+                          {selectedOption !== null && (
+                            <button
+                              onClick={handleResetCurrentQuestion}
+                              className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 text-base-content/60 hover:text-error hover:bg-error/10"
+                              title="Clear choice"
+                            >
+                              <RotateCcw className="size-3.5" />
+                              <span>Clear</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={handleSubmitAnswer}
+                            disabled={selectedOption === null || isSubmitting}
+                            className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
+                          >
+                            {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleResetCurrentQuestion}
+                            disabled={isResetting}
+                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
+                            title="Reset question to try again"
+                          >
+                            <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                            <span>Reset &amp; Try Again</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (currentIndex < questions.length - 1) {
+                                setCurrentIndex((prev) => prev + 1);
+                              }
+                            }}
+                            disabled={currentIndex === questions.length - 1}
+                            className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                          >
+                            <span>Next Question</span>
+                            <ChevronRight className="size-4" />
+                          </button>
                         </div>
                       )}
+                    </div>
+                  </div>
 
-                      <div className="p-4 bg-base-200/60 rounded-2xl space-y-2 border border-base-content/5">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-base-content/50 block">
-                          Step-by-Step Solution &amp; Explanation
-                        </span>
-                        <p className="text-xs text-base-content/85 font-medium whitespace-pre-line leading-relaxed">
-                          {submissionResult.explanation}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                  {/* Mastery Breakdown / Step-by-Step Solution Card */}
+                  <AnimatePresence>
+                    {submissionResult && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="mt-6 pt-6 border-t border-base-content/10 space-y-4 overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2">
+                          {submissionResult.isCorrect ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-black text-sm">
+                              <CheckCircle2 className="size-5 text-emerald-500" />
+                              <span>Correct! Excellent solution.</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-black text-sm">
+                              <XCircle className="size-5 text-rose-500" />
+                              <span>
+                                Incorrect. Correct Answer: Option{" "}
+                                {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {submissionResult.formula && (
+                          <div className="p-3.5 bg-primary/5 rounded-2xl border border-primary/15 text-xs font-mono text-primary font-bold">
+                            💡 Formula: {submissionResult.formula}
+                          </div>
+                        )}
+
+                        <div className="p-4 bg-base-200/60 rounded-2xl space-y-2 border border-base-content/5">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-base-content/50 block">
+                            Step-by-Step Solution &amp; Explanation
+                          </span>
+                          <p className="text-xs text-base-content/85 font-medium whitespace-pre-line leading-relaxed">
+                            {submissionResult.explanation}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Right: Question Navigation Palette (4 cols, sticky on desktop) */}

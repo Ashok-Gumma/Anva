@@ -32,8 +32,7 @@ const TechnicalPracticePage = () => {
 
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [submissionResult, setSubmissionResult] = useState(null);
+  const [pendingChoices, setPendingChoices] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptMap, setAttemptMap] = useState({});
   const [showPomodoro, setShowPomodoro] = useState(false);
@@ -55,6 +54,29 @@ const TechnicalPracticePage = () => {
   const topics = data?.availableTopics || [];
   const currentQuestion = questions[currentIndex] || null;
 
+  // Derive attempt & selection synchronously
+  const currentAttempt = currentQuestion
+    ? attemptMap[currentQuestion._id] ||
+      (currentQuestion.userAttempt
+        ? {
+            isCorrect: currentQuestion.userAttempt.isCorrect,
+            correctAnswer: currentQuestion.correctAnswer,
+            explanation: currentQuestion.explanation,
+            userChoice: currentQuestion.userAttempt.userChoice,
+          }
+        : null)
+    : null;
+
+  const selectedOption = currentQuestion
+    ? pendingChoices[currentQuestion._id] !== undefined
+      ? pendingChoices[currentQuestion._id]
+      : currentAttempt?.userChoice !== undefined
+      ? currentAttempt.userChoice
+      : null
+    : null;
+
+  const submissionResult = currentAttempt;
+
   // Reset Progress Mutation
   const { mutate: resetProgressMutation, isPending: isResetting } = useMutation({
     mutationFn: resetPlacementProgress,
@@ -65,14 +87,13 @@ const TechnicalPracticePage = () => {
           delete next[variables.questionId];
           return next;
         });
-        if (currentQuestion?._id === variables.questionId) {
-          setSelectedOption(null);
-          setSubmissionResult(null);
-        }
+        setPendingChoices((prev) => {
+          const next = { ...prev };
+          delete next[variables.questionId];
+          return next;
+        });
       }
       queryClient.invalidateQueries({ queryKey: ["placementQuestions"] });
-      queryClient.invalidateQueries({ queryKey: ["placementCompanies"] });
-      queryClient.invalidateQueries({ queryKey: ["companyPlacementDetails"] });
       queryClient.invalidateQueries({ queryKey: ["placementUserProgress"] });
       toast.success("Question reset successfully.");
     },
@@ -81,7 +102,11 @@ const TechnicalPracticePage = () => {
   const handleResetCurrentQuestion = () => {
     if (!currentQuestion || isResetting) return;
     if (!submissionResult && selectedOption !== null) {
-      setSelectedOption(null);
+      setPendingChoices((prev) => {
+        const copy = { ...prev };
+        delete copy[currentQuestion._id];
+        return copy;
+      });
       return;
     }
     resetProgressMutation({
@@ -100,40 +125,15 @@ const TechnicalPracticePage = () => {
       questionIds,
     });
     setAttemptMap({});
-    setSelectedOption(null);
-    setSubmissionResult(null);
+    setPendingChoices({});
     setCurrentIndex(0);
     toast.success("All questions in this deck have been reset! 🔄");
   };
-
-  useEffect(() => {
-    if (currentQuestion) {
-      const qId = currentQuestion._id;
-      if (attemptMap[qId]) {
-        setSelectedOption(attemptMap[qId].userChoice);
-        setSubmissionResult(attemptMap[qId]);
-      } else if (currentQuestion.userAttempt) {
-        const attempt = {
-          isCorrect: currentQuestion.userAttempt.isCorrect,
-          correctAnswer: currentQuestion.correctAnswer,
-          explanation: currentQuestion.explanation,
-          userChoice: currentQuestion.userAttempt.userChoice,
-        };
-        setSelectedOption(currentQuestion.userAttempt.userChoice);
-        setSubmissionResult(attempt);
-        setAttemptMap((prev) => ({ ...prev, [qId]: attempt }));
-      } else {
-        setSelectedOption(null);
-        setSubmissionResult(null);
-      }
-    }
-  }, [currentIndex, currentQuestion?._id]);
 
   const { mutate: submitAnswerMutation } = useMutation({
     mutationFn: submitPlacementAnswer,
     onMutate: () => setIsSubmitting(true),
     onSuccess: (res) => {
-      setSubmissionResult(res);
       if (currentQuestion) {
         setAttemptMap((prev) => ({
           ...prev,
@@ -175,6 +175,7 @@ const TechnicalPracticePage = () => {
     },
     onError: () => {
       setIsSubmitting(false);
+      toast.error("Failed to submit answer. Please try again.");
     },
   });
 
@@ -298,186 +299,201 @@ const TechnicalPracticePage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Left: Question Card (8 cols) */}
             <div className="lg:col-span-8 space-y-4">
-              <div className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-xs space-y-6">
-                <div className="flex items-center justify-between gap-2 border-b border-base-content/5 pb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-xs text-primary uppercase tracking-wider">
-                      Question {currentIndex + 1}
-                    </span>
-                    <span className="text-xs text-base-content/30">of {questions.length}</span>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentQuestion?._id || currentIndex}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="bg-base-100 rounded-3xl p-6 border border-base-content/10 shadow-xs space-y-6"
+                >
+                  <div className="flex items-center justify-between gap-2 border-b border-base-content/5 pb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-xs text-primary uppercase tracking-wider">
+                        Question {currentIndex + 1}
+                      </span>
+                      <span className="text-xs text-base-content/30">of {questions.length}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-primary/10 text-primary border-primary/20">
+                        {currentQuestion.topic || "Core CS"}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border bg-primary/10 text-primary border-primary/20">
-                      {currentQuestion.topic || "Core CS"}
-                    </span>
+                  <div className="space-y-3">
+                    <h2 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
+                      {currentQuestion.problemDescription || currentQuestion.description || currentQuestion.title}
+                    </h2>
                   </div>
-                </div>
 
-                <div className="space-y-3">
-                  <h2 className="text-base sm:text-lg font-bold text-base-content leading-relaxed">
-                    {currentQuestion.problemDescription || currentQuestion.description || currentQuestion.title}
-                  </h2>
-                </div>
-
-                {/* Options */}
-                <div className="space-y-3 pt-2">
-                  {(currentQuestion.options || []).map((option, idx) => {
-                    const isSelected =
-                      selectedOption !== null &&
-                      selectedOption !== undefined &&
-                      Number(selectedOption) === Number(idx);
-                    let optionStyle = "border-base-content/10 bg-base-100/60 hover:border-primary/30 hover:bg-base-200/50";
-                    let badgeStyle = "bg-base-200 text-base-content/70";
-                    let textStyle = "text-base-content font-semibold";
-
-                    if (submissionResult) {
-                      const isCorrectChoice = Number(idx) === Number(submissionResult.correctAnswer);
-                      const isUserChoice =
+                  {/* Options */}
+                  <div className="space-y-3 pt-2">
+                    {(currentQuestion.options || []).map((option, idx) => {
+                      const isSelected =
                         selectedOption !== null &&
                         selectedOption !== undefined &&
                         Number(selectedOption) === Number(idx);
+                      let optionStyle = "border-base-content/10 bg-base-100/60 hover:border-primary/30 hover:bg-base-200/50";
+                      let badgeStyle = "bg-base-200 text-base-content/70";
+                      let textStyle = "text-base-content font-semibold";
 
-                      if (isCorrectChoice) {
-                        optionStyle = "bg-emerald-500/15 border-emerald-600 dark:border-emerald-400 shadow-sm ring-2 ring-emerald-500/30";
-                        badgeStyle = "bg-emerald-600 text-white font-black shadow-xs";
-                        textStyle = "text-emerald-950 dark:text-emerald-50 font-bold";
-                      } else if (isUserChoice && !submissionResult.isCorrect) {
-                        optionStyle = "bg-rose-500/15 border-rose-600 dark:border-rose-400 shadow-sm ring-2 ring-rose-500/30";
-                        badgeStyle = "bg-rose-600 text-white font-black shadow-xs";
-                        textStyle = "text-rose-950 dark:text-rose-50 font-bold";
-                      } else {
-                        optionStyle = "border-base-content/10 bg-base-100/40 opacity-70";
-                        badgeStyle = "bg-base-200 text-base-content/50";
-                        textStyle = "text-base-content/70 font-medium";
+                      if (submissionResult) {
+                        const isCorrectChoice = Number(idx) === Number(submissionResult.correctAnswer);
+                        const isUserChoice =
+                          selectedOption !== null &&
+                          selectedOption !== undefined &&
+                          Number(selectedOption) === Number(idx);
+
+                        if (isCorrectChoice) {
+                          optionStyle = "bg-emerald-500/15 border-emerald-600 dark:border-emerald-400 shadow-sm ring-2 ring-emerald-500/30";
+                          badgeStyle = "bg-emerald-600 text-white font-black shadow-xs";
+                          textStyle = "text-emerald-950 dark:text-emerald-50 font-bold";
+                        } else if (isUserChoice && !submissionResult.isCorrect) {
+                          optionStyle = "bg-rose-500/15 border-rose-600 dark:border-rose-400 shadow-sm ring-2 ring-rose-500/30";
+                          badgeStyle = "bg-rose-600 text-white font-black shadow-xs";
+                          textStyle = "text-rose-950 dark:text-rose-50 font-bold";
+                        } else {
+                          optionStyle = "border-base-content/10 bg-base-100/40 opacity-70";
+                          badgeStyle = "bg-base-200 text-base-content/50";
+                          textStyle = "text-base-content/70 font-medium";
+                        }
+                      } else if (isSelected) {
+                        optionStyle = "bg-primary/15 border-primary shadow-xs ring-2 ring-primary/30";
+                        badgeStyle = "bg-primary text-primary-content font-black";
+                        textStyle = "text-base-content font-bold";
                       }
-                    } else if (isSelected) {
-                      optionStyle = "bg-primary/15 border-primary shadow-xs ring-2 ring-primary/30";
-                      badgeStyle = "bg-primary text-primary-content font-black";
-                      textStyle = "text-base-content font-bold";
-                    }
 
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() => {
-                          if (!submissionResult) setSelectedOption(idx);
-                        }}
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 ${optionStyle}`}
-                      >
-                        <div className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${badgeStyle}`}>
-                          {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) ? (
-                            <Check className="size-4 stroke-[3]" />
-                          ) : submissionResult && selectedOption !== null && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
-                            <XCircle className="size-4" />
-                          ) : (
-                            ["A", "B", "C", "D", "E"][idx] || idx + 1
-                          )}
-                        </div>
-                        <span className={`text-sm flex-1 leading-snug ${textStyle}`}>{option}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Footer Controls */}
-                <div className="flex items-center justify-between pt-4 border-t border-base-content/5">
-                  <button
-                    onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-                    disabled={currentIndex === 0}
-                    className="btn btn-ghost btn-sm rounded-xl font-bold gap-1 text-xs"
-                  >
-                    <ChevronLeft className="size-4" />
-                    Previous
-                  </button>
-
-                  <div className="flex items-center gap-2">
-                    {!submissionResult ? (
-                      <>
-                        {selectedOption !== null && (
-                          <button
-                            onClick={handleResetCurrentQuestion}
-                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 text-base-content/60 hover:text-error hover:bg-error/10"
-                            title="Clear choice"
-                          >
-                            <RotateCcw className="size-3.5" />
-                            <span>Clear</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={handleSubmitAnswer}
-                          disabled={selectedOption === null || isSubmitting}
-                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
-                        >
-                          {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
-                        </button>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={handleResetCurrentQuestion}
-                          disabled={isResetting}
-                          className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
-                          title="Reset question to try again"
-                        >
-                          <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
-                          <span>Reset &amp; Try Again</span>
-                        </button>
-                        <button
+                      return (
+                        <div
+                          key={idx}
                           onClick={() => {
-                            if (currentIndex < questions.length - 1) {
-                              setCurrentIndex((prev) => prev + 1);
+                            if (!submissionResult && !isSubmitting) {
+                              setPendingChoices((prev) => ({
+                                ...prev,
+                                [currentQuestion._id]: idx,
+                              }));
                             }
                           }}
-                          disabled={currentIndex === questions.length - 1}
-                          className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                          className={`p-4 rounded-2xl border-2 transition-all duration-150 cursor-pointer flex items-center gap-3.5 ${optionStyle}`}
                         >
-                          <span>Next Question</span>
-                          <ChevronRight className="size-4" />
-                        </button>
-                      </div>
-                    )}
+                          <div className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${badgeStyle}`}>
+                            {submissionResult && Number(idx) === Number(submissionResult.correctAnswer) ? (
+                              <Check className="size-4 stroke-[3]" />
+                            ) : submissionResult && selectedOption !== null && Number(selectedOption) === Number(idx) && !submissionResult.isCorrect ? (
+                              <XCircle className="size-4" />
+                            ) : (
+                              ["A", "B", "C", "D", "E"][idx] || idx + 1
+                            )}
+                          </div>
+                          <span className={`text-sm flex-1 leading-snug ${textStyle}`}>{option}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
 
-                {/* Explanation Card */}
-                <AnimatePresence>
-                  {submissionResult && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-6 pt-6 border-t border-base-content/10 space-y-4"
+                  {/* Footer Controls */}
+                  <div className="flex items-center justify-between pt-4 border-t border-base-content/5">
+                    <button
+                      onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                      disabled={currentIndex === 0}
+                      className="btn btn-ghost btn-sm rounded-xl font-bold gap-1 text-xs"
                     >
-                      <div className="flex items-center gap-2">
-                        {submissionResult.isCorrect ? (
-                          <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-black text-sm">
-                            <CheckCircle2 className="size-5 text-emerald-500" />
-                            <span>Correct! Excellent concept understanding.</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-black text-sm">
-                            <XCircle className="size-5 text-rose-500" />
-                            <span>
-                              Incorrect. Correct Answer: Option{" "}
-                              {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <ChevronLeft className="size-4" />
+                      Previous
+                    </button>
 
-                      <div className="p-4 bg-base-200/60 rounded-2xl space-y-2 border border-base-content/5">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-base-content/50 block">
-                          Technical Explanation
-                        </span>
-                        <p className="text-xs text-base-content/85 font-medium whitespace-pre-line leading-relaxed">
-                          {submissionResult.explanation}
-                        </p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                    <div className="flex items-center gap-2">
+                      {!submissionResult ? (
+                        <>
+                          {selectedOption !== null && (
+                            <button
+                              onClick={handleResetCurrentQuestion}
+                              className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 text-base-content/60 hover:text-error hover:bg-error/10"
+                              title="Clear choice"
+                            >
+                              <RotateCcw className="size-3.5" />
+                              <span>Clear</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={handleSubmitAnswer}
+                            disabled={selectedOption === null || isSubmitting}
+                            className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 shadow-sm"
+                          >
+                            {isSubmitting ? <span className="loading loading-spinner size-3" /> : "Submit Answer"}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleResetCurrentQuestion}
+                            disabled={isResetting}
+                            className="btn btn-ghost btn-sm rounded-xl font-bold uppercase text-xs tracking-wider gap-1.5 hover:bg-base-200 text-base-content/70 hover:text-error transition-colors"
+                            title="Reset question to try again"
+                          >
+                            <RotateCcw className={`size-3.5 ${isResetting ? "animate-spin" : ""}`} />
+                            <span>Reset &amp; Try Again</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (currentIndex < questions.length - 1) {
+                                setCurrentIndex((prev) => prev + 1);
+                              }
+                            }}
+                            disabled={currentIndex === questions.length - 1}
+                            className="btn btn-primary btn-sm rounded-xl font-black uppercase text-xs tracking-wider px-6 gap-1"
+                          >
+                            <span>Next Question</span>
+                            <ChevronRight className="size-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Explanation Card */}
+                  <AnimatePresence>
+                    {submissionResult && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: "easeOut" }}
+                        className="mt-6 pt-6 border-t border-base-content/10 space-y-4 overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2">
+                          {submissionResult.isCorrect ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-black text-sm">
+                              <CheckCircle2 className="size-5 text-emerald-500" />
+                              <span>Correct! Excellent concept understanding.</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-rose-700 dark:text-rose-400 font-black text-sm">
+                              <XCircle className="size-5 text-rose-500" />
+                              <span>
+                                Incorrect. Correct Answer: Option{" "}
+                                {["A", "B", "C", "D", "E"][submissionResult.correctAnswer]}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 bg-base-200/60 rounded-2xl space-y-2 border border-base-content/5">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-base-content/50 block">
+                            Technical Explanation
+                          </span>
+                          <p className="text-xs text-base-content/85 font-medium whitespace-pre-line leading-relaxed">
+                            {submissionResult.explanation}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             {/* Right: Question Navigation Palette (4 cols, sticky on desktop) */}

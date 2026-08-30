@@ -81,9 +81,21 @@ export const getCompanies = async (req, res) => {
       };
     });
 
+    const categoryCounts = {
+      aptitude: allQuestions.filter((q) => q.category === "aptitude").length,
+      coding: allQuestions.filter((q) => q.category === "coding").length,
+      technical: allQuestions.filter((q) => q.category === "technical").length,
+      english: allQuestions.filter((q) => q.category === "english").length,
+      interview: allQuestions.filter((q) => q.category === "interview").length,
+    };
+
     res.status(200).json({
       success: true,
       companies: enrichedCompanies,
+      stats: {
+        totalQuestions: allQuestions.length,
+        categoryCounts,
+      },
     });
   } catch (error) {
     console.error("Error in getCompanies:", error);
@@ -1323,7 +1335,7 @@ export const getUserProgress = async (req, res) => {
 
     const [progress, allQuestions] = await Promise.all([
       PlacementProgress.findOne({ userId }).lean(),
-      PlacementQuestion.find({}).select("_id difficulty topics").lean(),
+      PlacementQuestion.find({}).select("_id category difficulty topics").lean(),
     ]);
 
     const totalQuestionsCount = allQuestions.length;
@@ -1335,6 +1347,14 @@ export const getUserProgress = async (req, res) => {
     const easyCount = allQuestions.filter((q) => q.difficulty === "Easy" && solvedQuestionIds.has(q._id.toString())).length;
     const mediumCount = allQuestions.filter((q) => q.difficulty === "Medium" && solvedQuestionIds.has(q._id.toString())).length;
     const hardCount = allQuestions.filter((q) => q.difficulty === "Hard" && solvedQuestionIds.has(q._id.toString())).length;
+
+    const categoryCounts = {
+      aptitude: allQuestions.filter((q) => q.category === "aptitude").length,
+      coding: allQuestions.filter((q) => q.category === "coding").length,
+      technical: allQuestions.filter((q) => q.category === "technical").length,
+      english: allQuestions.filter((q) => q.category === "english").length,
+      interview: allQuestions.filter((q) => q.category === "interview").length,
+    };
 
     const accuracy = solvedItems.length > 0
       ? Math.round((correctItems.length / solvedItems.length) * 100)
@@ -1366,6 +1386,7 @@ export const getUserProgress = async (req, res) => {
       success: true,
       progress: {
         totalQuestionsCount,
+        categoryCounts,
         totalAttempted: solvedItems.length,
         totalSolved: correctItems.length,
         accuracy,

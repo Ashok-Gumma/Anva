@@ -36,11 +36,11 @@ const TIERS = [
   { id: "IT & Consulting Leader", label: "IT & Consulting" },
 ];
 
-const MASTER_LIBRARIES = [
+const MASTER_LIBRARIES_BASE = [
   {
     id: "aptitude",
     title: "Master Aptitude & Quant",
-    subtitle: "300+ Authentic Quantitative & Logical Reasoning Questions",
+    subtitle: "Quantitative & Logical Reasoning Questions",
     description: "Time & Work, Probability, Number Series, Cryptarithmetic, Syllogisms & Puzzles.",
     icon: Brain,
     path: "/placement/all/aptitude",
@@ -48,12 +48,13 @@ const MASTER_LIBRARIES = [
     border: "border-amber-500/30",
     badgeColor: "bg-amber-500/10 text-amber-500",
     iconColor: "text-amber-500",
-    count: "300+ Qs",
+    categoryKey: "aptitude",
+    unit: "Questions",
   },
   {
     id: "coding",
     title: "Master Coding Practice",
-    subtitle: "200+ LeetCode-Style Multi-Language Algorithmic Problems",
+    subtitle: "Multi-Language Algorithmic Problems",
     description: "Arrays, Two Pointers, Sliding Window, Monotonic Deque, Dynamic Programming, Graphs & Trees.",
     icon: Code2,
     path: "/placement/all/coding",
@@ -61,12 +62,13 @@ const MASTER_LIBRARIES = [
     border: "border-blue-500/30",
     badgeColor: "bg-blue-500/10 text-blue-500",
     iconColor: "text-blue-500",
-    count: "200+ Problems",
+    categoryKey: "coding",
+    unit: "Problems",
   },
   {
     id: "technical",
     title: "Master Core CS Technical",
-    subtitle: "250+ Operating Systems, DBMS, Networks & OOP MCQs",
+    subtitle: "Operating Systems, DBMS, Networks & OOP MCQs",
     description: "B+ Tree Indexing, MESI Protocol, Virtual Memory, ACID, TCP/IP & Concurrency.",
     icon: Cpu,
     path: "/placement/all/technical",
@@ -74,12 +76,13 @@ const MASTER_LIBRARIES = [
     border: "border-emerald-500/30",
     badgeColor: "bg-emerald-500/10 text-emerald-500",
     iconColor: "text-emerald-500",
-    count: "250+ Qs",
+    categoryKey: "technical",
+    unit: "Questions",
   },
   {
     id: "english",
     title: "Master Verbal & English",
-    subtitle: "200+ Reading Comprehension, Grammar & Para Jumbles",
+    subtitle: "Reading Comprehension, Grammar & Para Jumbles",
     description: "Sentence Correction, Critical Reasoning, Idioms, Contextual Vocabulary & Cloze Tests.",
     icon: BookOpen,
     path: "/placement/all/english",
@@ -87,12 +90,13 @@ const MASTER_LIBRARIES = [
     border: "border-purple-500/30",
     badgeColor: "bg-purple-500/10 text-purple-500",
     iconColor: "text-purple-500",
-    count: "200+ Qs",
+    categoryKey: "english",
+    unit: "Questions",
   },
   {
     id: "interview",
     title: "Master Interview Prep",
-    subtitle: "150+ Technical & STAR Behavioral Masterclasses",
+    subtitle: "Technical & STAR Behavioral Preparation",
     description: "System Design, Resume Defense, Amazon Leadership Principles & HR Scenarios.",
     icon: MessageSquare,
     path: "/placement/all/interview",
@@ -100,7 +104,8 @@ const MASTER_LIBRARIES = [
     border: "border-rose-500/30",
     badgeColor: "bg-rose-500/10 text-rose-500",
     iconColor: "text-rose-500",
-    count: "150+ Frameworks",
+    categoryKey: "interview",
+    unit: "Questions",
   },
 ];
 
@@ -137,6 +142,20 @@ const PlacementLandingPage = () => {
   });
 
   const companies = companiesData?.companies || [];
+  const categoryCounts = companiesData?.stats?.categoryCounts || progressData?.progress?.categoryCounts || {};
+  const totalQuestions = companiesData?.stats?.totalQuestions || progressData?.progress?.totalQuestionsCount || 0;
+
+  const masterLibraries = useMemo(() => {
+    return MASTER_LIBRARIES_BASE.map((lib) => {
+      const realCount = categoryCounts[lib.categoryKey];
+      const countLabel = realCount !== undefined && realCount > 0 ? `${realCount} ${lib.unit}` : `Practice`;
+      return {
+        ...lib,
+        count: countLabel,
+        rawCount: realCount || 0,
+      };
+    });
+  }, [categoryCounts]);
 
   const filteredCompanies = useMemo(() => {
     return companies.filter((company) => {
@@ -178,12 +197,14 @@ const PlacementLandingPage = () => {
                 <Target className="size-4 animate-pulse" />
                 Anva Placement Hub
               </div>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-                Master Campus &amp; Off-Campus <br />
-                <span className="font-curly italic text-primary">Placements With Precision.</span>
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight text-base-content leading-tight">
+                Crack Top Tier{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent">
+                  Tech &amp; MNC Placements
+                </span>
               </h1>
               <p className="text-sm sm:text-base text-base-content/70 font-medium leading-relaxed">
-                The complete quality preparation hub for ambitious students: Practice universal master question banks, tackle authentic company-specific hiring rounds, run code in our sandboxed LeetCode IDE, and ace STAR behavioral interviews.
+                Company-specific test patterns, curated practice decks, multi-language IDE assessments, and structured interview frameworks.
               </p>
             </div>
 
@@ -223,14 +244,16 @@ const PlacementLandingPage = () => {
                   </span>
                 </h2>
                 <p className="text-xs text-base-content/60 font-medium">
-                  Comprehensive topic-wise practice modules with 1,100+ vetted questions across all domains
+                  {totalQuestions > 0
+                    ? `Curated topic-wise practice modules with ${totalQuestions} verified questions across all domains`
+                    : "Curated topic-wise practice modules and question decks across all core domains"}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {MASTER_LIBRARIES.map((lib) => {
+            {masterLibraries.map((lib) => {
               const Icon = lib.icon;
               return (
                 <Link
@@ -418,9 +441,9 @@ const PlacementLandingPage = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-[11px] font-bold">
-                          <span>{company.stats?.totalQuestions || 50}+ Questions</span>
+                          <span>{company.stats?.totalQuestions || 0} Questions</span>
                           <span className="text-base-content/30">•</span>
-                          <span className="text-primary font-black">{company.stats?.totalCoding || 15} Coding</span>
+                          <span className="text-primary font-black">{company.stats?.totalCoding || 0} Coding</span>
                         </div>
                       </div>
                     </div>

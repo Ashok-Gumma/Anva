@@ -37,6 +37,7 @@ import {
   askPlacementAiCopilot,
 } from "../../lib/placementApi";
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 const CODE_TEMPLATES = {
   javascript: `function solve(input) {
@@ -662,103 +663,114 @@ const MockTestPage = () => {
           !isCodingQuestion ? (
             /* ── MCQ QUESTION LAYOUT ── */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-8 bg-base-100 rounded-3xl p-6 sm:p-8 border border-base-content/10 shadow-md space-y-6">
-                <div className="flex items-center justify-between border-b border-base-content/5 pb-4">
-                  <span className="text-xs font-black uppercase tracking-widest text-primary">
-                    Question {currentQuestionIndex + 1} of {currentQuestions.length}
-                  </span>
-                  <span className="badge badge-sm font-bold bg-base-200 uppercase text-[10px]">
-                    {currentQuestion.difficulty}
-                  </span>
-                </div>
-
-                <h3 className="text-base sm:text-lg font-bold text-base-content leading-relaxed whitespace-pre-line">
-                  {currentQuestion.description || currentQuestion.title}
-                </h3>
-
-                {/* Options */}
-                <div className="space-y-3 pt-2">
-                  {(currentQuestion.options || []).map((option, idx) => {
-                    const isSelected = answers[currentQuestion._id] === idx;
-                    return (
-                      <div
-                        key={idx}
-                        onClick={() =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [currentQuestion._id]: idx,
-                          }))
-                        }
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3.5 ${
-                          isSelected
-                            ? "bg-primary/10 border-primary/40 text-primary shadow-xs"
-                            : "border-base-content/10 hover:bg-base-200/50"
-                        }`}
-                      >
-                        <div
-                          className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
-                            isSelected ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"
-                          }`}
-                        >
-                          {["A", "B", "C", "D"][idx]}
-                        </div>
-                        <span className="text-sm font-semibold flex-1 leading-snug">{option}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Navigation Controls */}
-                <div className="flex items-center justify-between pt-4 border-t border-base-content/10 gap-3">
-                  <button
-                    onClick={() => {
-                      if (currentQuestionIndex > 0) {
-                        setCurrentQuestionIndex((prev) => prev - 1);
-                      } else if (activeSectionIndex > 0) {
-                        const prevSec = activeSectionIndex - 1;
-                        setActiveSectionIndex(prevSec);
-                        setCurrentQuestionIndex(sections[prevSec].questions.length - 1);
-                      }
-                    }}
-                    disabled={currentQuestionIndex === 0 && activeSectionIndex === 0}
-                    className="btn btn-ghost btn-sm rounded-2xl font-bold gap-1 text-xs"
+              <div className="lg:col-span-8">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentQuestion._id || currentQuestionIndex}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="bg-base-100 rounded-3xl p-6 sm:p-8 border border-base-content/10 shadow-md space-y-6"
                   >
-                    <ChevronLeft className="size-4" />
-                    <span>Previous</span>
-                  </button>
+                    <div className="flex items-center justify-between border-b border-base-content/5 pb-4">
+                      <span className="text-xs font-black uppercase tracking-widest text-primary">
+                        Question {currentQuestionIndex + 1} of {currentQuestions.length}
+                      </span>
+                      <span className="badge badge-sm font-bold bg-base-200 uppercase text-[10px]">
+                        {currentQuestion.difficulty}
+                      </span>
+                    </div>
 
-                  {currentQuestionIndex < currentQuestions.length - 1 ? (
-                    <button
-                      onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
-                      className="btn btn-primary btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-sm gap-1"
-                    >
-                      <span>Next Question</span>
-                      <ChevronRight className="size-4" />
-                    </button>
-                  ) : activeSectionIndex < sections.length - 1 ? (
-                    <button
-                      onClick={() => {
-                        const nextSec = activeSectionIndex + 1;
-                        setActiveSectionIndex(nextSec);
-                        setCurrentQuestionIndex(0);
-                        toast.success(`Advanced to Section ${nextSec + 1}: ${sections[nextSec]?.sectionName}`);
-                      }}
-                      className="btn btn-secondary text-secondary-content btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-md gap-1.5"
-                    >
-                      <span>Next Section: {sections[activeSectionIndex + 1]?.category?.toUpperCase()}</span>
-                      <ChevronRight className="size-4" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleManualSubmit}
-                      disabled={isSubmitting}
-                      className="btn btn-success text-white btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-md gap-1.5"
-                    >
-                      <Send className="size-3.5" />
-                      <span>{isSubmitting ? "Submitting..." : "Submit OA Assessment"}</span>
-                    </button>
-                  )}
-                </div>
+                    <h3 className="text-base sm:text-lg font-bold text-base-content leading-relaxed whitespace-pre-line">
+                      {currentQuestion.description || currentQuestion.title}
+                    </h3>
+
+                    {/* Options */}
+                    <div className="space-y-3 pt-2">
+                      {(currentQuestion.options || []).map((option, idx) => {
+                        const isSelected = answers[currentQuestion._id] === idx;
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() =>
+                              setAnswers((prev) => ({
+                                ...prev,
+                                [currentQuestion._id]: idx,
+                              }))
+                            }
+                            className={`p-4 rounded-2xl border-2 transition-all duration-150 cursor-pointer flex items-center gap-3.5 ${
+                              isSelected
+                                ? "bg-primary/10 border-primary/40 text-primary shadow-xs"
+                                : "border-base-content/10 hover:bg-base-200/50"
+                            }`}
+                          >
+                            <div
+                              className={`size-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                                isSelected ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/70"
+                              }`}
+                            >
+                              {["A", "B", "C", "D"][idx]}
+                            </div>
+                            <span className="text-sm font-semibold flex-1 leading-snug">{option}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Navigation Controls */}
+                    <div className="flex items-center justify-between pt-4 border-t border-base-content/10 gap-3">
+                      <button
+                        onClick={() => {
+                          if (currentQuestionIndex > 0) {
+                            setCurrentQuestionIndex((prev) => prev - 1);
+                          } else if (activeSectionIndex > 0) {
+                            const prevSec = activeSectionIndex - 1;
+                            setActiveSectionIndex(prevSec);
+                            setCurrentQuestionIndex(sections[prevSec].questions.length - 1);
+                          }
+                        }}
+                        disabled={currentQuestionIndex === 0 && activeSectionIndex === 0}
+                        className="btn btn-ghost btn-sm rounded-2xl font-bold gap-1 text-xs"
+                      >
+                        <ChevronLeft className="size-4" />
+                        <span>Previous</span>
+                      </button>
+
+                      {currentQuestionIndex < currentQuestions.length - 1 ? (
+                        <button
+                          onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
+                          className="btn btn-primary btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-sm gap-1"
+                        >
+                          <span>Next Question</span>
+                          <ChevronRight className="size-4" />
+                        </button>
+                      ) : activeSectionIndex < sections.length - 1 ? (
+                        <button
+                          onClick={() => {
+                            const nextSec = activeSectionIndex + 1;
+                            setActiveSectionIndex(nextSec);
+                            setCurrentQuestionIndex(0);
+                            toast.success(`Advanced to Section ${nextSec + 1}: ${sections[nextSec]?.sectionName}`);
+                          }}
+                          className="btn btn-secondary text-secondary-content btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-md gap-1.5"
+                        >
+                          <span>Next Section: {sections[activeSectionIndex + 1]?.category?.toUpperCase()}</span>
+                          <ChevronRight className="size-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleManualSubmit}
+                          disabled={isSubmitting}
+                          className="btn btn-success text-white btn-sm rounded-2xl font-black uppercase text-xs tracking-wider px-6 shadow-md gap-1.5"
+                        >
+                          <Send className="size-3.5" />
+                          <span>{isSubmitting ? "Submitting..." : "Submit OA Assessment"}</span>
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               </div>
 
               {/* Right: Question Palette */}

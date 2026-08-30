@@ -9,3 +9,5 @@ export const protectAdminRoute = (req, res, next) => {
 
   next();
 };
+
+export const requireAdmin = protectAdminRoute;

@@ -520,7 +520,7 @@ const Navbar = () => {
                     <span className="text-sm flex-1">Placement Hub</span>
                   </button>
 
-                                {/* 4. Account & Profile Section */}
+                  {/* 4. Account & Profile Section */}
                   <div className="pt-3 border-t border-base-content/10 space-y-1.5">
                     <div className="px-3.5 text-[10px] font-black uppercase tracking-widest text-base-content/50">
                       Account &amp; Settings
